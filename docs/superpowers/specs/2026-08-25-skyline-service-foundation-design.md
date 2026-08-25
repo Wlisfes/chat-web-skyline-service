@@ -1,15 +1,15 @@
 # Chat Web Skyline Service 基础框架设计
 
 日期：2026-08-25  
-状态：已完成方案确认，等待书面规格复核
+状态：已完成方案确认；已按公开依赖可安装性修订
 
 ## 1. 目标
 
-在独立目录 `chat-web-skyline-service` 中搭建一个可本地开发、生产构建和验证的服务端渲染基础框架。框架采用 `ssr` 7 的官方 NestJS + Vue3 组织方式，由同一个 NestJS 进程承载页面 SSR、健康检查和未来的 BFF 接口，并集成 Naive UI 的服务端样式收集与客户端 Hydration。
+在独立目录 `chat-web-skyline-service` 中搭建一个可本地开发、生产构建和验证的服务端渲染基础框架。框架采用 `ssr` 6.2 稳定版本线的官方 NestJS + Vue3 组织方式和 Webpack 4 构建链，由同一个 NestJS 进程承载页面 SSR、健康检查和未来的 BFF 接口，并集成 Naive UI 的服务端样式收集与客户端 Hydration。
 
 首版成功标准：
 
-- NestJS 11、Vue3、Naive UI 和 `ssr` 7 可在 Node.js 20 以上环境安装和构建。
+- NestJS 11、Vue3、Naive UI 和 `ssr` 6.2 稳定版本线可在 Node.js 20 以上环境独立安装和构建。
 - 首页首个 HTTP 响应包含 Vue 页面内容、Naive UI 组件标记及服务端收集的 `cssr-id` 样式。
 - 浏览器 Hydration 不产生 mismatch，示例按钮可从 `0` 点击到 `1`。
 - `/health/live` 和 `/health/ready` 可用于本地与未来的容器探针。
@@ -21,7 +21,7 @@
 ### 2.1 包含
 
 - 独立 Git 仓库，初始分支为 `main`，日常开发分支为 `developer`。
-- `ssr` 7 + NestJS 11 + Vue3 + Pinia + Naive UI SSR 骨架。
+- `ssr` 6.2 稳定版本线 + Webpack 4 + NestJS 11 + Vue3 + Pinia + Naive UI SSR 骨架。
 - Nacos-first 配置加载和服务注册。
 - 独立的 SSR 渲染服务及 Naive UI 样式注入器。
 - 首页技术验证页及按钮 Hydration 示例。
@@ -39,12 +39,12 @@
 
 ## 3. 方案选择
 
-采用 `ssr` 官方 `nestjs-vue3-ssr` 目录规范，由 NestJS 直接承载 Vue3 SSR。
+采用 `ssr` 官方 `nestjs-vue3-ssr` 目录规范，由 NestJS 直接承载 Vue3 SSR。首版固定使用 npm 上能够在独立项目中完整解析的 `ssr` 6.2 稳定版本线及 Webpack 4 构建链；待 v7 的 Vue3 插件和类型包完整发布后，再通过独立升级任务评估 Vite/Rolldown，不把上游 monorepo 的 workspace 本地包作为生产依赖来源。
 
 未采用的方案：
 
 - `apps/server` 与 `apps/web` 双应用：边界更明显，但偏离 `ssr` 官方默认结构，需要维护额外的构建和产物协调。
-- Nuxt + Nest 双服务：Nuxt 的 SSR 生态更成熟，但不满足验证并采用 `ssr` 7 与 NestJS 直接组合的目标。
+- Nuxt + Nest 双服务：Nuxt 的 SSR 生态更成熟，但不满足验证并采用 `ssr` 与 NestJS 直接组合的目标。
 
 ## 4. 仓库与分支
 
@@ -154,7 +154,7 @@ chat-web-skyline-service/
 ['naive-ui', 'vueuc', 'date-fns', '@css-render/vue3-ssr']
 ```
 
-该配置等价于 Vite 的 `ssr.noExternal`，避免 `vueuc` 在 Node ESM 环境下以具名导入读取 CommonJS 输出失败。
+该配置强制 Webpack 将这些依赖编译进服务端 bundle，避免 `vueuc` 在 Node 环境下以具名导入读取 CommonJS 输出失败。
 
 项目显式声明 `naive-ui`、`@css-render/vue3-ssr`、`@swc/cli` 和 `@swc/core`。`@css-render/*` 与 `css-render` 必须在锁文件中解析到兼容且唯一的版本，避免多实例导致样式收集失效。
 
@@ -258,8 +258,8 @@ Naive UI 样式必须在完整组件树渲染后才能收集，因此首版 SSR 
 ## 13. 已知风险与控制
 
 - `ssr` CLI 曾出现内部构建错误但进程退出码仍为 0：构建脚本必须额外检查 `dist/main.js`、client manifest 和 server bundle。
-- `ssr` 7 构建过程可能输出 `MaxListenersExceededWarning`：首版记录并评估，不能通过扩大 listener 上限掩盖真实泄漏；若稳定复现，应在独立问题中定位上游行为。
-- `ssr-vite` 会建议将 `vite` 映射到 `rolldown-vite`：依赖清单显式采用框架建议的映射并锁定版本，避免机器间隐式解析差异。
+- `ssr` v7 当前公开 npm 包发布不完整：`ssr@7.0.6` 依赖未发布的稳定 `ssr-types@^7.0.0`，稳定版 `ssr-plugin-vue3@7` 也不可用；首版因此固定 v6.2，不通过 Git 仓库、beta 包或 npm override 拼装 v7。
+- Webpack 4 构建链较旧：首版通过锁文件、Node.js 20 构建验证和浏览器 E2E 控制风险；等 v7 包完整发布后，另立升级规格迁移到受支持的 Vite/Rolldown 构建链。
 - Naive UI CSS-in-JS 会增加首屏 HTML 体积：首版以正确性为先，后续用真实页面数据评估样式缓存或内联策略。
 - 自定义 HTML 字符串注入容易脆弱：逻辑集中在纯函数并通过异常输入测试；业务 Controller 不执行字符串替换。
 
