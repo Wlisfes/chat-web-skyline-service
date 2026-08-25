@@ -10,6 +10,10 @@ import type { App } from 'vue'
 const props = defineProps<{
     ssrApp: App
     asyncData: { value: unknown }
+    fetchData?: unknown
+    reactiveFetchData?: unknown
+    ctx?: unknown
+    config?: unknown
 }>()
 
 const { collect } = setupCssRender(props.ssrApp)

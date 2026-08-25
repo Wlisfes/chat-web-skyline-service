@@ -11,7 +11,7 @@
                 </n-space>
             </section>
 
-            <n-grid cols="1 m:2" responsive="screen" :x-gap="20" :y-gap="20">
+            <n-grid cols="1 m:2" responsive="self" :x-gap="20" :y-gap="20">
                 <n-grid-item>
                     <n-card title="服务端首屏" embedded>
                         <n-alert type="success" :show-icon="true"> 当前 HTML 已包含 Vue 页面内容、Naive UI 标记和 cssr-id 样式。 </n-alert>
