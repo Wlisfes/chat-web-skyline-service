@@ -35,11 +35,10 @@ export async function bootstrap(): Promise<NestExpressApplication> {
     app.useStaticAssets(join(getCwd(), 'build/client'))
     app.useStaticAssets(join(getCwd(), 'public'))
 
-    const configService = app.get(ConfigService)
-    const port = resolvePort(process.env.PORT ?? configService.get('server.port') ?? loadConfig().serverPort)
+    const port = Number(process.env.PORT ?? app.get(ConfigService).get<number>('server.port', 4020))
     app.get(SsrRendererService).markReady()
     await app.listen(port, '0.0.0.0')
-    logger.log({ message: `Chat Web Skyline 服务启动：http://127.0.0.1:${port}`, port })
+    logger.log(`Chat Web Skyline 服务启动 [${process.env.NODE_ENV}]：http://127.0.0.1:${port}`)
     return app
 }
 
