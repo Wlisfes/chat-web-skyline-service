@@ -14,17 +14,13 @@
             <n-grid cols="1 m:2" responsive="screen" :x-gap="20" :y-gap="20">
                 <n-grid-item>
                     <n-card title="服务端首屏" embedded>
-                        <n-alert type="success" :show-icon="true">
-                            当前 HTML 已包含 Vue 页面内容、Naive UI 标记和 cssr-id 样式。
-                        </n-alert>
+                        <n-alert type="success" :show-icon="true"> 当前 HTML 已包含 Vue 页面内容、Naive UI 标记和 cssr-id 样式。 </n-alert>
                     </n-card>
                 </n-grid-item>
                 <n-grid-item>
                     <n-card title="Hydration 验证" embedded>
                         <p>点击按钮验证客户端已接管服务端生成的页面。</p>
-                        <n-button type="primary" data-testid="hydration-counter" @click="increment">
-                            Hydration 计数：{{ count }}
-                        </n-button>
+                        <n-button type="primary" data-testid="hydration-counter" @click="increment"> Hydration 计数：{{ count }} </n-button>
                     </n-card>
                 </n-grid-item>
             </n-grid>

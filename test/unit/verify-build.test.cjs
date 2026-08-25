@@ -22,10 +22,7 @@ describe('verifyBuild', () => {
         writeFileSync(join(root, 'dist/main.js'), '')
         writeFileSync(join(root, 'build/server/Page.server.js'), '')
         writeFileSync(join(root, 'build/asyncChunkMap.json'), '{}')
-        writeFileSync(
-            join(root, 'build/client/asset-manifest.json'),
-            JSON.stringify({ 'Page.js': '/static/Page.abc.js' })
-        )
+        writeFileSync(join(root, 'build/client/asset-manifest.json'), JSON.stringify({ 'Page.js': '/static/Page.abc.js' }))
 
         assert.doesNotThrow(() => verifyBuild(root))
     })
@@ -38,10 +35,7 @@ describe('verifyBuild', () => {
         writeFileSync(join(root, 'dist/main.js'), '')
         writeFileSync(join(root, 'build/server/Page.server.js'), '')
         writeFileSync(join(root, 'build/asyncChunkMap.json'), '{}')
-        writeFileSync(
-            join(root, 'build/client/asset-manifest.json'),
-            JSON.stringify({ 'Page.css': '/static/Page.css' })
-        )
+        writeFileSync(join(root, 'build/client/asset-manifest.json'), JSON.stringify({ 'Page.css': '/static/Page.css' }))
 
         assert.throws(() => verifyBuild(root), /client JavaScript/)
     })

@@ -3,10 +3,7 @@ import { join } from 'node:path'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import type { NestExpressApplication } from '@nestjs/platform-express'
-import {
-    createRequestLoggingMiddleware,
-    createStructuredLogger
-} from '@wlisfes/chat-web-base-schema/logging'
+import { createRequestLoggingMiddleware, createStructuredLogger } from '@wlisfes/chat-web-base-schema/logging'
 import { requestContextMiddleware } from '@wlisfes/chat-web-base-schema/request-context'
 import { getCwd, initialSSRDevProxy, loadConfig } from 'ssr-common-utils'
 import { AppModule } from './app.module'

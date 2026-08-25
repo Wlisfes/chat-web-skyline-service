@@ -59,7 +59,7 @@ yarn test
 
 ```yaml
 server:
-  port: 4020
+    port: 4020
 ```
 
 生产默认不得关闭 Nacos。`NACOS_CONFIG_ENABLED=false` 只用于测试或明确的离线运行；该开关由 Skyline 在 Nest 模块组合前处理，因为共享 `NacosModule` 初始化后会立即加载配置。

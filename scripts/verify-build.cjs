@@ -1,12 +1,7 @@
 const { existsSync, readFileSync } = require('node:fs')
 const { join } = require('node:path')
 
-const requiredArtifacts = [
-    'dist/main.js',
-    'build/server/Page.server.js',
-    'build/client/asset-manifest.json',
-    'build/asyncChunkMap.json'
-]
+const requiredArtifacts = ['dist/main.js', 'build/server/Page.server.js', 'build/client/asset-manifest.json', 'build/asyncChunkMap.json']
 
 function collectStrings(value) {
     if (typeof value === 'string') return [value]
