@@ -16,6 +16,7 @@
         "sourceMap": true,
         "declaration": true,
         "jsx": "preserve",
+        "jsxImportSource": "vue",
         "outDir": "dist",
         "paths": {
             "~/*": ["./*"],
