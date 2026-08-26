@@ -20,6 +20,7 @@ describe('verifyBuild', () => {
         mkdirSync(join(root, 'build/server'), { recursive: true })
         mkdirSync(join(root, 'build/client'), { recursive: true })
         writeFileSync(join(root, 'dist/main.js'), '')
+        writeFileSync(join(root, 'dist/app.module.js'), 'require("./modules/health/health.module")')
         writeFileSync(join(root, 'build/server/Page.server.js'), '')
         writeFileSync(join(root, 'build/asyncChunkMap.json'), '{}')
         writeFileSync(join(root, 'build/client/asset-manifest.json'), JSON.stringify({ 'Page.js': '/static/Page.abc.js' }))
@@ -33,10 +34,28 @@ describe('verifyBuild', () => {
         mkdirSync(join(root, 'build/server'), { recursive: true })
         mkdirSync(join(root, 'build/client'), { recursive: true })
         writeFileSync(join(root, 'dist/main.js'), '')
+        writeFileSync(join(root, 'dist/app.module.js'), 'require("./modules/health/health.module")')
         writeFileSync(join(root, 'build/server/Page.server.js'), '')
         writeFileSync(join(root, 'build/asyncChunkMap.json'), '{}')
         writeFileSync(join(root, 'build/client/asset-manifest.json'), JSON.stringify({ 'Page.css': '/static/Page.css' }))
 
         assert.throws(() => verifyBuild(root), /client JavaScript/)
+    })
+
+    it('rejects backend imports that point to the local source directory', () => {
+        const root = createRoot()
+        mkdirSync(join(root, 'dist'), { recursive: true })
+        mkdirSync(join(root, 'build/server'), { recursive: true })
+        mkdirSync(join(root, 'build/client'), { recursive: true })
+        writeFileSync(join(root, 'dist/main.js'), '')
+        writeFileSync(
+            join(root, 'dist/app.module.js'),
+            'require("F:/chat-web-service/chat-web-skyline-service/src/modules/health/health.module")'
+        )
+        writeFileSync(join(root, 'build/server/Page.server.js'), '')
+        writeFileSync(join(root, 'build/asyncChunkMap.json'), '{}')
+        writeFileSync(join(root, 'build/client/asset-manifest.json'), JSON.stringify({ 'Page.js': '/static/Page.abc.js' }))
+
+        assert.throws(() => verifyBuild(root), /包含指向 src 的绝对路径/)
     })
 })

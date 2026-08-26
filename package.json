@@ -10,8 +10,8 @@
     "scripts": {
         "install": "yarn install --ignore-scripts",
         "generate:naive-ui-types": "node scripts/generate-naive-ui-types.cjs",
-        "dev": "yarn generate:naive-ui-types && ssr start",
-        "build": "yarn generate:naive-ui-types && ssr build && node scripts/verify-build.cjs",
+        "dev": "yarn generate:naive-ui-types && ssr start -b tsc",
+        "build": "yarn generate:naive-ui-types && ssr build -b tsc && node scripts/verify-build.cjs",
         "start:prod": "cross-env NODE_ENV=production node dist/main.js",
         "typecheck": "yarn generate:naive-ui-types && tsc -p tsconfig.build.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
         "test:unit": "tsx --test test/unit/*.test.ts && node --test test/unit/*.test.cjs",

@@ -1,7 +1,13 @@
 const { existsSync, readFileSync } = require('node:fs')
 const { join } = require('node:path')
 
-const requiredArtifacts = ['dist/main.js', 'build/server/Page.server.js', 'build/client/asset-manifest.json', 'build/asyncChunkMap.json']
+const requiredArtifacts = [
+    'dist/main.js',
+    'dist/app.module.js',
+    'build/server/Page.server.js',
+    'build/client/asset-manifest.json',
+    'build/asyncChunkMap.json'
+]
 
 function collectStrings(value) {
     if (typeof value === 'string') return [value]
@@ -13,6 +19,12 @@ function collectStrings(value) {
 function verifyBuild(root = process.cwd()) {
     const missing = requiredArtifacts.filter(relativePath => !existsSync(join(root, relativePath)))
     if (missing.length > 0) throw new Error(`缺少构建产物：${missing.join(', ')}`)
+
+    const appModule = readFileSync(join(root, 'dist/app.module.js'), 'utf8')
+    const sourceImportPattern = /require\((['"])(?:[A-Za-z]:[\\/]|\/).*?[\\/]src[\\/].*?\1\)/i
+    if (sourceImportPattern.test(appModule)) {
+        throw new Error('dist/app.module.js 包含指向 src 的绝对路径，部署后无法加载 Nest 模块')
+    }
 
     const manifestPath = join(root, 'build/client/asset-manifest.json')
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
