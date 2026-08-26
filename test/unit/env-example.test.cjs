@@ -16,27 +16,16 @@ const assignments = Object.fromEntries(
 )
 
 describe('.env.example', () => {
-    it('列出 Skyline 的完整 Nacos 启动和注册参数', () => {
+    it('只列出进程启动与 Nacos 连接参数', () => {
         assert.deepEqual(assignments, {
+            NODE_ENV: 'development',
+            PORT: '4020',
             NACOS_SERVER: '127.0.0.1:8848',
-            NACOS_NAMESPACE: 'replace-with-nacos-namespace-id',
-            NACOS_REQUEST_TIMEOUT: '5000',
-            NACOS_CONFIG_DATA_ID: 'chat-web-skyline-service.yaml',
-            NACOS_CONFIG_GROUP: 'DEFAULT_GROUP',
-            NACOS_REGISTER_ENABLED: 'true',
-            NACOS_REGISTER_REQUIRED: 'false',
-            NACOS_SERVICE_NAME: 'chat-web-skyline-service',
-            NACOS_GROUP: 'DEFAULT_GROUP',
-            NACOS_REGISTER_IP: '127.0.0.1',
-            NACOS_REGISTER_PORT: '4020',
-            NACOS_CONFIG_ENABLED: 'true',
-            PORT: '4020'
+            NACOS_NAMESPACE: 'replace-with-nacos-namespace-id'
         })
     })
 
-    it('区分必填启动参数和带默认值的可选覆盖', () => {
-        assert.match(envExample, /# 正常连接 Nacos 唯一没有代码默认值的两个启动参数。/)
-        assert.match(envExample, /# 配置订阅可选覆盖；默认依次为 5000、服务名.yaml 和 DEFAULT_GROUP。/)
-        assert.match(envExample, /# 服务注册可选覆盖；默认开启、失败不阻止启动、发现组跟随配置组、IP 自动探测。/)
+    it('说明其余配置来自 Nacos 远端 Data ID', () => {
+        assert.match(envExample, /Nacos 远端 chat-web-skyline-service.yaml/)
     })
 })
