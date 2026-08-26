@@ -65,76 +65,76 @@ Create `package.json`:
 
 ```json
 {
-  "name": "chat-web-skyline-service",
-  "version": "0.1.0",
-  "private": true,
-  "license": "UNLICENSED",
-  "engines": {
-    "node": ">=20",
-    "yarn": ">=1.22 <2"
-  },
-  "scripts": {
-    "start": "ssr start",
-    "dev": "ssr start",
-    "build": "ssr build",
-    "start:prod": "cross-env NODE_ENV=production node dist/main.js",
-    "typecheck": "tsc -p tsconfig.build.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
-    "test:unit": "cross-env NACOS_CONFIG_ENABLED=false tsx --test test/unit/*.test.ts",
-    "test:integration": "cross-env NACOS_CONFIG_ENABLED=false tsx --test --test-concurrency=1 test/integration/*.test.ts",
-    "test": "yarn format:check && yarn typecheck && yarn test:unit && yarn build && yarn test:integration",
-    "test:e2e": "yarn build && playwright test",
-    "format": "prettier --write \"{src,web,test,scripts}/**/*.{ts,vue,less,cjs}\" \"*.{json,ts,md}\" \"docs/**/*.md\"",
-    "format:check": "prettier --check \"{src,web,test,scripts}/**/*.{ts,vue,less,cjs}\" \"*.{json,ts,md}\" \"docs/**/*.md\""
-  },
-  "dependencies": {
-    "@css-render/vue3-ssr": "0.15.14",
-    "@nestjs/common": "11.2.3",
-    "@nestjs/config": "4.0.4",
-    "@nestjs/core": "11.2.3",
-    "@nestjs/platform-express": "11.2.3",
-    "@vue/server-renderer": "3.5.41",
-    "@wlisfes/chat-web-base-schema": "1.4.6",
-    "date-fns": "4.4.0",
-    "express": "5.2.1",
-    "js-yaml": "4.1.0",
-    "nacos": "2.6.3",
-    "naive-ui": "2.45.2",
-    "pinia": "2.3.1",
-    "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2",
-    "ssr-common-utils": "6.2.162",
-    "ssr-core": "6.2.30",
-    "ssr-hoc-vue3": "6.2.2",
-    "vue": "3.5.41",
-    "vue-router": "4.6.4",
-    "vueuc": "0.4.66"
-  },
-  "devDependencies": {
-    "@nestjs/cli": "11.0.24",
-    "@nestjs/testing": "11.2.3",
-    "@playwright/test": "1.62.1",
-    "@swc/cli": "0.1.62",
-    "@swc/core": "1.3.72",
-    "@types/express": "5.0.6",
-    "@types/node": "24.13.3",
-    "@types/semver": "7.8.0",
-    "@types/shelljs": "0.8.17",
-    "@types/supertest": "7.2.1",
-    "@vue/compiler-sfc": "3.5.41",
-    "cross-env": "10.1.0",
-    "less": "4.9.0",
-    "prettier": "3.9.6",
-    "ssr": "6.2.83",
-    "ssr-plugin-nestjs": "6.2.26",
-    "ssr-plugin-vue3": "6.2.125",
-    "ssr-types": "6.2.66",
-    "ssr-webpack": "6.2.17",
-    "supertest": "7.2.2",
-    "tsx": "4.23.12",
-    "typescript": "5.7.3",
-    "vue-tsc": "3.3.11",
-    "webpack": "4.47.0"
-  }
+    "name": "chat-web-skyline-service",
+    "version": "0.1.0",
+    "private": true,
+    "license": "UNLICENSED",
+    "engines": {
+        "node": ">=20",
+        "yarn": ">=1.22 <2"
+    },
+    "scripts": {
+        "start": "ssr start",
+        "dev": "ssr start",
+        "build": "ssr build",
+        "start:prod": "cross-env NODE_ENV=production node dist/main.js",
+        "typecheck": "tsc -p tsconfig.build.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
+        "test:unit": "cross-env NACOS_CONFIG_ENABLED=false tsx --test test/unit/*.test.ts",
+        "test:integration": "cross-env NACOS_CONFIG_ENABLED=false tsx --test --test-concurrency=1 test/integration/*.test.ts",
+        "test": "yarn format:check && yarn typecheck && yarn test:unit && yarn build && yarn test:integration",
+        "test:e2e": "yarn build && playwright test",
+        "format": "prettier --write \"{src,web,test,scripts}/**/*.{ts,vue,less,cjs}\" \"*.{json,ts,md}\" \"docs/**/*.md\"",
+        "format:check": "prettier --check \"{src,web,test,scripts}/**/*.{ts,vue,less,cjs}\" \"*.{json,ts,md}\" \"docs/**/*.md\""
+    },
+    "dependencies": {
+        "@css-render/vue3-ssr": "0.15.14",
+        "@nestjs/common": "11.2.3",
+        "@nestjs/config": "4.0.4",
+        "@nestjs/core": "11.2.3",
+        "@nestjs/platform-express": "11.2.3",
+        "@vue/server-renderer": "3.5.41",
+        "@wlisfes/chat-web-base-schema": "1.4.6",
+        "date-fns": "4.4.0",
+        "express": "5.2.1",
+        "js-yaml": "4.1.0",
+        "nacos": "2.6.3",
+        "naive-ui": "2.45.2",
+        "pinia": "2.3.1",
+        "reflect-metadata": "0.2.2",
+        "rxjs": "7.8.2",
+        "ssr-common-utils": "6.2.162",
+        "ssr-core": "6.2.30",
+        "ssr-hoc-vue3": "6.2.2",
+        "vue": "3.5.41",
+        "vue-router": "4.6.4",
+        "vueuc": "0.4.66"
+    },
+    "devDependencies": {
+        "@nestjs/cli": "11.0.24",
+        "@nestjs/testing": "11.2.3",
+        "@playwright/test": "1.62.1",
+        "@swc/cli": "0.1.62",
+        "@swc/core": "1.3.72",
+        "@types/express": "5.0.6",
+        "@types/node": "24.13.3",
+        "@types/semver": "7.8.0",
+        "@types/shelljs": "0.8.17",
+        "@types/supertest": "7.2.1",
+        "@vue/compiler-sfc": "3.5.41",
+        "cross-env": "10.1.0",
+        "less": "4.9.0",
+        "prettier": "3.9.6",
+        "ssr": "6.2.83",
+        "ssr-plugin-nestjs": "6.2.26",
+        "ssr-plugin-vue3": "6.2.125",
+        "ssr-types": "6.2.66",
+        "ssr-webpack": "6.2.17",
+        "supertest": "7.2.2",
+        "tsx": "4.23.12",
+        "typescript": "5.7.3",
+        "vue-tsc": "3.3.11",
+        "webpack": "4.47.0"
+    }
 }
 ```
 
@@ -164,14 +164,14 @@ Create `.prettierrc`:
 
 ```json
 {
-  "printWidth": 140,
-  "useTabs": false,
-  "semi": false,
-  "tabWidth": 4,
-  "singleQuote": true,
-  "trailingComma": "none",
-  "bracketSpacing": true,
-  "arrowParens": "avoid"
+    "printWidth": 140,
+    "useTabs": false,
+    "semi": false,
+    "tabWidth": 4,
+    "singleQuote": true,
+    "trailingComma": "none",
+    "bracketSpacing": true,
+    "arrowParens": "avoid"
 }
 ```
 
@@ -179,34 +179,34 @@ Create `tsconfig.json`:
 
 ```json
 {
-  "compileOnSave": true,
-  "compilerOptions": {
-    "baseUrl": ".",
-    "target": "ES2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "sourceMap": true,
-    "declaration": true,
-    "jsx": "preserve",
-    "outDir": "dist",
-    "paths": {
-      "~/*": ["./*"],
-      "@/*": ["./web/*"],
-      "~src/*": ["./src/*"],
-      "_build/*": ["./build/*"]
+    "compileOnSave": true,
+    "compilerOptions": {
+        "baseUrl": ".",
+        "target": "ES2022",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "sourceMap": true,
+        "declaration": true,
+        "jsx": "preserve",
+        "outDir": "dist",
+        "paths": {
+            "~/*": ["./*"],
+            "@/*": ["./web/*"],
+            "~src/*": ["./src/*"],
+            "_build/*": ["./build/*"]
+        },
+        "types": ["node"]
     },
-    "types": ["node"]
-  },
-  "include": ["config.ts", "src/**/*.ts", "web/**/*.ts", "web/**/*.vue", "web/**/*.d.ts", "test/**/*.ts", "playwright.config.ts"],
-  "exclude": ["node_modules", "dist", "build"]
+    "include": ["config.ts", "src/**/*.ts", "web/**/*.ts", "web/**/*.vue", "web/**/*.d.ts", "test/**/*.ts", "playwright.config.ts"],
+    "exclude": ["node_modules", "dist", "build"]
 }
 ```
 
@@ -214,13 +214,13 @@ Create `tsconfig.build.json`:
 
 ```json
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist"
-  },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "test", "dist", "build", "**/*.spec.ts"]
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "./src",
+        "outDir": "./dist"
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules", "test", "dist", "build", "**/*.spec.ts"]
 }
 ```
 
@@ -410,7 +410,8 @@ const injector = new NaiveStyleInjector()
 
 describe('NaiveStyleInjector', () => {
     it('moves one collected cssr style into head and removes the placeholder', () => {
-        const input = '<html><head><title>x</title></head><body><main>x</main><css-render-style><style cssr-id="button">.n-button{color:red}</style></css-render-style></body></html>'
+        const input =
+            '<html><head><title>x</title></head><body><main>x</main><css-render-style><style cssr-id="button">.n-button{color:red}</style></css-render-style></body></html>'
         const output = injector.inject(input)
 
         assert.match(output, /<head><title>x<\/title><style cssr-id="button">/)
@@ -419,7 +420,8 @@ describe('NaiveStyleInjector', () => {
     })
 
     it('collects multiple placeholders and style blocks', () => {
-        const input = '<html><head></head><body><css-render-style><style cssr-id="a">a{}</style></css-render-style><css-render-style><style cssr-id="b">b{}</style></css-render-style></body></html>'
+        const input =
+            '<html><head></head><body><css-render-style><style cssr-id="a">a{}</style></css-render-style><css-render-style><style cssr-id="b">b{}</style></css-render-style></body></html>'
         const output = injector.inject(input)
 
         assert.match(output, /cssr-id="a"/)
@@ -967,7 +969,8 @@ import type { Request, Response } from 'express'
 import type { ISSRNestContext } from 'ssr-types'
 import { SsrRendererService } from '../ssr/ssr-renderer.service'
 
-const ERROR_PAGE = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>Skyline</title></head><body><main><h1>页面暂时无法加载</h1><p>请稍后重试。</p></main></body></html>'
+const ERROR_PAGE =
+    '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>Skyline</title></head><body><main><h1>页面暂时无法加载</h1><p>请稍后重试。</p></main></body></html>'
 
 @Controller()
 export class SkylineController {
@@ -1028,9 +1031,7 @@ import { SkylineModule } from './modules/skyline/skyline.module'
 import { SsrModule } from './modules/ssr/ssr.module'
 
 const configModule = ConfigModule.forRoot({ isGlobal: true })
-const nacosImports = isNacosConfigEnabled()
-    ? [NacosModule.forRoot({ serviceName: 'chat-web-skyline-service', defaultPort: 4020 })]
-    : []
+const nacosImports = isNacosConfigEnabled() ? [NacosModule.forRoot({ serviceName: 'chat-web-skyline-service', defaultPort: 4020 })] : []
 
 @Module({
     imports: [configModule, ...nacosImports, SsrModule, HealthModule, SkylineModule]
@@ -1213,17 +1214,13 @@ Create `web/pages/index/render.vue`:
             <n-grid cols="1 m:2" responsive="screen" :x-gap="20" :y-gap="20">
                 <n-grid-item>
                     <n-card title="服务端首屏" embedded>
-                        <n-alert type="success" :show-icon="true">
-                            当前 HTML 已包含 Vue 页面内容、Naive UI 标记和 cssr-id 样式。
-                        </n-alert>
+                        <n-alert type="success" :show-icon="true"> 当前 HTML 已包含 Vue 页面内容、Naive UI 标记和 cssr-id 样式。 </n-alert>
                     </n-card>
                 </n-grid-item>
                 <n-grid-item>
                     <n-card title="Hydration 验证" embedded>
                         <p>点击按钮验证客户端已接管服务端生成的页面。</p>
-                        <n-button type="primary" data-testid="hydration-counter" @click="increment">
-                            Hydration 计数：{{ count }}
-                        </n-button>
+                        <n-button type="primary" data-testid="hydration-counter" @click="increment"> Hydration 计数：{{ count }} </n-button>
                     </n-card>
                 </n-grid-item>
             </n-grid>
@@ -1251,7 +1248,13 @@ Create `web/common.less`:
     color: #e2e8f0;
     background: #020617;
     font-family:
-        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        sans-serif;
 }
 
 * {
@@ -1429,12 +1432,7 @@ Create `scripts/verify-build.cjs`:
 const { existsSync, readFileSync } = require('node:fs')
 const { join } = require('node:path')
 
-const requiredArtifacts = [
-    'dist/main.js',
-    'build/server/Page.server.js',
-    'build/client/asset-manifest.json',
-    'build/asyncChunkMap.json'
-]
+const requiredArtifacts = ['dist/main.js', 'build/server/Page.server.js', 'build/client/asset-manifest.json', 'build/asyncChunkMap.json']
 
 function collectStrings(value) {
     if (typeof value === 'string') return [value]
@@ -1473,17 +1471,17 @@ Update only the `scripts` object in `package.json` to:
 
 ```json
 {
-  "start": "ssr start",
-  "dev": "ssr start",
-  "build": "ssr build && node scripts/verify-build.cjs",
-  "start:prod": "cross-env NODE_ENV=production node dist/main.js",
-  "typecheck": "tsc -p tsconfig.build.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
-  "test:unit": "cross-env NACOS_CONFIG_ENABLED=false tsx --test test/unit/*.test.ts && node --test test/unit/*.test.cjs",
-  "test:integration": "yarn build && cross-env NACOS_CONFIG_ENABLED=false tsx --test --test-concurrency=1 test/integration/*.test.ts && node --test test/integration/*.test.cjs",
-  "test": "yarn format:check && yarn typecheck && yarn test:unit && yarn test:integration",
-  "test:e2e": "yarn build && playwright test",
-  "format": "prettier --write \"{src,web,test,scripts}/**/*.{ts,vue,less,cjs}\" \"*.{json,ts,md}\" \"docs/**/*.md\"",
-  "format:check": "prettier --check \"{src,web,test,scripts}/**/*.{ts,vue,less,cjs}\" \"*.{json,ts,md}\" \"docs/**/*.md\""
+    "start": "ssr start",
+    "dev": "ssr start",
+    "build": "ssr build && node scripts/verify-build.cjs",
+    "start:prod": "cross-env NODE_ENV=production node dist/main.js",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
+    "test:unit": "cross-env NACOS_CONFIG_ENABLED=false tsx --test test/unit/*.test.ts && node --test test/unit/*.test.cjs",
+    "test:integration": "yarn build && cross-env NACOS_CONFIG_ENABLED=false tsx --test --test-concurrency=1 test/integration/*.test.ts && node --test test/integration/*.test.cjs",
+    "test": "yarn format:check && yarn typecheck && yarn test:unit && yarn test:integration",
+    "test:e2e": "yarn build && playwright test",
+    "format": "prettier --write \"{src,web,test,scripts}/**/*.{ts,vue,less,cjs}\" \"*.{json,ts,md}\" \"docs/**/*.md\"",
+    "format:check": "prettier --check \"{src,web,test,scripts}/**/*.{ts,vue,less,cjs}\" \"*.{json,ts,md}\" \"docs/**/*.md\""
 }
 ```
 
@@ -1680,7 +1678,7 @@ Expected: Prettier exits 0; the existing root `*.ts` and `test/**/*` globs alrea
 
 Create `README.md`:
 
-```markdown
+````markdown
 # chat-web-skyline-service
 
 NestJS 11 + Vue3 + Naive UI 的单进程服务端渲染基础服务。当前版本使用可从 npm 独立安装的 `ssr` 6.2 稳定版本线与 Webpack 4；待 v7 的 Vue3 插件和类型包完整发布后再单独评估升级。
@@ -1742,7 +1740,7 @@ yarn test
 
 ```yaml
 server:
-  port: 4020
+    port: 4020
 ```
 
 生产默认不得关闭 Nacos。`NACOS_CONFIG_ENABLED=false` 只用于测试或明确的离线运行；该开关由 Skyline 在 Nest 模块组合前处理，因为共享 `NacosModule` 初始化后会立即加载配置。
@@ -1756,7 +1754,7 @@ Skyline 不保存 Account JWT 密钥，不读取 Account Redis 会话。受保�
 ## 部署边界
 
 当前仓库没有 Docker、Compose、GitHub Actions、Runner 或 `deploy/` 文件。首次接入自动部署时必须遵守 `AGENTS.md`：同一完整 Git SHA 镜像同时部署 Company 与 Home、独立 Runner 和部署目录、外部 `chat-web-infrastructure` 网络、双机健康验证与失败回滚，并在同一次改动中补全 `deploy/CHANGELOG.md` 和 `deploy/RUNBOOK.md`。
-```
+````
 
 - [ ] **Step 5: Install Chromium and run E2E**
 

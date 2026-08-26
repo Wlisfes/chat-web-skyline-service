@@ -151,7 +151,7 @@ chat-web-skyline-service/
 `config.ts` 的 `whiteList` 至少包含：
 
 ```ts
-['naive-ui', 'vueuc', 'date-fns', '@css-render/vue3-ssr']
+;['naive-ui', 'vueuc', 'date-fns', '@css-render/vue3-ssr']
 ```
 
 该配置强制 Webpack 将这些依赖编译进服务端 bundle，避免 `vueuc` 在 Node 环境下以具名导入读取 CommonJS 输出失败。
