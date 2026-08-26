@@ -25,7 +25,12 @@ describe('.env.example', () => {
         })
     })
 
-    it('说明其余配置来自 Nacos 远端 Data ID', () => {
-        assert.match(envExample, /Nacos 远端 chat-web-skyline-service.yaml/)
+    it('为每个字段提供注释', () => {
+        assert.match(envExample, /# 运行环境\r?\nNODE_ENV=/)
+        assert.match(envExample, /# 服务端口\r?\nPORT=/)
+        assert.match(envExample, /# Nacos 服务地址\r?\nNACOS_SERVER=/)
+        assert.match(envExample, /# Nacos 命名空间 ID\r?\nNACOS_NAMESPACE=/)
+        assert.match(envExample, /# Nacos 用户名（可选）\r?\n# NACOS_USERNAME=/)
+        assert.match(envExample, /# Nacos 密码（可选）\r?\n# NACOS_PASSWORD=/)
     })
 })

@@ -1,0 +1,32 @@
+name: chat-web-service
+
+x-logging: &default-logging
+    driver: json-file
+    options:
+        max-size: '20m'
+        max-file: '30'
+
+services:
+    skyline-service:
+        image: ${IMAGE:?IMAGE is required}
+        container_name: chat-web-skyline-service
+        restart: unless-stopped
+        logging: *default-logging
+        init: true
+        env_file:
+            - ${ENV_FILE:-.env}
+        environment:
+            NODE_ENV: production
+            PORT: 4020
+            TZ: ${TZ:-Asia/Shanghai}
+            DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production-home}
+        expose:
+            - '4020'
+        networks:
+            - infrastructure
+        stop_grace_period: 20s
+
+networks:
+    infrastructure:
+        external: true
+        name: ${DOCKER_NETWORK:-chat-web-infrastructure}

@@ -9,7 +9,6 @@
     },
     "scripts": {
         "install": "yarn install --ignore-scripts",
-        "start": "ssr start",
         "dev": "ssr start",
         "build": "ssr build && node scripts/verify-build.cjs",
         "start:prod": "cross-env NODE_ENV=production node dist/main.js",

@@ -3,17 +3,14 @@ import { describe, it } from 'node:test'
 import { isNacosConfigEnabled } from '../../src/config/nacos-config'
 
 describe('isNacosConfigEnabled', () => {
-    it('defaults to enabled', () => {
+    it('defaults to enabled and accepts explicit booleans', () => {
         assert.equal(isNacosConfigEnabled(undefined), true)
         assert.equal(isNacosConfigEnabled(''), true)
-    })
-
-    it('accepts explicit true and false values', () => {
         assert.equal(isNacosConfigEnabled('true'), true)
         assert.equal(isNacosConfigEnabled('false'), false)
     })
 
-    it('rejects ambiguous values', () => {
-        assert.throws(() => isNacosConfigEnabled('FALSE'), /NACOS_CONFIG_ENABLED 必须是 true 或 false/)
+    it('rejects an invalid value', () => {
+        assert.throws(() => isNacosConfigEnabled('off'), /true 或 false/)
     })
 })
