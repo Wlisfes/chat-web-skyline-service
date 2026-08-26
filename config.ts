@@ -1,8 +1,6 @@
 import { resolve } from 'node:path'
 import type { UserConfig } from 'ssr-types'
 
-const { NormalModuleReplacementPlugin } = require('webpack')
-
 const PROJECT_ROOT = process.cwd()
 const BUILD_ROOT = resolve(PROJECT_ROOT, 'build')
 
@@ -28,6 +26,7 @@ const userConfig: UserConfig = {
         include: [/node_modules[\\/](?:naive-ui|date-fns)(?:[\\/]|$)/]
     },
     chainBaseConfig(config) {
+        const { NormalModuleReplacementPlugin } = require('webpack')
         config.resolve.alias.set('@', resolve(PROJECT_ROOT, 'src')).set('@web', resolve(PROJECT_ROOT, 'web'))
         config.plugin('skyline-generated-web-alias').use(NormalModuleReplacementPlugin, [
             /^@\//,
