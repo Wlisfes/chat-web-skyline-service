@@ -21,10 +21,6 @@ function resolvePort(value: unknown): number {
 }
 
 export async function bootstrap(): Promise<NestExpressApplication> {
-    if (process.env.PORT && !process.env.NACOS_REGISTER_PORT) {
-        process.env.NACOS_REGISTER_PORT = process.env.PORT
-    }
-
     const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger })
     app.enableShutdownHooks()
     app.use(requestContextMiddleware)
