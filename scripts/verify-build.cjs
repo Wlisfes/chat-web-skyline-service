@@ -26,6 +26,11 @@ function verifyBuild(root = process.cwd()) {
         throw new Error('dist/app.module.js 包含指向 src 的绝对路径，部署后无法加载 Nest 模块')
     }
 
+    const serverBundle = readFileSync(join(root, 'build/server/Page.server.js'), 'utf8')
+    if (/resolveComponent[^;\n]{0,200}css-render-style/.test(serverBundle)) {
+        throw new Error('Page.server.js 将 css-render-style 误编译为 Vue 组件')
+    }
+
     const manifestPath = join(root, 'build/client/asset-manifest.json')
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
     if (!collectStrings(manifest).some(value => /\.js(?:\?|$)/.test(value))) {

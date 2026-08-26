@@ -1,6 +1,6 @@
 <script lang="tsx">
 import { setup as setupCssRender } from '@css-render/vue3-ssr'
-import { defineComponent, type App, type DefineComponent, type PropType } from 'vue'
+import { defineComponent, h, type App, type DefineComponent, type PropType } from 'vue'
 import { RouterView } from 'vue-router'
 
 const AppRouterView = RouterView as unknown as DefineComponent<{ asyncData: { value: unknown } }>
@@ -37,7 +37,7 @@ export default defineComponent({
         const { collect } = setupCssRender(props.ssrApp)
         const CssRenderCollector = defineComponent({
             name: 'CssRenderCollector',
-            setup: () => () => <css-render-style innerHTML={collect()} />
+            setup: () => () => h('css-render-style', { innerHTML: collect() })
         })
 
         return () => (
