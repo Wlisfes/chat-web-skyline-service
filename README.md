@@ -26,6 +26,12 @@ yarn start:prod
 
 `yarn build` 会额外验证 `dist/main.js`、SSR server bundle、client manifest 和 async chunk map，避免 `ssr` CLI 内部失败但退出码仍为 0。
 
+## Web TSX 组件
+
+页面继续使用 `.vue` 单文件组件，并可在 `<script lang="tsx">` 中编写 TSX。直接使用以 `N` 开头的 Naive UI 组件时会自动生成组件导入，`<NButton />`、`<NCard />` 等无需手动从 `naive-ui` 导入；Vue、Pinia、项目组件和其他普通模块仍使用显式导入。
+
+`yarn dev`、`yarn build` 和 `yarn typecheck` 会先根据当前 Naive UI 版本刷新 `web/@types/naive-ui-auto-imports.d.ts`，保证编辑器和 TypeScript 能识别自动导入组件。
+
 ## 验证
 
 ```bash

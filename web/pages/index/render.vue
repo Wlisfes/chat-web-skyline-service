@@ -1,9 +1,9 @@
 <script lang="tsx">
 import { computed, defineComponent } from 'vue'
-import { NAlert, NButton, NCard, NConfigProvider, NGrid, NGridItem, NSpace, NTag } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 import { useSkylineStore } from '@web/store'
 
+// N 开头的 Naive UI JSX 组件由构建插件自动注入，无需手动导入
 export default defineComponent({
     name: 'SkylineIndex',
     setup() {

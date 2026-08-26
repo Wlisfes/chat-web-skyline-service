@@ -27,7 +27,16 @@ const userConfig: UserConfig = {
     },
     chainBaseConfig(config) {
         const { NormalModuleReplacementPlugin } = require('webpack')
+        const Components = require('unplugin-vue-components/webpack')
+        const { NaiveUiResolver } = require('unplugin-vue-components/resolvers')
+
         config.resolve.alias.set('@', resolve(PROJECT_ROOT, 'src')).set('@web', resolve(PROJECT_ROOT, 'web'))
+        config.plugin('naive-ui-component-auto-import').use(
+            Components({
+                dts: false,
+                resolvers: [NaiveUiResolver()]
+            })
+        )
         config.plugin('skyline-generated-web-alias').use(NormalModuleReplacementPlugin, [
             /^@\//,
             (resource: { context: string; request: string }) => {

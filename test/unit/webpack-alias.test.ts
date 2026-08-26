@@ -5,8 +5,9 @@ import { describe, it } from 'node:test'
 import { userConfig } from '../../config'
 
 describe('Skyline Webpack aliases', () => {
-    it('maps source and web aliases for client and server builds', () => {
+    it('maps aliases and enables Naive UI TSX auto import for client and server builds', () => {
         const aliases = new Map<string, string>()
+        const pluginNames: string[] = []
         let rewriteGeneratedAlias: ((resource: { context: string; request: string }) => void) | undefined
         const alias = {
             set(name: string, path: string) {
@@ -15,16 +16,26 @@ describe('Skyline Webpack aliases', () => {
             }
         }
         const plugin = {
-            use(_plugin: unknown, options: [RegExp, (resource: { context: string; request: string }) => void]) {
-                rewriteGeneratedAlias = options[1]
+            use(_plugin: unknown, options?: [RegExp, (resource: { context: string; request: string }) => void]) {
+                if (options) rewriteGeneratedAlias = options[1]
                 return plugin
             }
         }
 
         assert.equal(typeof userConfig.chainBaseConfig, 'function')
-        userConfig.chainBaseConfig?.({ resolve: { alias }, plugin: () => plugin } as never, false)
+        userConfig.chainBaseConfig?.(
+            {
+                resolve: { alias },
+                plugin(name: string) {
+                    pluginNames.push(name)
+                    return plugin
+                }
+            } as never,
+            false
+        )
         assert.equal(aliases.get('@'), resolve(process.cwd(), 'src'))
         assert.equal(aliases.get('@web'), resolve(process.cwd(), 'web'))
+        assert.ok(pluginNames.includes('naive-ui-component-auto-import'))
 
         assert.ok(rewriteGeneratedAlias)
         const generatedResource = { context: resolve(process.cwd(), 'build'), request: '@/pages/index/render.vue' }
