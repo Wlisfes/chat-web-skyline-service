@@ -55,7 +55,7 @@ yarn test
 
 ## Nacos 配置
 
-共享包 `1.4.8` 起，Skyline 使用 base 导出的 `createNacosRuntimeOptions` 把完整扁平化 Nacos 运行参数一次性注入 `NacosModule.forRoot`。`NACOS_SERVER` 和 `NACOS_NAMESPACE` 是仅有的无默认值启动参数；请求超时、Data ID、配置组、认证、注册开关、服务名、发现组、IP 和端口都是可选覆盖，完整说明见 `.env.example`。业务配置 Data ID 默认为 `chat-web-skyline-service.yaml`，可包含：
+共享包 `1.4.9` 起，Skyline 只向 `NacosModule.forRoot` 传入服务名和注册端口，base 内部统一将扁平化 Nacos 环境变量转换为完整 `NacosRuntimeOptions`。`NACOS_SERVER` 和 `NACOS_NAMESPACE` 是仅有的无默认值启动参数；请求超时、Data ID、配置组、认证、注册开关、服务名、发现组、IP 和端口都是可选覆盖，完整说明见 `.env.example`。业务配置 Data ID 默认为 `chat-web-skyline-service.yaml`，可包含：
 
 ```yaml
 server:
