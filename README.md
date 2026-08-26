@@ -15,19 +15,7 @@ yarn install --frozen-lockfile
 yarn dev
 ```
 
-默认端口为 `4020`。正常运行默认连接 Nacos，并读取 `chat-web-skyline-service.yaml`。根目录 `.env` 只需要 `NODE_ENV`、`PORT`、`NACOS_SERVER` 和 `NACOS_NAMESPACE`；启用 Nacos 鉴权时再提供用户名与密码。显式离线运行：
-
-```bash
-NACOS_CONFIG_ENABLED=false NACOS_REGISTER_ENABLED=false yarn dev
-```
-
-PowerShell：
-
-```powershell
-$env:NACOS_CONFIG_ENABLED='false'
-$env:NACOS_REGISTER_ENABLED='false'
-yarn dev
-```
+默认端口为 `4020`。运行时必须连接 Nacos，并读取 `chat-web-skyline-service.yaml`。根目录 `.env` 只保留 `NODE_ENV`、`PORT`、`NACOS_SERVER`、`NACOS_NAMESPACE` 和 `NACOS_SERVICE_NAME`；如环境启用 Nacos 鉴权，再按共享模块约定提供机器侧凭据。
 
 生产构建与启动：
 
@@ -62,7 +50,7 @@ server:
     port: 4020
 ```
 
-生产默认不得关闭 Nacos。`NACOS_CONFIG_ENABLED=false` 只用于测试或明确的离线运行；该开关由 Skyline 在 Nest 模块组合前处理，因为共享 `NacosModule` 初始化后会立即加载配置。
+Skyline 直接使用共享 `NacosModule` 加载配置，不再维护独立的 Nacos 开关或 `src/config` 配置目录。本地端到端测试同样需要可访问的 Nacos。
 
 ## 数据与身份边界
 

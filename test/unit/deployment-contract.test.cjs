@@ -65,6 +65,7 @@ describe('Skyline deployment contract', () => {
         assert.match(workflow, /node \/opt\/skyline\/bootstrap-nacos-config\.cjs/)
         assert.doesNotMatch(workflow, /node - < "\$DEPLOY_PATH\/bootstrap-nacos-config\.cjs"/)
         assert.match(workflow, /skyline\.lisfes\.com\/health\/ready/)
+        assert.match(workflow, /grep -F ['"]服务端渲染基础框架已就绪['"]/)
         assert.doesNotMatch(workflow, /--remove-orphans/)
     })
 

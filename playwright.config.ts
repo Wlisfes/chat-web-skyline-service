@@ -16,9 +16,7 @@ export default defineConfig({
         reuseExistingServer: false,
         timeout: 30000,
         env: {
-            PORT: '4020',
-            NACOS_CONFIG_ENABLED: 'false',
-            NACOS_REGISTER_ENABLED: 'false'
+            PORT: '4020'
         }
     }
 })

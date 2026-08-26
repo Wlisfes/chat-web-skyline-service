@@ -182,6 +182,9 @@ jobs:
                   curl --silent --show-error --fail --insecure \
                     --resolve skyline.lisfes.com:443:127.0.0.1 \
                     https://skyline.lisfes.com/health/ready >/dev/null
+                  curl --silent --show-error --fail --insecure \
+                    --resolve skyline.lisfes.com:443:127.0.0.1 \
+                    https://skyline.lisfes.com/ | grep -F '服务端渲染基础框架已就绪' >/dev/null
 
             - name: Log out from GitHub Container Registry
               if: always()

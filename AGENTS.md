@@ -28,7 +28,7 @@
 - Skyline 已进入 Docker 自动部署阶段，必须保留 `Dockerfile`、Compose、GitHub Actions、独立 Runner、健康检查、失败回滚和 `deploy/` 运行文档。
 - 用户已明确批准当前只部署 Home；Company 机器离线期间不创建或等待 Company 部署任务。恢复双机部署必须重新启用 `chat-server-company`、`production-company` 和独立 concurrency，且仍只构建一次完整 SHA 镜像。
 - Skyline 不连接 MySQL、Redis 或其他有状态基础设施，因此不分配数据库、数据库账号或 Redis index；Nacos Data ID 只保留 `server.port`。
-- 正常运行采用 Nacos-first；只有测试或明确的离线运行可设置 `NACOS_CONFIG_ENABLED=false` 跳过共享 Nacos 模块。
+- Skyline 运行时必须连接 Nacos，直接使用共享 `NacosModule`；不得恢复独立的 `src/config` 目录或通过 `NACOS_CONFIG_ENABLED` 绕过共享模块。
 
 ## 协作与确认
 

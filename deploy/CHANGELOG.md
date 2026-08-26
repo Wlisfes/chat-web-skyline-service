@@ -1,5 +1,12 @@
 # Skyline 部署变更记录
 
+## 2026-08-26：清理重复配置并加强部署后 SSR 验证
+
+- 影响范围：Home；不修改 Company、数据库、Redis、Nacos Data ID 或共享 Nginx 配置。
+- 配置清理：删除被 Docker 部署提交错误恢复的 `src/config` 及孤立 Nacos 开关测试，Skyline 统一使用 `chat-web-base-schema` 的共享 `NacosModule`。
+- 自动化：Home 部署后除 `/health/ready` 外，再访问 `https://skyline.lisfes.com/` 并校验 SSR 标志文本，避免只验证健康接口而遗漏首页渲染异常。
+- 回滚：回滚到上一完整 SHA 镜像；本次无有状态数据变更。
+
 ## 2026-08-26：Home Docker 自动构建部署与独立域名
 
 - 影响范围：Home；Company 当前离线，按用户明确批准的单机例外不创建 Company 部署任务。
