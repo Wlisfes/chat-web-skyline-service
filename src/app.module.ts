@@ -6,12 +6,11 @@ import { HealthModule } from './modules/health/health.module'
 import { SkylineModule } from './modules/skyline/skyline.module'
 import { SsrModule } from './modules/ssr/ssr.module'
 
-const configModule = ConfigModule.forRoot({ isGlobal: true })
 const nacosImports = isNacosConfigEnabled(process.env.NACOS_CONFIG_ENABLED)
     ? [NacosModule.forRoot({ serviceName: 'chat-web-skyline-service', defaultPort: 4020 })]
     : []
 
 @Module({
-    imports: [configModule, ...nacosImports, SsrModule, HealthModule, SkylineModule]
+    imports: [ConfigModule.forRoot({ isGlobal: true }), ...nacosImports, SsrModule, HealthModule, SkylineModule]
 })
 export class AppModule {}
