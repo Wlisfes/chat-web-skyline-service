@@ -70,6 +70,10 @@ server:
 
 Skyline 不保存 Account JWT 密钥，不读取 Account Redis 会话。受保护页面接入时，应从 `@wlisfes/chat-web-base-schema/feign` 使用 `AccountFeignClient`（或共享 `AccountRemoteAuthModule`），将 Bearer Token 转发到 Account 并只接收 `AuthPrincipal`。其他业务数据同样通过强类型 Feign Provider 获取。
 
-## 部署边界
+## Docker 自动部署
 
-当前仓库没有 Docker、Compose、GitHub Actions、Runner 或 `deploy/` 文件。首次接入自动部署时必须遵守 `AGENTS.md`：同一完整 Git SHA 镜像同时部署 Company 与 Home、独立 Runner 和部署目录、外部 `chat-web-infrastructure` 网络、双机健康验证与失败回滚，并在同一次改动中补全 `deploy/CHANGELOG.md` 和 `deploy/RUNBOOK.md`。
+`main` 分支更新后，GitHub Actions 会先执行完整 `yarn test`，再构建并发布完整 Git SHA 镜像，由 Home 主机的 `chat-server-home` 专用 Runner 部署。Company 当前离线，按用户明确批准的单机例外不创建 Company 部署任务。
+
+运行容器为 `chat-web-skyline-service`，Compose 项目为 `chat-web-service`。容器不发布宿主机端口，只通过外部 `chat-web-infrastructure` 网络暴露 `4020`；共享 `chat-web-nginx` 把 `https://skyline.lisfes.com` 动态转发到该容器，因此不会与本地 `yarn dev` 使用的 `4020` 冲突。
+
+首次机器初始化、Nacos 配置、Runner、日志验证和回滚命令见 `deploy/RUNBOOK.md`。真实 Namespace、凭据和 `.env` 只保存在 Home 的 `/opt/chat-web-skyline-service`，不得提交。

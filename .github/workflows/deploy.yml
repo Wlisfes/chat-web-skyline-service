@@ -1,0 +1,189 @@
+name: Build and deploy
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+jobs:
+    verify:
+        name: Verify service
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: read
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: yarn
+                  registry-url: https://npm.pkg.github.com
+                  scope: '@wlisfes'
+
+            - name: Install dependencies
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: yarn install --frozen-lockfile --non-interactive
+
+            - name: Run complete verification
+              run: yarn test
+
+    build:
+        name: Build and publish image
+        needs: verify
+        runs-on: ubuntu-latest
+        concurrency:
+            group: build-${{ github.ref }}
+            cancel-in-progress: true
+        permissions:
+            contents: read
+            packages: write
+        outputs:
+            image: ${{ steps.image.outputs.name }}
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+
+            - name: Resolve image name
+              id: image
+              shell: bash
+              run: |
+                  repository="ghcr.io/${GITHUB_REPOSITORY,,}"
+                  echo "name=${repository}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+                  echo "latest=${repository}:latest" >> "$GITHUB_OUTPUT"
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Build and push image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  push: true
+                  tags: |
+                      ${{ steps.image.outputs.name }}
+                      ${{ steps.image.outputs.latest }}
+                  labels: |
+                      org.opencontainers.image.revision=${{ github.sha }}
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  secrets: |
+                      github_token=${{ secrets.GITHUB_TOKEN }}
+
+    deploy-home:
+        name: Deploy to Home
+        needs: build
+        runs-on:
+            - self-hosted
+            - linux
+            - chat-server-home
+        environment: production-home
+        concurrency:
+            group: deploy-home
+            cancel-in-progress: true
+        permissions:
+            contents: read
+            packages: read
+        env:
+            DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/chat-web-skyline-service' }}
+            DEPLOYMENT_ENVIRONMENT: production-home
+            IMAGE: ${{ needs.build.outputs.image }}
+
+        steps:
+            - name: Check out deployment files
+              uses: actions/checkout@v4
+
+            - name: Validate Home Docker host
+              shell: bash
+              run: |
+                  set -eu
+                  [[ "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "DEPLOY_PATH must be an absolute path" >&2; exit 1; }
+                  command -v docker >/dev/null
+                  command -v curl >/dev/null
+                  export DOCKER_CONFIG="$RUNNER_TEMP/chat-web-skyline-service-docker-config"
+                  printf 'DOCKER_CONFIG=%s\n' "$DOCKER_CONFIG" >> "$GITHUB_ENV"
+                  mkdir -p "$DOCKER_CONFIG"
+                  chmod 700 "$DOCKER_CONFIG"
+                  runner_compose_plugin=/home/runner/.docker/cli-plugins/docker-compose
+                  if [ -x "$runner_compose_plugin" ]; then
+                    install -d -m 0700 "$DOCKER_CONFIG/cli-plugins"
+                    install -m 0755 "$runner_compose_plugin" "$DOCKER_CONFIG/cli-plugins/docker-compose"
+                  fi
+                  docker compose version
+                  docker info >/dev/null
+                  docker network inspect chat-web-infrastructure >/dev/null
+                  mkdir -p "$DEPLOY_PATH"
+                  test -w "$DEPLOY_PATH" || { echo "$DEPLOY_PATH is not writable by the runner user" >&2; exit 1; }
+
+            - name: Install deployment files
+              shell: bash
+              run: |
+                  set -eu
+                  install -m 0644 deploy/compose.yml "$DEPLOY_PATH/compose.yml"
+                  install -m 0755 deploy/deploy.sh "$DEPLOY_PATH/deploy.sh"
+                  install -m 0644 deploy/bootstrap-nacos-config.cjs "$DEPLOY_PATH/bootstrap-nacos-config.cjs"
+                  install -m 0644 deploy/shared-ingress.conf "$DEPLOY_PATH/shared-ingress.conf"
+                  install -m 0600 deploy/.env.example "$DEPLOY_PATH/.env.example"
+                  if [ ! -f "$DEPLOY_PATH/.env" ]; then
+                    install -m 0600 deploy/.env.example "$DEPLOY_PATH/.env"
+                    echo "Initialized $DEPLOY_PATH/.env; machine-specific values must be configured before deployment." >&2
+                    exit 1
+                  fi
+
+            - name: Ensure Skyline Nacos config
+              shell: bash
+              run: |
+                  set -eu
+                  network=$(sed -n 's/^DOCKER_NETWORK=//p' "$DEPLOY_PATH/.env" | tail -n 1)
+                  network=${network:-chat-web-infrastructure}
+                  docker run --rm \
+                    --network "$network" \
+                    --env-file "$DEPLOY_PATH/.env" \
+                    --volume "$DEPLOY_PATH/bootstrap-nacos-config.cjs:/opt/skyline/bootstrap-nacos-config.cjs:ro" \
+                    node:22-alpine node /opt/skyline/bootstrap-nacos-config.cjs
+
+            - name: Pull and deploy image
+              shell: bash
+              env:
+                  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -eu
+                  attempt=1
+                  until printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username '${{ github.actor }}' --password-stdin; do
+                    [ "$attempt" -lt 8 ] || exit 1
+                    delay=$((attempt * 5))
+                    echo "GHCR login attempt $attempt failed; retrying in ${delay}s." >&2
+                    sleep "$delay"
+                    attempt=$((attempt + 1))
+                  done
+                  cd "$DEPLOY_PATH"
+                  DEPLOYMENT_ENVIRONMENT="$DEPLOYMENT_ENVIRONMENT" ./deploy.sh "$IMAGE" compose.yml
+
+            - name: Verify container and domain
+              shell: bash
+              run: |
+                  set -eu
+                  docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:4020/health/ready', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+                  curl --silent --show-error --fail --insecure \
+                    --resolve skyline.lisfes.com:443:127.0.0.1 \
+                    https://skyline.lisfes.com/health/ready >/dev/null
+
+            - name: Log out from GitHub Container Registry
+              if: always()
+              shell: bash
+              run: docker logout ghcr.io >/dev/null 2>&1 || true

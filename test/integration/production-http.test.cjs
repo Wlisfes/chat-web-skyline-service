@@ -68,6 +68,7 @@ describe('production Skyline HTTP', () => {
         const response = await fetch(`${baseUrl}/health/ready`)
         assert.equal(response.status, 200)
         assert.deepEqual(await response.json(), { status: 'UP', renderer: { ready: true } })
+        assert.doesNotMatch(logs, /Nacos 配置已加载/)
     })
 
     it('serves a styled SSR page and client bundle', async () => {
