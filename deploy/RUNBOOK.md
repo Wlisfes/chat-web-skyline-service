@@ -2,20 +2,20 @@
 
 ## 当前基线
 
-| 项目 | 值 |
-| --- | --- |
-| 访问地址 | `https://skyline.lisfes.com` |
-| 容器 | `chat-web-skyline-service` |
-| Compose 项目 / 服务 | `chat-web-service` / `skyline-service` |
-| 容器端口 | `4020`，不发布宿主机端口 |
-| 部署目录 | `/opt/chat-web-skyline-service` |
-| Docker 网络 | `chat-web-infrastructure` |
+| 项目                  | 值                                                |
+| --------------------- | ------------------------------------------------- |
+| 访问地址              | `https://skyline.lisfes.com`                      |
+| 容器                  | `chat-web-skyline-service`                        |
+| Compose 项目 / 服务   | `chat-web-service` / `skyline-service`            |
+| 容器端口              | `4020`，不发布宿主机端口                          |
+| 部署目录              | `/opt/chat-web-skyline-service`                   |
+| Docker 网络           | `chat-web-infrastructure`                         |
 | Nacos Data ID / Group | `chat-web-skyline-service.yaml` / `DEFAULT_GROUP` |
-| Nacos 服务名 | `chat-web-skyline-service` |
-| Home Runner 标签 | `chat-server-home` |
-| GitHub Environment | `production-home` |
-| 共享入口 | `chat-web-nginx` |
-| Home Nginx 配置卷 | `20260801231547_nginx-conf` |
+| Nacos 服务名          | `chat-web-skyline-service`                        |
+| Home Runner 标签      | `chat-server-home`                                |
+| GitHub Environment    | `production-home`                                 |
+| 共享入口              | `chat-web-nginx`                                  |
+| Home Nginx 配置卷     | `20260801231547_nginx-conf`                       |
 
 当前按用户明确批准的单机例外只部署 Home。Company 机器离线期间，流水线不创建会长期等待的 Company job；后续恢复 Company 时必须使用同一个完整 Git SHA 镜像，并补回独立 Runner、Environment 和 `deploy-company` concurrency。
 
@@ -84,21 +84,22 @@ docker inspect chat-web-skyline-service --format '{{.Config.User}} {{json .HostC
 docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:4020/health/ready', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 curl -kfsS --resolve skyline.lisfes.com:443:127.0.0.1 https://skyline.lisfes.com/health/ready
 curl -kfsS --resolve skyline.lisfes.com:443:127.0.0.1 https://skyline.lisfes.com/ | grep -F '服务端渲染基础框架已就绪'
+curl -kfsS --resolve skyline.lisfes.com:443:127.0.0.1 https://skyline.lisfes.com/favicon.ico >/dev/null
 docker logs --tail 100 chat-web-skyline-service
 ```
 
-预期容器为 `running healthy`、用户为 `node`、日志驱动为 `json-file` 且 `max-size=20m`、`max-file=30`，ready 返回 `status=UP`，首页包含 SSR 内容。Dozzle 中该容器归在 `chat-web-service` 分组。
+预期容器为 `running healthy`、用户为 `node`、日志驱动为 `json-file` 且 `max-size=20m`、`max-file=30`，ready 返回 `status=UP`，首页包含 SSR 内容，`favicon.ico` 返回 200。Dozzle 中该容器归在 `chat-web-service` 分组。
 
 ## 常见故障
 
-| 现象 | 原因 | 处理 |
-| --- | --- | --- |
-| verify 阶段找不到私有包 | GitHub Packages Token 或仓库 packages 权限异常 | 检查 workflow permissions 与包授权，不要把 Token 写进 `.npmrc` |
-| Home job 一直等待 | Skyline 专用 Runner 离线或标签不匹配 | 检查 systemd 单元和 `chat-server-home` 标签 |
-| 容器启动后不健康 | Nacos Namespace/Data ID 错误或 SSR 构建产物缺失 | 查看容器日志和 `/health/ready`，修正机器 `.env` 后重新部署 |
-| 域名返回 502 | Skyline 未加入共享网络或入口仍指向旧 Kubernetes NodePort | 检查容器网络和卷内 `skyline.conf`，执行 `nginx -t` 后 reload |
-| Nginx 循环重启 | 入口误用了静态 upstream DNS | 恢复版本化 `shared-ingress.conf` 的 resolver + 变量代理形式 |
-| 本地开发 4020 冲突 | 存在重复的 `yarn dev` | 查询 `Get-NetTCPConnection -LocalPort 4020,8999`；Docker 容器本身不发布这两个端口 |
+| 现象                    | 原因                                                     | 处理                                                                              |
+| ----------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| verify 阶段找不到私有包 | GitHub Packages Token 或仓库 packages 权限异常           | 检查 workflow permissions 与包授权，不要把 Token 写进 `.npmrc`                    |
+| Home job 一直等待       | Skyline 专用 Runner 离线或标签不匹配                     | 检查 systemd 单元和 `chat-server-home` 标签                                       |
+| 容器启动后不健康        | Nacos Namespace/Data ID 错误或 SSR 构建产物缺失          | 查看容器日志和 `/health/ready`，修正机器 `.env` 后重新部署                        |
+| 域名返回 502            | Skyline 未加入共享网络或入口仍指向旧 Kubernetes NodePort | 检查容器网络和卷内 `skyline.conf`，执行 `nginx -t` 后 reload                      |
+| Nginx 循环重启          | 入口误用了静态 upstream DNS                              | 恢复版本化 `shared-ingress.conf` 的 resolver + 变量代理形式                       |
+| 本地开发 4020 冲突      | 存在重复的 `yarn dev`                                    | 查询 `Get-NetTCPConnection -LocalPort 4020,8999`；Docker 容器本身不发布这两个端口 |
 
 ## 日志轮转
 

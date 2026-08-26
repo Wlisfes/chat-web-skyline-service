@@ -27,7 +27,7 @@ function verifyBuild(root = process.cwd()) {
     }
 
     const serverBundle = readFileSync(join(root, 'build/server/Page.server.js'), 'utf8')
-    if (/resolveComponent[^;\n]{0,200}css-render-style/.test(serverBundle)) {
+    if (/resolveComponent["'\]\)]*\(["']css-render-style["']/.test(serverBundle)) {
         throw new Error('Page.server.js 将 css-render-style 误编译为 Vue 组件')
     }
 

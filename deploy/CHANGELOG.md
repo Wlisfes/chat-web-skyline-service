@@ -1,5 +1,13 @@
 # Skyline 部署变更记录
 
+## 2026-08-26：新增 Skyline 站点图标
+
+- 影响范围：Home；不修改 Company、Nacos、数据库、Redis 或共享 Nginx 配置。
+- 变更内容：从 `nest-platform-manager` 复制 `favicon.ico`，在 SSR 文档头显式引用 `/favicon.ico`，并将 `public` 目录纳入生产镜像。
+- 机器侧操作：无手工操作；`main` 流水线构建新镜像并更新 Home 容器。
+- 验证：流水线请求 `https://skyline.lisfes.com/favicon.ico`；容器内校验 `/app/public/favicon.ico` 存在。
+- 回滚：回滚到上一完整 SHA 镜像；本次无有状态数据变更。
+
 ## 2026-08-26：路径别名与生产运行时修复
 
 - 影响范围：Home；不修改 Company、数据库、Redis、Nacos Data ID 或共享 Nginx 配置。
