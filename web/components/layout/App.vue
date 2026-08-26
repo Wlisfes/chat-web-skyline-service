@@ -21,5 +21,5 @@ const isBrowser = __isBrowser__
 </script>
 
 <style lang="less">
-@import '@/common.less';
+@import '@web/common.less';
 </style>

@@ -2,7 +2,7 @@
 import { computed, defineComponent } from 'vue'
 import { NAlert, NButton, NCard, NConfigProvider, NGrid, NGridItem, NSpace, NTag } from 'naive-ui'
 import { storeToRefs } from 'pinia'
-import { useSkylineStore } from '@/store'
+import { useSkylineStore } from '@web/store'
 
 export default defineComponent({
     name: 'SkylineIndex',
