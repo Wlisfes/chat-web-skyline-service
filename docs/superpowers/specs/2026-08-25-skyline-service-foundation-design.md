@@ -121,7 +121,7 @@ chat-web-skyline-service/
 │  │  ├─ render.vue
 │  │  └─ fetch.ts
 │  ├─ store/
-│  └─ common.less
+│  └─ common.scss
 ├─ test/
 │  ├─ unit/
 │  ├─ integration/

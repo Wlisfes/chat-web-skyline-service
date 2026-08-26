@@ -25,12 +25,28 @@ const userConfig: UserConfig = {
     babelOptions: {
         include: [/node_modules[\\/](?:naive-ui|date-fns)(?:[\\/]|$)/]
     },
-    chainBaseConfig(config) {
+    css: () => ({
+        loaderOptions: {
+            sass: {
+                sassOptions: {
+                    silenceDeprecations: ['legacy-js-api']
+                }
+            }
+        }
+    }),
+    chainBaseConfig(config, isServer) {
         const { NormalModuleReplacementPlugin } = require('webpack')
+        const { setStyle } = require('ssr-common-utils')
         const Components = require('unplugin-vue-components/webpack')
         const { NaiveUiResolver } = require('unplugin-vue-components/resolvers')
 
         config.resolve.alias.set('@', resolve(PROJECT_ROOT, 'src')).set('@web', resolve(PROJECT_ROOT, 'web'))
+        setStyle(config, /\.s[ac]ss$/, {
+            rule: 'scss',
+            loader: 'sass-loader',
+            importLoaders: 2,
+            isServer
+        })
         config.plugin('naive-ui-component-auto-import').use(
             Components({
                 dts: false,

@@ -5,9 +5,20 @@ import { describe, it } from 'node:test'
 import { userConfig } from '../../config'
 
 describe('Skyline Webpack aliases', () => {
-    it('maps aliases and enables Naive UI TSX auto import for client and server builds', () => {
+    it('maps aliases and enables SCSS plus Naive UI TSX auto import for client and server builds', () => {
+        type StyleRuleState = { test?: RegExp; uses: string[]; loaders: string[] }
+        type StyleRule = {
+            test: (value: RegExp) => StyleRule
+            when: (condition: boolean, callback: (currentRule: StyleRule) => void) => StyleRule
+            use: (name: string) => StyleRule
+            loader: (value: string) => StyleRule
+            options: () => StyleRule
+            end: () => StyleRule
+        }
+
         const aliases = new Map<string, string>()
         const pluginNames: string[] = []
+        const styleRules = new Map<string, StyleRuleState>()
         let rewriteGeneratedAlias: ((resource: { context: string; request: string }) => void) | undefined
         const alias = {
             set(name: string, path: string) {
@@ -21,11 +32,41 @@ describe('Skyline Webpack aliases', () => {
                 return plugin
             }
         }
+        const createStyleRule = (name: string) => {
+            const state: StyleRuleState = { uses: [], loaders: [] }
+            styleRules.set(name, state)
+            const rule: StyleRule = {
+                test(value: RegExp) {
+                    state.test = value
+                    return rule
+                },
+                when(condition: boolean, callback: (currentRule: typeof rule) => void) {
+                    if (condition) callback(rule)
+                    return rule
+                },
+                use(name: string) {
+                    state.uses.push(name)
+                    return rule
+                },
+                loader(value: string) {
+                    state.loaders.push(value)
+                    return rule
+                },
+                options() {
+                    return rule
+                },
+                end() {
+                    return rule
+                }
+            }
+            return rule
+        }
 
         assert.equal(typeof userConfig.chainBaseConfig, 'function')
         userConfig.chainBaseConfig?.(
             {
                 resolve: { alias },
+                module: { rule: createStyleRule },
                 plugin(name: string) {
                     pluginNames.push(name)
                     return plugin
@@ -36,6 +77,9 @@ describe('Skyline Webpack aliases', () => {
         assert.equal(aliases.get('@'), resolve(process.cwd(), 'src'))
         assert.equal(aliases.get('@web'), resolve(process.cwd(), 'web'))
         assert.ok(pluginNames.includes('naive-ui-component-auto-import'))
+        assert.match('common.scss', styleRules.get('scss')?.test ?? /$^/)
+        assert.ok(styleRules.get('scss')?.uses.includes('sass-loader'))
+        assert.ok(styleRules.get('scss')?.loaders.some(loader => loader.includes('sass-loader')))
 
         assert.ok(rewriteGeneratedAlias)
         const generatedResource = { context: resolve(process.cwd(), 'build'), request: '@/pages/index/render.vue' }

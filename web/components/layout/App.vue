@@ -50,6 +50,6 @@ export default defineComponent({
 })
 </script>
 
-<style lang="less">
-@import '@web/common.less';
+<style lang="scss">
+@use '@web/common.scss';
 </style>
