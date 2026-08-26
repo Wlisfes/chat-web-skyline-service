@@ -1,53 +1,58 @@
 <script lang="tsx">
-import { computed, defineComponent } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useSkylineStore } from '@web/store'
+import { computed, defineComponent, type PropType } from 'vue'
+import type { SkylinePageAsyncData, SkylinePageFetchData } from './skyline-page.interface'
 
-// N 开头的 Naive UI JSX 组件由构建插件自动注入，无需手动导入
 export default defineComponent({
     name: 'SkylineIndex',
-    setup() {
-        const store = useSkylineStore()
-        const { count } = storeToRefs(store)
-        const { increment } = store
-        const renderMode = computed(() => (__isBrowser__ && window.__USE_SSR__ === false ? 'CSR' : 'SSR'))
+    inheritAttrs: false,
+    props: {
+        /** SSR 首屏及客户端路由共享的异步数据容器 */
+        asyncData: { type: Object as PropType<SkylinePageAsyncData>, required: true },
+        /** 客户端路由切换时重新获取的当前页面数据 */
+        fetchData: { type: Object as PropType<Partial<SkylinePageFetchData>>, default: () => ({}) }
+    },
+    setup(props) {
+        const apiResponse = computed(() => props.fetchData.skylineApiResponse ?? props.asyncData.value.skylineApiResponse)
+        const services = computed(() => apiResponse.value?.data ?? [])
+
+        console.log('SkylineIndex asyncData', props.asyncData)
 
         return () => (
-            <NConfigProvider>
-                <main class="skyline-page">
-                    <section class="skyline-hero">
-                        <p class="skyline-eyebrow">CHAT WEB / SKYLINE</p>
-                        <h1>服务端渲染基础框架已就绪</h1>
-                        <p class="skyline-summary">NestJS + Vue3 + Naive UI SSR</p>
-                        <NSpace align="center">
-                            <NTag type="success" bordered={false}>
-                                服务运行中
-                            </NTag>
-                            <NTag type="info" bordered={false} data-testid="render-mode">
-                                {renderMode.value}
-                            </NTag>
-                        </NSpace>
-                    </section>
-
-                    <NGrid cols="1 m:2" responsive="self" xGap={20} yGap={20}>
-                        <NGridItem>
-                            <NCard title="服务端首屏" embedded={true}>
-                                <NAlert type="success" showIcon={true}>
-                                    当前 HTML 已包含 Vue 页面内容、Naive UI 标记和 cssr-id 样式。
-                                </NAlert>
-                            </NCard>
-                        </NGridItem>
-                        <NGridItem>
-                            <NCard title="Hydration 验证" embedded={true}>
-                                <p>点击按钮验证客户端已接管服务端生成的页面。</p>
-                                <n-button type="primary" data-testid="hydration-counter" onClick={increment}>
-                                    Hydration 计数：{count.value}
-                                </n-button>
-                            </NCard>
-                        </NGridItem>
-                    </NGrid>
-                </main>
-            </NConfigProvider>
+            <main class="skyline-page">
+                <section class="skyline-hero">
+                    <p class="skyline-eyebrow">CHAT WEB / SKYLINE</p>
+                    <h1>服务端渲染基础框架已就绪</h1>
+                    <p class="skyline-summary">NestJS + Vue3 + Naive UI SSR</p>
+                </section>
+                <n-button>点击 +1</n-button>
+                <n-card class="skyline-api-card" title="模拟接口数据" embedded>
+                    {apiResponse.value ? (
+                        <n-space vertical size="large">
+                            <n-alert type="success" title={apiResponse.value.message} show-icon>
+                                GET /mock/skyline/services · 状态码 {apiResponse.value.code}
+                            </n-alert>
+                            <n-list bordered>
+                                {services.value.map(service => (
+                                    <n-list-item key={service.name}>
+                                        <n-thing title={service.name} description={`归属：${service.owner}`}>
+                                            {{
+                                                headerExtra: () => (
+                                                    <n-tag type={service.status === 'online' ? 'success' : 'warning'} bordered={false}>
+                                                        {service.statusName}
+                                                    </n-tag>
+                                                )
+                                            }}
+                                        </n-thing>
+                                    </n-list-item>
+                                ))}
+                            </n-list>
+                            <n-text depth={3}>响应时间：{apiResponse.value.timestamp}</n-text>
+                        </n-space>
+                    ) : (
+                        <n-skeleton text repeat={3} />
+                    )}
+                </n-card>
+            </main>
         )
     }
 })

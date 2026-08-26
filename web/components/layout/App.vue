@@ -6,6 +6,7 @@ import { RouterView } from 'vue-router'
 
 export default defineComponent({
     name: 'SkylineApp',
+    inheritAttrs: false,
     components: { AppRouterView: RouterView },
     props: {
         /** Vue SSR 应用实例，用于收集并注入 Naive UI 服务端渲染样式 */
@@ -23,11 +24,17 @@ export default defineComponent({
     },
     setup(props) {
         const { collect } = setup(props.ssrApp)
+        const CssRenderCollector = defineComponent({
+            name: 'CssRenderCollector',
+            setup: () => () => h('css-render-style', { innerHTML: collect() })
+        })
 
         return () => (
             <Fragment>
-                <app-router-view asyncData={props.asyncData} />
-                {!__isBrowser__ && h('css-render-style', { innerHTML: collect() })}
+                <common-layout-provider>
+                    <app-router-view asyncData={props.asyncData} />
+                </common-layout-provider>
+                {!__isBrowser__ && <CssRenderCollector />}
             </Fragment>
         )
     }

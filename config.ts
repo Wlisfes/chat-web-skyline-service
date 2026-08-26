@@ -13,6 +13,9 @@ const vueLoaderOptions = {
 const userConfig: UserConfig = {
     serverPort: 4020,
     stream: false,
+    webpackDevServerConfig: {
+        transportMode: 'ws'
+    },
     define: {
         base: {
             // ssr-common-utils 会再次序列化字符串，此处必须保留布尔值供 DefinePlugin 替换
@@ -50,6 +53,9 @@ const userConfig: UserConfig = {
         config.plugin('naive-ui-component-auto-import').use(
             Components({
                 dts: false,
+                dirs: [resolve(PROJECT_ROOT, 'web/components/common')],
+                extensions: ['vue'],
+                deep: true,
                 resolvers: [NaiveUiResolver()]
             })
         )

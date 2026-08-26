@@ -5,6 +5,10 @@ import { describe, it } from 'node:test'
 import { userConfig } from '../../config'
 
 describe('Skyline Webpack aliases', () => {
+    it('uses WebSocket HMR without the legacy SockJS unload listener', () => {
+        assert.equal(userConfig.webpackDevServerConfig?.transportMode, 'ws')
+    })
+
     it('maps aliases and enables SCSS plus Naive UI TSX auto import for client and server builds', () => {
         type StyleRuleState = { test?: RegExp; uses: string[]; loaders: string[] }
         type StyleRule = {

@@ -56,6 +56,10 @@ body {
     font-size: 18px;
 }
 
+.skyline-api-card {
+    margin-top: 24px;
+}
+
 @media (max-width: 640px) {
     .skyline-page {
         width: min(100% - 24px, 1080px);

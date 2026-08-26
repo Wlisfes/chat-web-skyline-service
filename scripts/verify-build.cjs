@@ -30,6 +30,9 @@ function verifyBuild(root = process.cwd()) {
     if (/resolveComponent["'\]\)]*\(["']css-render-style["']/.test(serverBundle)) {
         throw new Error('Page.server.js 将 css-render-style 误编译为 Vue 组件')
     }
+    if (/resolveComponent["'\]\)]*\(["']common-layout-provider["']/.test(serverBundle)) {
+        throw new Error('Page.server.js 未自动导入 CommonLayoutProvider 组件')
+    }
 
     const manifestPath = join(root, 'build/client/asset-manifest.json')
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))

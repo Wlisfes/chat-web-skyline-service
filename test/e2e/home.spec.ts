@@ -14,9 +14,9 @@ test('hydrates the server-rendered Naive UI page without console errors', async 
     await expect(page.locator('head style[cssr-id]')).not.toHaveCount(0)
     await expect(page.locator('css-render-style')).toHaveCount(0)
 
-    const counter = page.getByTestId('hydration-counter')
-    await expect(counter).toContainText('Hydration 计数：0')
-    await counter.click()
-    await expect(counter).toContainText('Hydration 计数：1')
+    await expect(page.getByText('模拟接口数据')).toBeVisible()
+    await expect(page.getByText('GET /mock/skyline/services · 状态码 200')).toBeVisible()
+    await expect(page.getByText('Skyline 首页服务')).toBeVisible()
+    await expect(page.getByText('模拟告警')).toBeVisible()
     expect(consoleProblems).toEqual([])
 })

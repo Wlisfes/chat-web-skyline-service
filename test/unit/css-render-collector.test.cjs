@@ -9,6 +9,8 @@ describe('CSS Render collector', () => {
     it('creates the collector as a native element in TSX', () => {
         const app = readFileSync(appPath, 'utf8')
 
+        assert.match(app, /const CssRenderCollector = defineComponent/)
+        assert.match(app, /<CssRenderCollector\s*\/>/)
         assert.match(app, /h\(['"]css-render-style['"]/)
         assert.doesNotMatch(app, /<css-render-style\b/)
     })
