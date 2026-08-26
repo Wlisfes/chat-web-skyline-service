@@ -40,9 +40,9 @@ export default defineComponent({
                         <NGridItem>
                             <NCard title="Hydration 验证" embedded={true}>
                                 <p>点击按钮验证客户端已接管服务端生成的页面。</p>
-                                <NButton type="primary" data-testid="hydration-counter" onClick={increment}>
+                                <n-button type="primary" data-testid="hydration-counter" onClick={increment}>
                                     Hydration 计数：{count.value}
-                                </NButton>
+                                </n-button>
                             </NCard>
                         </NGridItem>
                     </NGrid>

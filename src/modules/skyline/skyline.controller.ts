@@ -325,14 +325,10 @@ export class SkylineController {
             const html = await this.renderer.renderSsr(context)
             this.sendHtml(response, HttpStatus.OK, 'ssr', html)
         } catch (error) {
-            this.logger.error({
-                message: 'Skyline SSR 渲染失败，准备降级 CSR',
-                path: request.path,
-                error: this.errorMessage(error)
-            })
             try {
+                this.logger.error({ message: 'Skyline SSR 渲染失败，准备降级 CSR', path: request.path, error: this.errorMessage(error) })
                 const html = await this.renderer.renderCsr(context)
-                this.sendHtml(response, HttpStatus.OK, 'csr', html)
+                return this.sendHtml(response, HttpStatus.OK, 'csr', html)
             } catch (fallbackError) {
                 this.logger.error({
                     message: 'Skyline CSR 降级失败',

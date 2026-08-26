@@ -51,5 +51,5 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
-@use '@web/common.scss';
+@use '@web/styles/common.scss';
 </style>
