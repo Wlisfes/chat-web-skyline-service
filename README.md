@@ -15,7 +15,7 @@ yarn install --frozen-lockfile
 yarn dev
 ```
 
-默认端口为 `4020`。正常运行默认连接 Nacos，并读取 `chat-web-skyline-service.yaml`。启动时必须显式提供 `NACOS_SERVER` 和 `NACOS_NAMESPACE`；其余启动、订阅和注册覆盖项及默认值见 `.env.example`。显式离线运行：
+默认端口为 `4020`。正常运行默认连接 Nacos，并读取 `chat-web-skyline-service.yaml`。根目录 `.env` 只需要 `NODE_ENV`、`PORT`、`NACOS_SERVER` 和 `NACOS_NAMESPACE`；启用 Nacos 鉴权时再提供用户名与密码。显式离线运行：
 
 ```bash
 NACOS_CONFIG_ENABLED=false NACOS_REGISTER_ENABLED=false yarn dev
@@ -55,7 +55,7 @@ yarn test
 
 ## Nacos 配置
 
-共享包 `1.4.9` 起，Skyline 只向 `NacosModule.forRoot` 传入服务名和注册端口，base 内部统一将扁平化 Nacos 环境变量转换为完整 `NacosRuntimeOptions`。`NACOS_SERVER` 和 `NACOS_NAMESPACE` 是仅有的无默认值启动参数；请求超时、Data ID、配置组、认证、注册开关、服务名、发现组、IP 和端口都是可选覆盖，完整说明见 `.env.example`。业务配置 Data ID 默认为 `chat-web-skyline-service.yaml`，可包含：
+共享包 `1.4.9` 起，Skyline 只向 `NacosModule.forRoot` 传入服务名和注册端口，base 内部统一补齐请求超时、Data ID、配置组、注册开关、服务名、发现组、IP 和注册端口。业务配置统一维护在 Nacos 远端 `chat-web-skyline-service.yaml`：
 
 ```yaml
 server:
