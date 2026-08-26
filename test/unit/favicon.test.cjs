@@ -11,6 +11,6 @@ describe('Skyline favicon', () => {
 
         assert.deepEqual([...favicon.subarray(0, 4)], [0, 0, 1, 0])
         assert.equal(createHash('sha256').update(favicon).digest('hex'), 'e6b77d832661fe106716b920e3f9ab5a9e70e1829adafd44b57196de581963ed')
-        assert.match(layout, /<link rel="icon" type="image\/x-icon" href="\/favicon\.ico" \/>/)
+        assert.match(layout, /<link rel="icon" type="image\/x-icon" href="\/favicon\.ico\?v=20260826" \/>/)
     })
 })
