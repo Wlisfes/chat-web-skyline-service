@@ -1,5 +1,15 @@
 # Skyline 部署变更记录
 
+## 2026-08-27：还原为 NestJS 初始化空项目
+
+- 影响范围：Home；保留现有容器、域名、Runner、Docker 网络与自动回滚，不执行线上部署。
+- 工程重置：删除 Vue、SSR、Webpack、前端资源、模拟业务数据及其测试，恢复 NestJS 默认 `AppController`、`AppService`、`AppModule` 和启动入口。
+- 依赖清理：删除 Nacos、`chat-web-base-schema`、Naive UI、Pinia、Vue 与旧 SSR 构建依赖；当前服务不连接任何下游。
+- 部署适配：容器和流水线改为检查 `/health/live`，首页标志改为 `Hello World!`，删除 Nacos 配置引导和 favicon 验证。
+- 机器侧操作：无；本次只在 `developer` 开发，不合并 `main`、不触发流水线。以后发布时，现有 `.env` 中多余的 Nacos 字段可保留但不会读取。
+- 验证：执行格式检查、TypeScript 类型检查、Jest 单元/E2E 测试、Nest 构建及本地生产进程 HTTP 验证。
+- 回滚：回滚到重置前的完整 SHA；本次无数据库、Redis 或其他有状态数据变更。
+
 ## 2026-08-26：新增 Skyline 站点图标
 
 - 影响范围：Home；不修改 Company、Nacos、数据库、Redis 或共享 Nginx 配置。

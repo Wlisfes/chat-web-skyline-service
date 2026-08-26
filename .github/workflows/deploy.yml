@@ -23,16 +23,12 @@ jobs:
               with:
                   node-version: 22
                   cache: yarn
-                  registry-url: https://npm.pkg.github.com
-                  scope: '@wlisfes'
 
             - name: Install dependencies
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: yarn install --frozen-lockfile --non-interactive
 
             - name: Run complete verification
-              run: yarn test
+              run: yarn format:check && yarn typecheck && yarn test && yarn test:e2e && yarn build
 
     build:
         name: Build and publish image
@@ -82,8 +78,6 @@ jobs:
                       org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
-                  secrets: |
-                      github_token=${{ secrets.GITHUB_TOKEN }}
 
     deploy-home:
         name: Deploy to Home
@@ -136,7 +130,6 @@ jobs:
                   set -eu
                   install -m 0644 deploy/compose.yml "$DEPLOY_PATH/compose.yml"
                   install -m 0755 deploy/deploy.sh "$DEPLOY_PATH/deploy.sh"
-                  install -m 0644 deploy/bootstrap-nacos-config.cjs "$DEPLOY_PATH/bootstrap-nacos-config.cjs"
                   install -m 0644 deploy/shared-ingress.conf "$DEPLOY_PATH/shared-ingress.conf"
                   install -m 0600 deploy/.env.example "$DEPLOY_PATH/.env.example"
                   if [ ! -f "$DEPLOY_PATH/.env" ]; then
@@ -144,18 +137,6 @@ jobs:
                     echo "Initialized $DEPLOY_PATH/.env; machine-specific values must be configured before deployment." >&2
                     exit 1
                   fi
-
-            - name: Ensure Skyline Nacos config
-              shell: bash
-              run: |
-                  set -eu
-                  network=$(sed -n 's/^DOCKER_NETWORK=//p' "$DEPLOY_PATH/.env" | tail -n 1)
-                  network=${network:-chat-web-infrastructure}
-                  docker run --rm \
-                    --network "$network" \
-                    --env-file "$DEPLOY_PATH/.env" \
-                    --volume "$DEPLOY_PATH/bootstrap-nacos-config.cjs:/opt/skyline/bootstrap-nacos-config.cjs:ro" \
-                    node:22-alpine node /opt/skyline/bootstrap-nacos-config.cjs
 
             - name: Pull and deploy image
               shell: bash
@@ -178,16 +159,13 @@ jobs:
               shell: bash
               run: |
                   set -eu
-                  docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:4020/health/ready', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+                  docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:4020/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
                   curl --silent --show-error --fail --insecure \
                     --resolve skyline.lisfes.com:443:127.0.0.1 \
-                    https://skyline.lisfes.com/health/ready >/dev/null
+                    https://skyline.lisfes.com/health/live >/dev/null
                   curl --silent --show-error --fail --insecure \
                     --resolve skyline.lisfes.com:443:127.0.0.1 \
-                    https://skyline.lisfes.com/ | grep -F '服务端渲染基础框架已就绪' >/dev/null
-                  curl --silent --show-error --fail --insecure \
-                    --resolve skyline.lisfes.com:443:127.0.0.1 \
-                    https://skyline.lisfes.com/favicon.ico >/dev/null
+                    https://skyline.lisfes.com/ | grep -F 'Hello World!' >/dev/null
 
             - name: Log out from GitHub Container Registry
               if: always()
