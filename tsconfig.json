@@ -1,31 +1,26 @@
 {
-    "compileOnSave": true,
     "compilerOptions": {
-        "target": "ES2022",
         "module": "nodenext",
         "moduleResolution": "nodenext",
         "resolvePackageJsonExports": true,
-        "lib": ["ES2022", "DOM", "DOM.Iterable"],
-        "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
         "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true,
-        "strict": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "sourceMap": true,
+        "isolatedModules": true,
         "declaration": true,
-        "jsx": "preserve",
-        "jsxImportSource": "vue",
-        "outDir": "dist",
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "target": "ES2023",
+        "sourceMap": true,
+        "outDir": "./dist",
         "paths": {
-            "~/*": ["./*"],
-            "@/*": ["./src/*"],
-            "@web/*": ["./web/*"],
-            "_build/*": ["./build/*"]
+            "@/*": ["./src/*"]
         },
-        "types": ["node"]
-    },
-    "include": ["config.ts", "src/**/*.ts", "web/**/*.ts", "web/**/*.vue", "web/**/*.d.ts", "test/**/*.ts", "playwright.config.ts"],
-    "exclude": ["node_modules", "dist", "build"]
+        "skipLibCheck": true,
+        "strictNullChecks": false,
+        "forceConsistentCasingInFileNames": false,
+        "noImplicitAny": false,
+        "strictBindCallApply": false,
+        "noFallthroughCasesInSwitch": false
+    }
 }
