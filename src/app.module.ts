@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { Logger, Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { NacosModule } from '@wlisfes/chat-web-base-schema/nacos'
 import { AppController } from './app.controller'
@@ -10,6 +10,6 @@ import { AppService } from './app.service'
         NacosModule.forRoot({ serviceName: 'chat-web-skyline-service', registerPort: 3000 })
     ],
     controllers: [AppController],
-    providers: [AppService]
+    providers: [Logger, AppService]
 })
 export class AppModule {}
