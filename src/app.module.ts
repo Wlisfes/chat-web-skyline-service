@@ -7,7 +7,7 @@ import { AppService } from './app.service'
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        ...(process.env.NODE_ENV === 'test' ? [] : [NacosModule.forRoot({ serviceName: 'chat-web-skyline-service', registerPort: 3000 })])
+        NacosModule.forRoot({ serviceName: 'chat-web-skyline-service', registerPort: 3000 })
     ],
     controllers: [AppController],
     providers: [AppService]
