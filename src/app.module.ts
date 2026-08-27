@@ -1,9 +1,14 @@
 import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import { NacosModule } from '@wlisfes/chat-web-base-schema/nacos'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 
 @Module({
-    imports: [],
+    imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        ...(process.env.NODE_ENV === 'test' ? [] : [NacosModule.forRoot({ serviceName: 'chat-web-skyline-service', registerPort: 3000 })])
+    ],
     controllers: [AppController],
     providers: [AppService]
 })

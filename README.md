@@ -9,7 +9,10 @@
 
 ## 本地运行
 
+复制 `.env.example` 为 `.env`，填写 Nacos Namespace ID：
+
 ```bash
+cp .env.example .env
 yarn install
 yarn dev
 ```
@@ -18,6 +21,8 @@ yarn dev
 
 - `GET /` 返回 `Hello World!`
 - `GET /health/live` 返回进程存活状态
+
+服务通过 `@wlisfes/chat-web-base-schema` 的 `NacosModule` 读取 `chat-web-skyline-service.yaml` 并注册实例。
 
 ## 验证
 

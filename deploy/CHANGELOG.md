@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-08-27：接入共享 Nacos 模块
+
+- 影响范围：Home；Company 单机例外和现有部署拓扑不变，本次仅在 `developer` 开发。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.4.10`，Data ID `chat-web-skyline-service.yaml`。
+- 变更内容：通过共享 `NacosModule.forRoot` 加载远端配置并注册 `chat-web-skyline-service`，不引入数据库、Redis 或业务模块。
+- 机器侧操作：确认 `/opt/chat-web-skyline-service/.env` 包含 Home 的 `NACOS_SERVER` 和 `NACOS_NAMESPACE`。
+- 验证：执行 `yarn format:check && yarn typecheck && yarn test && yarn test:e2e && yarn build`。
+- 回滚：回滚本提交并删除机器 `.env` 中新增的 Nacos 连接项；Nacos Data ID 不回滚。
+
 ## 2026-08-27：还原为 NestJS 初始化空项目
 
 - 影响范围：Home；保留现有容器、域名、Runner、Docker 网络与自动回滚，不执行线上部署。

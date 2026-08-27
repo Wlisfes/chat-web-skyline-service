@@ -23,8 +23,12 @@ jobs:
               with:
                   node-version: 22
                   cache: yarn
+                  registry-url: https://npm.pkg.github.com
+                  scope: '@wlisfes'
 
             - name: Install dependencies
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: yarn install --frozen-lockfile --non-interactive
 
             - name: Run complete verification
@@ -78,6 +82,8 @@ jobs:
                       org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
+                  secrets: |
+                      github_token=${{ secrets.GITHUB_TOKEN }}
 
     deploy-home:
         name: Deploy to Home
