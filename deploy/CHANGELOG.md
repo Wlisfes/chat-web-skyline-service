@@ -1,5 +1,15 @@
 # Skyline 部署变更记录
 
+## 2026-08-27：补齐 Base Schema 对等依赖
+
+- 影响范围：Home 镜像的依赖层；Company 单机例外、容器、域名、端口、Nacos Data ID 和部署拓扑不变，本次不发布。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.4.11`；依赖版本参考 `chat-web-account-service`。
+- 变更内容：补齐 `@nestjs/swagger`、`@nestjs/typeorm`、`class-transformer`、`express`、`redis`、`typeorm`，继续使用 GitHub Packages `.npmrc`；Faker、MySQL 驱动和验证码等账号业务依赖不复制。
+- 运行边界：TypeORM 与 Redis 只用于满足 Base Schema 对等依赖，当前 Skyline 不创建数据库或 Redis 连接。
+- 机器侧操作：无；CI 继续使用 `NODE_AUTH_TOKEN`，Docker 继续通过 BuildKit `github_token` Secret 拉取私有包。
+- 验证：冻结锁文件安装、全部对等依赖版本校验、Base Schema 全导出入口加载、格式检查、类型检查、Jest、E2E 和 Nest 构建。
+- 回滚：回滚本提交；无数据库、Redis 或其他有状态数据变更。
+
 ## 2026-08-27：接入共享 Nacos 模块
 
 - 影响范围：Home；Company 单机例外和现有部署拓扑不变，本次仅在 `developer` 开发。

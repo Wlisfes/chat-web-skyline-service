@@ -5,7 +5,8 @@
 ## 当前工程边界
 
 - 当前代码为 NestJS 11 初始化后的空项目，只保留默认首页、`/health/live` 和 `chat-web-base-schema` 提供的 Nacos 配置与服务注册能力。
-- 在新业务方案确定前，不得恢复 Vue、SSR、Webpack、Vite、数据库、Redis 或其他业务依赖。
+- `@nestjs/typeorm`、`typeorm` 与 `redis` 仅作为 `chat-web-base-schema` 的对等依赖安装；在新业务方案确定前，不得创建数据库/Redis 连接或恢复相关业务模块。
+- 在新业务方案确定前，不得恢复 Vue、SSR、Webpack、Vite 或其他业务依赖。
 - 新功能继续在 `developer` 分支开发；普通功能完成后只提交并推送 `developer`，不得立即合并 `main` 或触发流水线。
 
 ## 部署边界
