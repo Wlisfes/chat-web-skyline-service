@@ -15,8 +15,14 @@ function isRequestLogPayload(message: unknown): message is RequestLogPayload {
 
 function formatRequestLogPayload(payload: RequestLogPayload): string {
     const details = {
+        message: payload.message,
+        service: payload.service,
+        logId: payload.logId,
+        requestId: payload.requestId,
         method: payload.method,
+        url: payload.url,
         statusCode: payload.statusCode,
+        durationMs: payload.durationMs,
         ip: payload.ip,
         host: payload.host,
         origin: payload.origin,
@@ -24,7 +30,7 @@ function formatRequestLogPayload(payload: RequestLogPayload): string {
         userAgent: payload.userAgent,
         query: payload.query,
         params: payload.params,
-        body: payload.body,
+        body: payload.body ?? null,
         ...(payload.traceId ? { traceId: payload.traceId } : {}),
         ...(payload.spanId ? { spanId: payload.spanId } : {})
     }
