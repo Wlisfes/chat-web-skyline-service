@@ -16,7 +16,12 @@ async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger })
     app.enableShutdownHooks()
     app.use(requestContextMiddleware)
-    app.use(createRequestLoggingMiddleware({ serviceName: process.env.NACOS_SERVICE_NAME }))
+    app.use(
+        createRequestLoggingMiddleware({
+            serviceName: process.env.NACOS_SERVICE_NAME,
+            ignoredPaths: ['/health/live', '/.well-known/appspecific/com.chrome.devtools.json']
+        })
+    )
     await app.init()
 
     return await setupSwagger(app, {
