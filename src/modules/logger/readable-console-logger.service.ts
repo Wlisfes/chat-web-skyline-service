@@ -88,7 +88,7 @@ export class ReadableConsoleLogger extends ConsoleLogger {
     ): string {
         const colors = this.options.colors === true
         const requestLog = isRequestLogPayload(message) ? message : undefined
-        const serviceName = colorHex(colors, '#ff5c93', `服务名称:[${this.options.prefix ?? 'Nest'}]`)
+        const serviceName = colorText(colors, 'greenBright', `服务名称:[${this.options.prefix ?? 'Nest'}]`)
         const processId = colorHex(colors, '#fc5404', `进程ID:[${process.pid}]`)
         const timestamp = colorHex(colors, '#fb9300', this.getTimestamp())
         const levelName = logLevel === 'log' ? 'INFO' : logLevel.toUpperCase()

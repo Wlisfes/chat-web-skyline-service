@@ -121,7 +121,7 @@ describe('ReadableConsoleLogger', () => {
         }
 
         expect(lines).toHaveLength(1)
-        expect(lines[0]).toContain('\u001B[38;2;255;92;147m服务名称:[chat-web-skyline-service]\u001B[39m')
+        expect(lines[0]).toContain('\u001B[92m服务名称:[chat-web-skyline-service]\u001B[39m')
         expect(lines[0]).toContain(`\u001B[38;2;252;84;4m进程ID:[${process.pid}]\u001B[39m`)
         expect(lines[0]).toContain('\u001B[92mINFO\u001B[39m')
         expect(lines[0]).toContain('\u001B[38;2;83;109;254m日志ID:[colored-request]\u001B[39m')
