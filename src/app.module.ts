@@ -10,10 +10,9 @@ import { AppService } from './app.service'
         NacosModule.forRoot(
             createNacosRuntimeOptions({
                 serviceName: 'chat-web-skyline-service',
-                registerPort: 4020,
+                registerPort: process.env.PORT,
                 NACOS_SERVER: process.env.NACOS_SERVER,
-                NACOS_NAMESPACE: process.env.NACOS_NAMESPACE,
-                PORT: process.env.PORT
+                NACOS_NAMESPACE: process.env.NACOS_NAMESPACE
             })
         )
     ],

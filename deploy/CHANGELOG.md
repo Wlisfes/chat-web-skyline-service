@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-08-28：删除重复的 Nacos 端口入参
+
+- 影响范围：Home；Company 单机例外和部署拓扑不变，本次只更新 `developer`。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.4.14`。
+- 变更内容：删除 `createNacosRuntimeOptions` 的重复 `PORT` 入参，改由 `registerPort` 直接接收 `process.env.PORT`。
+- 机器侧操作：无需新增环境变量，继续保留 `PORT`、`NACOS_SERVER` 和 `NACOS_NAMESPACE`。
+- 验证：执行 `yarn format:check && yarn typecheck && yarn test --runInBand && yarn test:e2e --runInBand && yarn build`，并校验 Compose。
+- 回滚：恢复上一条健康 Skyline 完整 SHA，并将共享包固定回 `1.4.13`。
+
 ## 2026-08-28：升级 Base Schema 并统一端口变量
 
 - 影响范围：Home；Company 单机例外和部署拓扑不变，本次只更新 `developer`。
