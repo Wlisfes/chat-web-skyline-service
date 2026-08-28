@@ -47,7 +47,7 @@ describe('ReadableConsoleLogger', () => {
         expect(lines[0].trim().split(/\r?\n/).length).toBeGreaterThan(1)
         expect(lines[0]).toContain('"message": "HTTP请求完成"')
         expect(lines[0]).toContain('"service": "chat-web-skyline-service"')
-        expect(lines[0]).toContain('"requestId": "34ec4ca9-2abf-49b8-85f6-77d7fd23ea1d"')
+        expect(lines[0]).not.toContain('"requestId"')
         expect(lines[0]).toContain('"durationMs": 12')
         expect(lines[0]).toContain('"xxxx": "xxxx"')
         expect(lines[0]).not.toContain('Object(16)')
@@ -182,9 +182,8 @@ describe('ReadableConsoleLogger', () => {
         expect(lines[0]).toContain('日志ID:[dozzle-request]')
         expect(lines[0]).toContain('接口地址:[/]')
         expect(lines[0]).toContain('耗时:3ms')
-        expect(lines[0]).toContain(
-            '{"message":"HTTP请求完成","service":"chat-web-skyline-service","logId":"dozzle-request","requestId":"dozzle-request"'
-        )
+        expect(lines[0]).toContain('{"message":"HTTP请求完成","service":"chat-web-skyline-service","logId":"dozzle-request","method":"GET"')
+        expect(lines[0]).not.toContain('"requestId"')
         expect(lines[0]).toContain('"statusCode":200')
         expect(lines[0]).toContain('"body":null}')
         expect(lines[0]).not.toContain('"message": "HTTP请求完成"')

@@ -50,7 +50,6 @@ function createRequestLogDetails(payload: RequestLogPayload) {
         message: payload.message,
         service: payload.service,
         logId: payload.logId,
-        requestId: payload.requestId,
         method: payload.method,
         url: payload.url,
         statusCode: payload.statusCode,
