@@ -86,15 +86,15 @@ jobs:
                       github_token=${{ secrets.GITHUB_TOKEN }}
 
     deploy-home:
-        name: Deploy to Home
+        name: Deploy to chat-home-server
         needs: build
         runs-on:
             - self-hosted
             - linux
-            - chat-server-home
+            - chat-home-server
         environment: production-home
         concurrency:
-            group: deploy-home
+            group: deploy-chat-home-server
             cancel-in-progress: true
         permissions:
             contents: read
@@ -108,7 +108,7 @@ jobs:
             - name: Check out deployment files
               uses: actions/checkout@v4
 
-            - name: Validate Home Docker host
+            - name: Validate chat-home-server Docker host
               shell: bash
               run: |
                   set -eu

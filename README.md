@@ -46,6 +46,6 @@ yarn build
 
 ## 部署
 
-仓库保留现有 Home Docker 自动部署骨架。只有合并到 `main` 后才触发构建部署；日常开发继续使用 `developer`，普通开发完成后不立即合并发布。
+仓库保留 `chat-home-server` Docker 自动部署。只有合并到 `main` 后才触发构建部署；日常开发继续使用 `developer`，普通开发完成后不立即合并发布。原另一台部署机器已废弃，不再创建部署任务。
 
 部署细节与排障命令见 `deploy/RUNBOOK.md`。

@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-08-29：Runner 标签统一为 chat-home-server
+
+- 影响范围：仅 `chat-home-server`；原另一台部署机器已废弃并下线，不再恢复双机部署。
+- 关联版本：Skyline 本次 `developer` 配置提交；未合并 `main`，不触发镜像构建或线上部署。
+- 变更内容：现有单机部署的 Runner 选择标签由 `chat-server-home` 改为 `chat-home-server`，继续使用 `production-home` Environment、`skyline.lisfes.com` 和 `/opt/chat-web-skyline-service` 部署目录。
+- 机器侧操作：Skyline 仓库在线 Runner 的自定义标签已由 `chat-server-home` 更新为 `chat-home-server`，systemd 服务保持运行；无需修改 `.env`、Nacos、端口、域名或 Docker 网络。
+- 验证：校验 Actions YAML，确认现行配置不再引用 `chat-server-company`、`chat-server-home`、`production-company` 或部署矩阵。
+- 回滚：若新标签无法调度，仅把当前单机任务和在线 Runner 的自定义标签临时改回 `chat-server-home`；不得恢复废弃机器的部署任务，服务数据不回滚。
+
 ## 2026-08-28：服务名改由环境变量提供
 
 - 影响范围：本地开发和 Home；Company 单机例外和部署拓扑不变，本次只更新 `developer`。

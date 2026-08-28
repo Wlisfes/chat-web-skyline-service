@@ -2,7 +2,7 @@
 
 ## 当前形态
 
-Skyline 当前为 NestJS 11 空项目，通过 `chat-web-base-schema` 连接 Nacos，不连接数据库、Redis 或其他下游服务。Home 使用 Docker 自动部署；Company 机器离线期间不部署。
+Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 `chat-home-server`，GitHub Environment 为 `production-home`。原另一台部署机器已废弃并下线，不再创建部署任务。
 
 ## 容器基线
 

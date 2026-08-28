@@ -15,7 +15,7 @@
 
 ## 部署边界
 
-- 保留现有 Home Docker 自动部署、`skyline.lisfes.com` 域名、独立 Runner、健康检查和失败回滚。
-- Company 机器离线期间不创建 Company 部署任务；恢复双机部署必须重新启用 `chat-server-company` 和 `production-company`。
+- 只部署到当前主机 `chat-home-server`，使用 `chat-home-server` Runner 标签和 `production-home` Environment；原另一台部署机器已废弃并下线，不得恢复多机部署任务。
+- 保留 `skyline.lisfes.com` 域名、本仓库独立 Runner、健康检查和失败回滚。
 - 容器继续使用非 root 用户、`chat-web-service` Compose 项目和 `chat-web-infrastructure` 外部网络。
 - 修改 Docker、Actions、Runner、域名、端口或健康检查时，必须同步更新 `deploy/CHANGELOG.md` 与 `deploy/RUNBOOK.md`。
