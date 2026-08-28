@@ -12,7 +12,9 @@ import { AppService } from './app.service'
                 serviceName: process.env.NACOS_SERVICE_NAME!,
                 registerPort: process.env.PORT,
                 NACOS_SERVER: process.env.NACOS_SERVER,
-                NACOS_NAMESPACE: process.env.NACOS_NAMESPACE
+                NACOS_NAMESPACE: process.env.NACOS_NAMESPACE,
+                NACOS_USERNAME: process.env.NACOS_USERNAME,
+                NACOS_PASSWORD: process.env.NACOS_PASSWORD
             })
         )
     ],
