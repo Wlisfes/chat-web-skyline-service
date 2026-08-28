@@ -48,9 +48,9 @@ function isRequestLogPayload(message: unknown): message is RequestLogPayload {
     )
 }
 
-function createRequestLogDetails(payload: RequestLogPayload) {
+function createRequestLogDetails(payload: RequestLogPayload, includeMessage = true) {
     return {
-        message: payload.message,
+        ...(includeMessage ? { message: payload.message } : {}),
         service: payload.service,
         logId: payload.logId,
         requestId: payload.requestId,
@@ -142,8 +142,8 @@ export class ReadableConsoleLogger extends ConsoleLogger {
         const record = {
             level: options.logLevel === 'log' ? 'info' : options.logLevel,
             time: new Date(timestamp).toISOString(),
-            message: this.formatReadableHeader(options.logLevel, executionMethod, message, false, formatTimestamp(new Date(timestamp))),
-            details: createRequestLogDetails(message),
+            commit: this.formatReadableHeader(options.logLevel, executionMethod, message, false, formatTimestamp(new Date(timestamp))),
+            ...createRequestLogDetails(message, false),
             ...(options.errorStack ? { stack: options.errorStack } : {})
         }
         const line = JSON.stringify(record)
