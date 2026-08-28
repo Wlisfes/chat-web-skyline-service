@@ -1,22 +1,27 @@
-import { ConsoleLogger } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { setupSwagger } from '@wlisfes/chat-web-base-schema'
 import { createRequestLoggingMiddleware } from '@wlisfes/chat-web-base-schema/logging'
 import { requestContextMiddleware } from '@wlisfes/chat-web-base-schema/request-context'
 import { AppModule } from '@/app.module'
+import { ReadableConsoleLogger } from '@/modules/logger/readable-console-logger.service'
 
-const logger = new ConsoleLogger({
+const logger = new ReadableConsoleLogger({
     compact: true,
     colors: true,
     prefix: process.env.NACOS_SERVICE_NAME,
-    json: ['development'].includes(process.env.NODE_ENV)
+    json: false
 })
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger })
     app.enableShutdownHooks()
     app.use(requestContextMiddleware)
-    app.use(createRequestLoggingMiddleware({ serviceName: process.env.NACOS_SERVICE_NAME }))
+    app.use(
+        createRequestLoggingMiddleware({
+            serviceName: process.env.NACOS_SERVICE_NAME,
+            ignoredPaths: ['/health/live', '/.well-known/appspecific/com.chrome.devtools.json']
+        })
+    )
     await app.init()
 
     return await setupSwagger(app, {
