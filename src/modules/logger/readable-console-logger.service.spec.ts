@@ -134,4 +134,51 @@ describe('ReadableConsoleLogger', () => {
         expect(lines[0]).toContain('\u001B[90mnull\u001B[39m')
         expect(stripVTControlCharacters(lines[0])).toContain('"body": null')
     })
+
+    it('生产环境将请求输出为 Dozzle 可展开的单行 JSON', () => {
+        const lines: string[] = []
+        const write = jest.spyOn(process.stdout, 'write').mockImplementation(value => {
+            lines.push(String(value))
+            return true
+        })
+        const logger = new ReadableConsoleLogger({ colors: false, compact: true, json: true, prefix: 'chat-web-skyline-service' })
+        const payload: RequestLogPayload = {
+            message: 'HTTP请求完成',
+            service: 'chat-web-skyline-service',
+            logId: 'dozzle-request',
+            requestId: 'dozzle-request',
+            method: 'GET',
+            url: '/',
+            statusCode: 200,
+            durationMs: 3,
+            ip: '172.20.0.1',
+            host: 'skyline.lisfes.com',
+            origin: '',
+            referer: '',
+            userAgent: 'jest',
+            query: {},
+            params: {},
+            body: undefined
+        }
+
+        try {
+            logger.log(payload, 'chat-web-skyline-service:HTTP')
+        } finally {
+            write.mockRestore()
+        }
+
+        expect(lines).toHaveLength(1)
+        expect(lines[0].trim().split(/\r?\n/)).toHaveLength(1)
+        expect(lines[0]).not.toContain('\u001B[')
+
+        const record = JSON.parse(lines[0]) as Record<string, unknown>
+        expect(record.level).toBe('info')
+        expect(record.service).toBe('chat-web-skyline-service')
+        expect(record.executionMethod).toBe('LoggerMiddleware')
+        expect(record.logId).toBe('dozzle-request')
+        expect(record.method).toBe('GET')
+        expect(record.url).toBe('/')
+        expect(record.statusCode).toBe(200)
+        expect(record.body).toBeNull()
+    })
 })
