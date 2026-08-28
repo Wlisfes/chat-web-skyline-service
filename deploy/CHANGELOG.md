@@ -1,5 +1,32 @@
 # Skyline 部署变更记录
 
+## 2026-08-28：服务名改由环境变量提供
+
+- 影响范围：本地开发和 Home；Company 单机例外和部署拓扑不变，本次只更新 `developer`。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.4.14`。
+- 变更内容：`createNacosRuntimeOptions` 的 `serviceName` 改为读取 `NACOS_SERVICE_NAME`。
+- 机器侧操作：在 `/opt/chat-web-skyline-service/.env` 中增加 `NACOS_SERVICE_NAME=chat-web-skyline-service` 后重新部署。
+- 验证：执行项目完整校验，并确认 Nacos 中注册的服务名和 Data ID 正确。
+- 回滚：恢复上一完整 Git SHA，并删除机器侧 `NACOS_SERVICE_NAME`。
+
+## 2026-08-28：删除重复的 Nacos 端口入参
+
+- 影响范围：Home；Company 单机例外和部署拓扑不变，本次只更新 `developer`。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.4.14`。
+- 变更内容：删除 `createNacosRuntimeOptions` 的重复 `PORT` 入参，改由 `registerPort` 直接接收 `process.env.PORT`。
+- 机器侧操作：无需新增环境变量，继续保留 `PORT`、`NACOS_SERVER` 和 `NACOS_NAMESPACE`。
+- 验证：执行 `yarn format:check && yarn typecheck && yarn test --runInBand && yarn test:e2e --runInBand && yarn build`，并校验 Compose。
+- 回滚：恢复上一条健康 Skyline 完整 SHA，并将共享包固定回 `1.4.13`。
+
+## 2026-08-28：升级 Base Schema 并统一端口变量
+
+- 影响范围：Home；Company 单机例外和部署拓扑不变，本次只更新 `developer`。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.4.13`，Data ID 仍为 `chat-web-skyline-service.yaml`。
+- 变更内容：升级共享包，在 `NacosModule.forRoot()` 调用处显式映射 Nacos 环境；本地 `.env.example` 只保留 `NODE_ENV`、`PORT`、`NACOS_SERVER`、`NACOS_NAMESPACE` 四个字段，服务名继续由代码提供。
+- 机器侧操作：Home 现有部署已使用 `PORT=4020`，无需新增变量；确认 `NACOS_SERVER`、`NACOS_NAMESPACE` 正确。
+- 验证：执行 `yarn format:check && yarn typecheck && yarn test && yarn test:e2e && yarn build`，并校验 Compose；部署后检查 `/health/live` 和 Nacos 中的 `chat-web-skyline-service:4020` 实例。
+- 回滚：恢复上一条健康 Skyline 完整 SHA，并将共享包固定回 `1.4.12`；Nacos 数据不回滚。
+
 ## 2026-08-27：补齐 Base Schema 对等依赖
 
 - 影响范围：Home 镜像的依赖层；Company 单机例外、容器、域名、端口、Nacos Data ID 和部署拓扑不变，本次不发布。

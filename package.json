@@ -10,8 +10,8 @@
         "yarn": ">=1.22 <2"
     },
     "scripts": {
-        "install": "yarn install --ignore-scripts",
-        "schema:update": "yarn upgrade @wlisfes/chat-web-base-schema --latest",
+        "install": "node scripts/yarn-auth.cjs install --ignore-scripts",
+        "schema:update": "node scripts/yarn-auth.cjs upgrade @wlisfes/chat-web-base-schema --latest",
         "build": "nest build",
         "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
         "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -34,7 +34,7 @@
         "@nestjs/platform-express": "11.2.3",
         "@nestjs/swagger": "11.4.6",
         "@nestjs/typeorm": "11.0.3",
-        "@wlisfes/chat-web-base-schema": "1.4.12",
+        "@wlisfes/chat-web-base-schema": "1.4.14",
         "class-transformer": "0.5.1",
         "express": "5.2.1",
         "js-yaml": "4.1.0",

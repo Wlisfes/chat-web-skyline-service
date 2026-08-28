@@ -17,7 +17,7 @@ yarn install
 yarn dev
 ```
 
-未设置 `PORT` 时默认监听 `3000`：
+未设置 `PORT` 时默认监听 `4020`：
 
 - `GET /` 返回 `Hello World!`
 - `GET /health/live` 返回进程存活状态
@@ -26,13 +26,13 @@ yarn dev
 
 ## 共享基础包
 
-项目安装 `@wlisfes/chat-web-base-schema@1.4.11`，并按照该包的 `peerDependencies` 与 `chat-web-account-service` 的版本补齐：
+项目安装 `@wlisfes/chat-web-base-schema@1.4.14`，并按照该包的 `peerDependencies` 与 `chat-web-account-service` 的版本补齐：
 
 - `@nestjs/swagger`、`@nestjs/typeorm`
 - `class-transformer`、`express`
 - `redis`、`typeorm`
 
-这些依赖用于保证 Base Schema 的全部导出入口可以正常解析；当前空项目仍未连接数据库或 Redis。`@wlisfes` 私有包通过仓库 `.npmrc` 指向 GitHub Packages，CI 和 Docker 构建使用 `NODE_AUTH_TOKEN`/BuildKit Secret，不在仓库保存 Token。
+这些依赖用于保证 Base Schema 的全部导出入口可以正常解析；当前空项目仍未连接数据库或 Redis。`@wlisfes` 私有包通过仓库 `.npmrc` 指向 GitHub Packages，本地安装需已执行 `gh auth login` 或设置 `NODE_AUTH_TOKEN`；CI 和 Docker 构建使用 `NODE_AUTH_TOKEN`/BuildKit Secret，不在仓库保存 Token。
 
 ## 验证
 
