@@ -6,8 +6,10 @@ import { requestContextMiddleware } from '@wlisfes/chat-web-base-schema/request-
 import { AppModule } from '@/app.module'
 import { ReadableConsoleLogger } from '@/modules/logger/readable-console-logger.service'
 
+const isProduction = process.env.NODE_ENV === 'production'
 const logger = new ReadableConsoleLogger({
     compact: true,
+    compactRequestJson: isProduction,
     colors: true,
     prefix: process.env.NACOS_SERVICE_NAME,
     json: false
