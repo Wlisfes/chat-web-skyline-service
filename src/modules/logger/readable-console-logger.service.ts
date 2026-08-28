@@ -10,6 +10,14 @@ function colorText(colors: boolean, color: TerminalColor, value: string): string
     return colors ? styleText(color, value, { validateStream: false }) : value
 }
 
+function colorHex(colors: boolean, color: string, value: string): string {
+    if (!colors) return value
+
+    const [red, green, blue] = color.match(/[\da-fA-F]{2}/g)?.map(channel => Number.parseInt(channel, 16)) ?? []
+    if ([red, green, blue].some(channel => channel === undefined)) return value
+    return `\u001B[38;2;${red};${green};${blue}m${value}\u001B[39m`
+}
+
 function colorJson(json: string, colors: boolean): string {
     if (!colors) return json
 
@@ -34,7 +42,7 @@ function isRequestLogPayload(message: unknown): message is RequestLogPayload {
     )
 }
 
-function formatRequestLogPayload(payload: RequestLogPayload, colors: boolean): string {
+function formatRequestLogDetails(payload: RequestLogPayload, colors: boolean): string {
     const details = {
         message: payload.message,
         service: payload.service,
@@ -56,12 +64,7 @@ function formatRequestLogPayload(payload: RequestLogPayload, colors: boolean): s
         ...(payload.spanId ? { spanId: payload.spanId } : {})
     }
 
-    const logId = colorText(colors, 'magentaBright', `日志ID:[${payload.logId}]`)
-    const url = colorText(colors, 'cyanBright', `接口地址:${payload.url}`)
-    const duration = colorText(colors, 'yellowBright', `耗时:${payload.durationMs}ms`)
-    const json = colorJson(JSON.stringify(details, null, 4), colors)
-
-    return `${logId}  ${url}  ${duration}  ${json}`
+    return colorJson(JSON.stringify(details, null, 4), colors)
 }
 
 /** 保留 NestJS ConsoleLogger 行为，只改善 HTTP 请求对象在控制台和 Dozzle 中的可读性。 */
@@ -71,12 +74,33 @@ export class ReadableConsoleLogger extends ConsoleLogger {
     }
 
     protected override stringifyMessage(message: unknown, logLevel: LogLevel): string {
-        if (isRequestLogPayload(message)) return formatRequestLogPayload(message, this.options.colors === true)
+        if (isRequestLogPayload(message)) return formatRequestLogDetails(message, this.options.colors === true)
         return super.stringifyMessage(message, logLevel)
     }
 
-    protected override formatPid(pid: number): string {
-        return `服务名称:[${this.options.prefix ?? 'Nest'}] 进程ID:[${pid}]  `
+    protected override formatMessage(
+        logLevel: LogLevel,
+        message: unknown,
+        _pidMessage: string,
+        _formattedLogLevel: string,
+        contextMessage: string,
+        timestampDiff: string
+    ): string {
+        const colors = this.options.colors === true
+        const requestLog = isRequestLogPayload(message) ? message : undefined
+        const serviceName = colorHex(colors, '#ff5c93', `服务名称:[${this.options.prefix ?? 'Nest'}]`)
+        const processId = colorHex(colors, '#fc5404', `进程ID:[${process.pid}]`)
+        const timestamp = colorHex(colors, '#fb9300', this.getTimestamp())
+        const levelName = logLevel === 'log' ? 'INFO' : logLevel.toUpperCase()
+        const level = colorText(colors, logLevel === 'error' || logLevel === 'fatal' ? 'redBright' : 'greenBright', levelName)
+        const logId = requestLog ? colorHex(colors, '#536dfe', `日志ID:[${requestLog.logId}]`) : ''
+        const method = contextMessage ? colorHex(colors, '#ff3d68', `执行方法:[${contextMessage}]`) : ''
+        const url = requestLog ? colorHex(colors, '#fc5404', `接口地址:[${requestLog.url}]`) : ''
+        const duration = requestLog ? colorHex(colors, '#ff3d68', `耗时:${requestLog.durationMs}ms`) : ''
+        const header = [serviceName, processId, timestamp, level, logId, method, url, duration].filter(Boolean).join('  ')
+        const content = this.stringifyMessage(message, logLevel)
+
+        return `${header}  ${content}${timestampDiff}\n`
     }
 
     protected override getTimestamp(): string {
@@ -97,6 +121,6 @@ export class ReadableConsoleLogger extends ConsoleLogger {
     }
 
     protected override formatContext(context: string): string {
-        return super.formatContext(context.endsWith(':HTTP') ? 'LoggerMiddleware' : context)
+        return context.endsWith(':HTTP') ? 'LoggerMiddleware' : context
     }
 }
