@@ -1,5 +1,26 @@
 import { ConsoleLogger, type ConsoleLoggerOptions, type LogLevel } from '@nestjs/common'
 import type { RequestLogPayload } from '@wlisfes/chat-web-base-schema/logging'
+import { styleText } from 'node:util'
+
+type TerminalColor = Parameters<typeof styleText>[0]
+
+const JSON_TOKEN_PATTERN = /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g
+
+function colorText(colors: boolean, color: TerminalColor, value: string): string {
+    return colors ? styleText(color, value, { validateStream: false }) : value
+}
+
+function colorJson(json: string, colors: boolean): string {
+    if (!colors) return json
+
+    return json.replace(JSON_TOKEN_PATTERN, (token, quoted: string | undefined, colon: string | undefined) => {
+        if (quoted && colon) return `${colorText(true, 'cyanBright', quoted)}${colon}`
+        if (quoted) return colorText(true, 'greenBright', quoted)
+        if (token === 'null') return colorText(true, 'gray', token)
+        if (token === 'true' || token === 'false') return colorText(true, 'magentaBright', token)
+        return colorText(true, 'yellowBright', token)
+    })
+}
 
 function isRequestLogPayload(message: unknown): message is RequestLogPayload {
     if (!message || typeof message !== 'object') return false
@@ -13,7 +34,7 @@ function isRequestLogPayload(message: unknown): message is RequestLogPayload {
     )
 }
 
-function formatRequestLogPayload(payload: RequestLogPayload): string {
+function formatRequestLogPayload(payload: RequestLogPayload, colors: boolean): string {
     const details = {
         message: payload.message,
         service: payload.service,
@@ -35,7 +56,12 @@ function formatRequestLogPayload(payload: RequestLogPayload): string {
         ...(payload.spanId ? { spanId: payload.spanId } : {})
     }
 
-    return `日志ID:[${payload.logId}]  接口地址:${payload.url}  耗时:${payload.durationMs}ms  ${JSON.stringify(details, null, 4)}`
+    const logId = colorText(colors, 'magentaBright', `日志ID:[${payload.logId}]`)
+    const url = colorText(colors, 'cyanBright', `接口地址:${payload.url}`)
+    const duration = colorText(colors, 'yellowBright', `耗时:${payload.durationMs}ms`)
+    const json = colorJson(JSON.stringify(details, null, 4), colors)
+
+    return `${logId}  ${url}  ${duration}  ${json}`
 }
 
 /** 保留 NestJS ConsoleLogger 行为，只改善 HTTP 请求对象在控制台和 Dozzle 中的可读性。 */
@@ -45,7 +71,7 @@ export class ReadableConsoleLogger extends ConsoleLogger {
     }
 
     protected override stringifyMessage(message: unknown, logLevel: LogLevel): string {
-        if (isRequestLogPayload(message)) return formatRequestLogPayload(message)
+        if (isRequestLogPayload(message)) return formatRequestLogPayload(message, this.options.colors === true)
         return super.stringifyMessage(message, logLevel)
     }
 
