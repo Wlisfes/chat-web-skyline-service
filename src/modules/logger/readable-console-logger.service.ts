@@ -3,12 +3,6 @@ import type { RequestLogPayload } from '@wlisfes/chat-web-base-schema/logging'
 import { styleText } from 'node:util'
 
 type TerminalColor = Parameters<typeof styleText>[0]
-type JsonLogOptions = {
-    context: string
-    logLevel: LogLevel
-    writeStreamType?: 'stdout' | 'stderr'
-    errorStack?: unknown
-}
 
 const JSON_TOKEN_PATTERN = /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g
 
@@ -48,9 +42,9 @@ function isRequestLogPayload(message: unknown): message is RequestLogPayload {
     )
 }
 
-function createRequestLogDetails(payload: RequestLogPayload, includeMessage = true) {
+function createRequestLogDetails(payload: RequestLogPayload) {
     return {
-        ...(includeMessage ? { message: payload.message } : {}),
+        message: payload.message,
         service: payload.service,
         logId: payload.logId,
         requestId: payload.requestId,
@@ -72,7 +66,7 @@ function createRequestLogDetails(payload: RequestLogPayload, includeMessage = tr
 }
 
 function formatRequestLogDetails(payload: RequestLogPayload, colors: boolean): string {
-    return colorJson(JSON.stringify(createRequestLogDetails(payload), null, 4), colors)
+    return colorJson(JSON.stringify(createRequestLogDetails(payload)), colors)
 }
 
 function formatTimestamp(date: Date): string {
@@ -115,45 +109,6 @@ export class ReadableConsoleLogger extends ConsoleLogger {
         const content = this.stringifyMessage(message, logLevel)
 
         return `${header}  ${content}${timestampDiff}\n`
-    }
-
-    protected override getJsonLogObject(message: unknown, options: JsonLogOptions) {
-        const executionMethod = options.context.endsWith(':HTTP') ? 'LoggerMiddleware' : options.context
-        const level = (options.logLevel === 'log' ? 'info' : options.logLevel) as LogLevel
-        const timestamp = Date.now()
-
-        return {
-            ...super.getJsonLogObject(message, { ...options, context: executionMethod }),
-            level,
-            time: new Date(timestamp).toISOString(),
-            service: this.options.prefix ?? 'Nest',
-            ...(executionMethod ? { executionMethod } : {})
-        }
-    }
-
-    protected override printAsJson(message: unknown, options: JsonLogOptions): void {
-        if (!isRequestLogPayload(message)) {
-            super.printAsJson(message, options)
-            return
-        }
-
-        const timestamp = Date.now()
-        const executionMethod = options.context.endsWith(':HTTP') ? 'LoggerMiddleware' : options.context
-        const record = {
-            level: options.logLevel === 'log' ? 'info' : options.logLevel,
-            time: new Date(timestamp).toISOString(),
-            commit: this.formatReadableHeader(options.logLevel, executionMethod, message, false, formatTimestamp(new Date(timestamp))),
-            ...createRequestLogDetails(message, false),
-            ...(options.errorStack ? { stack: options.errorStack } : {})
-        }
-        const line = JSON.stringify(record)
-
-        if (this.options.forceConsole) {
-            if (options.writeStreamType === 'stderr') console.error(line)
-            else console.log(line)
-            return
-        }
-        process[options.writeStreamType ?? 'stdout'].write(`${line}\n`)
     }
 
     protected override getTimestamp(): string {
