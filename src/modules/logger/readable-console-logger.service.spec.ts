@@ -44,11 +44,11 @@ describe('ReadableConsoleLogger', () => {
         expect(lines[0]).toContain('日志ID:[34ec4ca9-2abf-49b8-85f6-77d7fd23ea1d]')
         expect(lines[0]).toContain('接口地址:[/api/windows/chunk/enums/select]')
         expect(lines[0]).toContain('耗时:12ms')
-        expect(lines[0]).toContain('"message": "HTTP请求完成"')
-        expect(lines[0]).toContain('"service": "chat-web-skyline-service"')
-        expect(lines[0]).toContain('"requestId": "34ec4ca9-2abf-49b8-85f6-77d7fd23ea1d"')
-        expect(lines[0]).toContain('"durationMs": 12')
-        expect(lines[0]).toContain('"xxxx": "xxxx"')
+        expect(lines[0]).toContain('"message":"HTTP请求完成"')
+        expect(lines[0]).toContain('"service":"chat-web-skyline-service"')
+        expect(lines[0]).toContain('"requestId":"34ec4ca9-2abf-49b8-85f6-77d7fd23ea1d"')
+        expect(lines[0]).toContain('"durationMs":12')
+        expect(lines[0]).toContain('"xxxx":"xxxx"')
         expect(lines[0]).not.toContain('Object(16)')
     })
 
@@ -85,7 +85,7 @@ describe('ReadableConsoleLogger', () => {
         }
 
         expect(lines).toHaveLength(1)
-        expect(lines[0]).toContain('"body": null')
+        expect(lines[0]).toContain('"body":null')
     })
 
     it('启用颜色时为请求头和 JSON 字段输出不同颜色', () => {
@@ -132,16 +132,16 @@ describe('ReadableConsoleLogger', () => {
         expect(lines[0]).toContain('\u001B[92m"GET"\u001B[39m')
         expect(lines[0]).toContain('\u001B[93m200\u001B[39m')
         expect(lines[0]).toContain('\u001B[90mnull\u001B[39m')
-        expect(stripVTControlCharacters(lines[0])).toContain('"body": null')
+        expect(stripVTControlCharacters(lines[0])).toContain('"body":null')
     })
 
-    it('生产环境将请求输出为 Dozzle 可展开的单行 JSON', () => {
+    it('将请求对象压缩为单行文本', () => {
         const lines: string[] = []
         const write = jest.spyOn(process.stdout, 'write').mockImplementation(value => {
             lines.push(String(value))
             return true
         })
-        const logger = new ReadableConsoleLogger({ colors: false, compact: true, json: true, prefix: 'chat-web-skyline-service' })
+        const logger = new ReadableConsoleLogger({ colors: false, compact: true, json: false, prefix: 'chat-web-skyline-service' })
         const payload: RequestLogPayload = {
             message: 'HTTP请求完成',
             service: 'chat-web-skyline-service',
@@ -170,21 +170,16 @@ describe('ReadableConsoleLogger', () => {
         expect(lines).toHaveLength(1)
         expect(lines[0].trim().split(/\r?\n/)).toHaveLength(1)
         expect(lines[0]).not.toContain('\u001B[')
-
-        const record = JSON.parse(lines[0]) as Record<string, unknown>
-        expect(record.level).toBe('info')
-        expect(record.commit).toContain('服务名称:[chat-web-skyline-service]')
-        expect(record.commit).toContain('执行方法:[LoggerMiddleware]')
-        expect(record.commit).toContain('日志ID:[dozzle-request]')
-        expect(record.commit).toContain('接口地址:[/]')
-        expect(record.commit).toContain('耗时:3ms')
-        expect(record.service).toBe('chat-web-skyline-service')
-        expect(record.logId).toBe('dozzle-request')
-        expect(record.method).toBe('GET')
-        expect(record.url).toBe('/')
-        expect(record.statusCode).toBe(200)
-        expect(record.body).toBeNull()
-        expect(record).not.toHaveProperty('message')
-        expect(record).not.toHaveProperty('details')
+        expect(lines[0]).toContain('服务名称:[chat-web-skyline-service]')
+        expect(lines[0]).toContain('执行方法:[LoggerMiddleware]')
+        expect(lines[0]).toContain('日志ID:[dozzle-request]')
+        expect(lines[0]).toContain('接口地址:[/]')
+        expect(lines[0]).toContain('耗时:3ms')
+        expect(lines[0]).toContain(
+            '{"message":"HTTP请求完成","service":"chat-web-skyline-service","logId":"dozzle-request","requestId":"dozzle-request"'
+        )
+        expect(lines[0]).toContain('"statusCode":200')
+        expect(lines[0]).toContain('"body":null}')
+        expect(lines[0]).not.toContain('"message": "HTTP请求完成"')
     })
 })
