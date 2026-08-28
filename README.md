@@ -32,7 +32,7 @@ yarn dev
 - `class-transformer`、`express`
 - `redis`、`typeorm`
 
-这些依赖用于保证 Base Schema 的全部导出入口可以正常解析；当前空项目仍未连接数据库或 Redis。`@wlisfes` 私有包通过仓库 `.npmrc` 指向 GitHub Packages，本地安装需已执行 `gh auth login` 或设置 `NODE_AUTH_TOKEN`；CI 和 Docker 构建使用 `NODE_AUTH_TOKEN`/BuildKit Secret，不在仓库保存 Token。
+这些依赖用于保证 Base Schema 的全部导出入口可以正常解析；当前空项目仍未连接数据库或 Redis。`@wlisfes` 私有包通过仓库 `.npmrc` 指向 GitHub Packages，`yarn run install` 和 `yarn run schema:update` 会依次复用 `NODE_AUTH_TOKEN`、`gh auth token` 或用户级 `~/.npmrc` 中的 GitHub Packages Token。CI 和 Docker 构建继续使用 `NODE_AUTH_TOKEN`/BuildKit Secret，不在仓库保存 Token。
 
 ## 验证
 

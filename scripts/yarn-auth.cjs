@@ -3,9 +3,24 @@ const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
+function hasUserGitHubPackagesAuth() {
+    const userConfig = process.env.NPM_CONFIG_USERCONFIG || path.join(os.homedir(), '.npmrc')
+
+    try {
+        return fs
+            .readFileSync(userConfig, 'utf8')
+            .split(/\r?\n/)
+            .some(line => /^\s*\/\/npm\.pkg\.github\.com\/:_authToken\s*=\s*\S+\s*$/i.test(line))
+    } catch {
+        return false
+    }
+}
+
 function getAuthToken() {
-    if (process.env.NODE_AUTH_TOKEN) {
-        return process.env.NODE_AUTH_TOKEN
+    const environmentToken = process.env.NODE_AUTH_TOKEN?.trim()
+
+    if (environmentToken) {
+        return environmentToken
     }
 
     const result = spawnSync('gh', ['auth', 'token'], {
@@ -15,15 +30,45 @@ function getAuthToken() {
     })
     const token = result.stdout?.trim()
 
-    if (result.status !== 0 || !token) {
-        throw new Error('请先执行 gh auth login，或设置 NODE_AUTH_TOKEN。')
+    if (result.status === 0 && token) {
+        return token
     }
 
-    return token
+    if (hasUserGitHubPackagesAuth()) {
+        return undefined
+    }
+
+    throw new Error('未找到 GitHub Packages 凭据。请配置用户级 .npmrc、执行 gh auth login --scopes read:packages，或设置 NODE_AUTH_TOKEN。')
+}
+
+function resolveYarnCli() {
+    if (process.env.npm_execpath) {
+        return process.env.npm_execpath
+    }
+
+    if (process.platform !== 'win32') {
+        return undefined
+    }
+
+    const result = spawnSync('where.exe', ['yarn.cmd'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        windowsHide: true
+    })
+    const launchers = result.stdout?.split(/\r?\n/).filter(Boolean) ?? []
+
+    for (const launcher of launchers) {
+        const yarnCli = path.join(path.dirname(launcher), 'node_modules', 'yarn', 'bin', 'yarn.js')
+        if (fs.existsSync(yarnCli)) {
+            return yarnCli
+        }
+    }
+
+    throw new Error('未找到 Yarn 1.x CLI，请确认 yarn 命令已正确安装。')
 }
 
 function runYarn(args, env) {
-    const yarnCli = process.env.npm_execpath
+    const yarnCli = resolveYarnCli()
 
     if (yarnCli) {
         return spawnSync(process.execPath, [yarnCli, ...args], {
@@ -33,7 +78,7 @@ function runYarn(args, env) {
         })
     }
 
-    return spawnSync(process.platform === 'win32' ? 'yarn.cmd' : 'yarn', args, {
+    return spawnSync('yarn', args, {
         env,
         stdio: 'inherit',
         windowsHide: true
@@ -46,22 +91,24 @@ const userConfig = path.join(tempDirectory, '.npmrc')
 
 try {
     const token = getAuthToken()
-    fs.writeFileSync(
-        userConfig,
-        [
-            '@wlisfes:registry=https://npm.pkg.github.com',
-            '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}',
-            'always-auth=true',
-            ''
-        ].join('\n'),
-        { mode: 0o600 }
-    )
+    const environment = { ...process.env }
 
-    const result = runYarn(args, {
-        ...process.env,
-        NODE_AUTH_TOKEN: token,
-        NPM_CONFIG_USERCONFIG: userConfig
-    })
+    if (token) {
+        fs.writeFileSync(
+            userConfig,
+            [
+                '@wlisfes:registry=https://npm.pkg.github.com',
+                '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}',
+                'always-auth=true',
+                ''
+            ].join('\n'),
+            { mode: 0o600 }
+        )
+        environment.NODE_AUTH_TOKEN = token
+        environment.NPM_CONFIG_USERCONFIG = userConfig
+    }
+
+    const result = runYarn(args, environment)
 
     if (result.error) {
         throw result.error
