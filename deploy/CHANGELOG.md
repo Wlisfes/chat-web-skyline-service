@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-08-28：服务名改由环境变量提供
+
+- 影响范围：本地开发和 Home；Company 单机例外和部署拓扑不变，本次只更新 `developer`。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.4.14`。
+- 变更内容：`createNacosRuntimeOptions` 的 `serviceName` 改为读取 `NACOS_SERVICE_NAME`。
+- 机器侧操作：在 `/opt/chat-web-skyline-service/.env` 中增加 `NACOS_SERVICE_NAME=chat-web-skyline-service` 后重新部署。
+- 验证：执行项目完整校验，并确认 Nacos 中注册的服务名和 Data ID 正确。
+- 回滚：恢复上一完整 Git SHA，并删除机器侧 `NACOS_SERVICE_NAME`。
+
 ## 2026-08-28：删除重复的 Nacos 端口入参
 
 - 影响范围：Home；Company 单机例外和部署拓扑不变，本次只更新 `developer`。

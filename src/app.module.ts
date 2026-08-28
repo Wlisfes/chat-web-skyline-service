@@ -9,7 +9,7 @@ import { AppService } from './app.service'
         ConfigModule.forRoot({ isGlobal: true }),
         NacosModule.forRoot(
             createNacosRuntimeOptions({
-                serviceName: 'chat-web-skyline-service',
+                serviceName: process.env.NACOS_SERVICE_NAME!,
                 registerPort: process.env.PORT,
                 NACOS_SERVER: process.env.NACOS_SERVER,
                 NACOS_NAMESPACE: process.env.NACOS_NAMESPACE
