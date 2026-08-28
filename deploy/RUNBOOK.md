@@ -16,7 +16,7 @@ Skyline 当前为 NestJS 11 空项目，通过 `chat-web-base-schema` 连接 Nac
 
 ## 配置
 
-机器配置位于 `/opt/chat-web-skyline-service/.env`。除部署环境、端口、时区与 Docker 网络外，还必须提供 `NACOS_SERVER` 和 `NACOS_NAMESPACE`。默认 Data ID 为 `chat-web-skyline-service.yaml`，服务注册名为 `chat-web-skyline-service`；真实机器配置不得提交到仓库。
+机器配置位于 `/opt/chat-web-skyline-service/.env`。服务统一读取 `PORT`，容器内固定为 `4020`；此外还必须提供 `NACOS_SERVER` 和 `NACOS_NAMESPACE`。默认 Data ID 为 `chat-web-skyline-service.yaml`，服务注册名为 `chat-web-skyline-service`；真实机器配置不得提交到仓库。
 
 ## 验证
 

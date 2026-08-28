@@ -2,6 +2,10 @@
 
 本仓库继承 `F:/chat-web-service/AGENTS.md` 的通用微服务规约，并补充以下约束。
 
+## 修改范围
+
+- 用户只点名 `chat-web-skyline-service` 时，只修改本仓库，不得联动修改其他消费服务；确需扩大范围时必须先获得用户明确同意。
+
 ## 当前工程边界
 
 - 当前代码为 NestJS 11 初始化后的空项目，只保留默认首页、`/health/live` 和 `chat-web-base-schema` 提供的 Nacos 配置与服务注册能力。

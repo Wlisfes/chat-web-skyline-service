@@ -11,13 +11,13 @@ async function bootstrap() {
     })
     app.enableShutdownHooks()
     app.use(requestContextMiddleware)
-    app.use(createRequestLoggingMiddleware({ serviceName: process.env.NACOS_SERVICE_NAME }))
+    app.use(createRequestLoggingMiddleware({ serviceName: 'chat-web-skyline-service' }))
     await app.init()
 
     return await setupSwagger(app, {
         title: `Chat Web 天线基础服务 API`,
         description: `Chat Web 账号、用户及身份信息管理接口文档`,
-        port: process.env.NODE_PORT,
+        port: process.env.PORT,
         NODE_ENV: process.env.NODE_ENV ?? 'development'
     }).then(async event => {
         console.log(`Chat Web 天线基础服务启动[${event.NODE_ENV}]：http://127.0.0.1:${event.port}`, 'Bootstrap')

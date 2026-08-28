@@ -17,7 +17,7 @@ yarn install
 yarn dev
 ```
 
-未设置 `PORT` 时默认监听 `3000`：
+未设置 `PORT` 时默认监听 `4020`：
 
 - `GET /` 返回 `Hello World!`
 - `GET /health/live` 返回进程存活状态
@@ -26,7 +26,7 @@ yarn dev
 
 ## 共享基础包
 
-项目安装 `@wlisfes/chat-web-base-schema@1.4.12`，并按照该包的 `peerDependencies` 与 `chat-web-account-service` 的版本补齐：
+项目安装 `@wlisfes/chat-web-base-schema@1.4.13`，并按照该包的 `peerDependencies` 与 `chat-web-account-service` 的版本补齐：
 
 - `@nestjs/swagger`、`@nestjs/typeorm`
 - `class-transformer`、`express`
