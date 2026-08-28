@@ -44,11 +44,12 @@ describe('ReadableConsoleLogger', () => {
         expect(lines[0]).toContain('日志ID:[34ec4ca9-2abf-49b8-85f6-77d7fd23ea1d]')
         expect(lines[0]).toContain('接口地址:[/api/windows/chunk/enums/select]')
         expect(lines[0]).toContain('耗时:12ms')
-        expect(lines[0]).toContain('"message":"HTTP请求完成"')
-        expect(lines[0]).toContain('"service":"chat-web-skyline-service"')
-        expect(lines[0]).toContain('"requestId":"34ec4ca9-2abf-49b8-85f6-77d7fd23ea1d"')
-        expect(lines[0]).toContain('"durationMs":12')
-        expect(lines[0]).toContain('"xxxx":"xxxx"')
+        expect(lines[0].trim().split(/\r?\n/).length).toBeGreaterThan(1)
+        expect(lines[0]).toContain('"message": "HTTP请求完成"')
+        expect(lines[0]).toContain('"service": "chat-web-skyline-service"')
+        expect(lines[0]).not.toContain('"requestId"')
+        expect(lines[0]).toContain('"durationMs": 12')
+        expect(lines[0]).toContain('"xxxx": "xxxx"')
         expect(lines[0]).not.toContain('Object(16)')
     })
 
@@ -85,7 +86,7 @@ describe('ReadableConsoleLogger', () => {
         }
 
         expect(lines).toHaveLength(1)
-        expect(lines[0]).toContain('"body":null')
+        expect(lines[0]).toContain('"body": null')
     })
 
     it('启用颜色时为请求头和 JSON 字段输出不同颜色', () => {
@@ -132,16 +133,22 @@ describe('ReadableConsoleLogger', () => {
         expect(lines[0]).toContain('\u001B[92m"GET"\u001B[39m')
         expect(lines[0]).toContain('\u001B[93m200\u001B[39m')
         expect(lines[0]).toContain('\u001B[90mnull\u001B[39m')
-        expect(stripVTControlCharacters(lines[0])).toContain('"body":null')
+        expect(stripVTControlCharacters(lines[0])).toContain('"body": null')
     })
 
-    it('将请求对象压缩为单行文本', () => {
+    it('生产环境将请求对象压缩为单行文本', () => {
         const lines: string[] = []
         const write = jest.spyOn(process.stdout, 'write').mockImplementation(value => {
             lines.push(String(value))
             return true
         })
-        const logger = new ReadableConsoleLogger({ colors: false, compact: true, json: false, prefix: 'chat-web-skyline-service' })
+        const logger = new ReadableConsoleLogger({
+            colors: false,
+            compact: true,
+            compactRequestJson: true,
+            json: false,
+            prefix: 'chat-web-skyline-service'
+        })
         const payload: RequestLogPayload = {
             message: 'HTTP请求完成',
             service: 'chat-web-skyline-service',
@@ -175,9 +182,8 @@ describe('ReadableConsoleLogger', () => {
         expect(lines[0]).toContain('日志ID:[dozzle-request]')
         expect(lines[0]).toContain('接口地址:[/]')
         expect(lines[0]).toContain('耗时:3ms')
-        expect(lines[0]).toContain(
-            '{"message":"HTTP请求完成","service":"chat-web-skyline-service","logId":"dozzle-request","requestId":"dozzle-request"'
-        )
+        expect(lines[0]).toContain('{"message":"HTTP请求完成","service":"chat-web-skyline-service","logId":"dozzle-request","method":"GET"')
+        expect(lines[0]).not.toContain('"requestId"')
         expect(lines[0]).toContain('"statusCode":200')
         expect(lines[0]).toContain('"body":null}')
         expect(lines[0]).not.toContain('"message": "HTTP请求完成"')

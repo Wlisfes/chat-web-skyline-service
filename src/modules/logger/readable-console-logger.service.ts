@@ -3,6 +3,9 @@ import type { RequestLogPayload } from '@wlisfes/chat-web-base-schema/logging'
 import { styleText } from 'node:util'
 
 type TerminalColor = Parameters<typeof styleText>[0]
+type ReadableConsoleLoggerOptions = ConsoleLoggerOptions & {
+    compactRequestJson?: boolean
+}
 
 const JSON_TOKEN_PATTERN = /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g
 
@@ -47,7 +50,6 @@ function createRequestLogDetails(payload: RequestLogPayload) {
         message: payload.message,
         service: payload.service,
         logId: payload.logId,
-        requestId: payload.requestId,
         method: payload.method,
         url: payload.url,
         statusCode: payload.statusCode,
@@ -65,8 +67,8 @@ function createRequestLogDetails(payload: RequestLogPayload) {
     }
 }
 
-function formatRequestLogDetails(payload: RequestLogPayload, colors: boolean): string {
-    return colorJson(JSON.stringify(createRequestLogDetails(payload)), colors)
+function formatRequestLogDetails(payload: RequestLogPayload, colors: boolean, compact: boolean): string {
+    return colorJson(JSON.stringify(createRequestLogDetails(payload), null, compact ? undefined : 4), colors)
 }
 
 function formatTimestamp(date: Date): string {
@@ -87,12 +89,17 @@ function formatTimestamp(date: Date): string {
 
 /** 保留 NestJS ConsoleLogger 行为，只改善 HTTP 请求对象在控制台和 Dozzle 中的可读性。 */
 export class ReadableConsoleLogger extends ConsoleLogger {
-    constructor(options: ConsoleLoggerOptions) {
+    private readonly compactRequestJson: boolean
+
+    constructor(options: ReadableConsoleLoggerOptions) {
         super(options)
+        this.compactRequestJson = options.compactRequestJson === true
     }
 
     protected override stringifyMessage(message: unknown, logLevel: LogLevel): string {
-        if (isRequestLogPayload(message)) return formatRequestLogDetails(message, this.options.colors === true)
+        if (isRequestLogPayload(message)) {
+            return formatRequestLogDetails(message, this.options.colors === true, this.compactRequestJson)
+        }
         return super.stringifyMessage(message, logLevel)
     }
 
