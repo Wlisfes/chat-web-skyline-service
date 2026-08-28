@@ -6,11 +6,12 @@ import { requestContextMiddleware } from '@wlisfes/chat-web-base-schema/request-
 import { AppModule } from '@/app.module'
 import { ReadableConsoleLogger } from '@/modules/logger/readable-console-logger.service'
 
+const isProduction = process.env.NODE_ENV === 'production'
 const logger = new ReadableConsoleLogger({
     compact: true,
-    colors: true,
+    colors: !isProduction,
     prefix: process.env.NACOS_SERVICE_NAME,
-    json: false
+    json: isProduction
 })
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger })

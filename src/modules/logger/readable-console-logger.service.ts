@@ -3,6 +3,12 @@ import type { RequestLogPayload } from '@wlisfes/chat-web-base-schema/logging'
 import { styleText } from 'node:util'
 
 type TerminalColor = Parameters<typeof styleText>[0]
+type JsonLogOptions = {
+    context: string
+    logLevel: LogLevel
+    writeStreamType?: 'stdout' | 'stderr'
+    errorStack?: unknown
+}
 
 const JSON_TOKEN_PATTERN = /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g
 
@@ -101,6 +107,33 @@ export class ReadableConsoleLogger extends ConsoleLogger {
         const content = this.stringifyMessage(message, logLevel)
 
         return `${header}  ${content}${timestampDiff}\n`
+    }
+
+    protected override getJsonLogObject(message: unknown, options: JsonLogOptions) {
+        const executionMethod = options.context.endsWith(':HTTP') ? 'LoggerMiddleware' : options.context
+        const level = (options.logLevel === 'log' ? 'info' : options.logLevel) as LogLevel
+        const timestamp = Date.now()
+
+        if (isRequestLogPayload(message)) {
+            return {
+                level,
+                pid: process.pid,
+                timestamp,
+                time: new Date(timestamp).toISOString(),
+                executionMethod,
+                ...message,
+                body: message.body ?? null,
+                ...(options.errorStack ? { stack: options.errorStack } : {})
+            }
+        }
+
+        return {
+            ...super.getJsonLogObject(message, { ...options, context: executionMethod }),
+            level,
+            time: new Date(timestamp).toISOString(),
+            service: this.options.prefix ?? 'Nest',
+            ...(executionMethod ? { executionMethod } : {})
+        }
     }
 
     protected override getTimestamp(): string {
