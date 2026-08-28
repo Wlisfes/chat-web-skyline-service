@@ -48,8 +48,8 @@ function isRequestLogPayload(message: unknown): message is RequestLogPayload {
     )
 }
 
-function formatRequestLogDetails(payload: RequestLogPayload, colors: boolean): string {
-    const details = {
+function createRequestLogDetails(payload: RequestLogPayload) {
+    return {
         message: payload.message,
         service: payload.service,
         logId: payload.logId,
@@ -69,8 +69,26 @@ function formatRequestLogDetails(payload: RequestLogPayload, colors: boolean): s
         ...(payload.traceId ? { traceId: payload.traceId } : {}),
         ...(payload.spanId ? { spanId: payload.spanId } : {})
     }
+}
 
-    return colorJson(JSON.stringify(details, null, 4), colors)
+function formatRequestLogDetails(payload: RequestLogPayload, colors: boolean): string {
+    return colorJson(JSON.stringify(createRequestLogDetails(payload), null, 4), colors)
+}
+
+function formatTimestamp(date: Date): string {
+    const parts = new Intl.DateTimeFormat('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(date)
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
+    const milliseconds = date.getMilliseconds().toString().padStart(3, '0')
+
+    return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}.${milliseconds}`
 }
 
 /** 保留 NestJS ConsoleLogger 行为，只改善 HTTP 请求对象在控制台和 Dozzle 中的可读性。 */
@@ -92,18 +110,8 @@ export class ReadableConsoleLogger extends ConsoleLogger {
         contextMessage: string,
         timestampDiff: string
     ): string {
-        const colors = this.options.colors === true
         const requestLog = isRequestLogPayload(message) ? message : undefined
-        const serviceName = colorText(colors, 'greenBright', `服务名称:[${this.options.prefix ?? 'Nest'}]`)
-        const processId = colorHex(colors, '#fc5404', `进程ID:[${process.pid}]`)
-        const timestamp = colorHex(colors, '#fb9300', this.getTimestamp())
-        const levelName = logLevel === 'log' ? 'INFO' : logLevel.toUpperCase()
-        const level = colorText(colors, logLevel === 'error' || logLevel === 'fatal' ? 'redBright' : 'greenBright', levelName)
-        const logId = requestLog ? colorHex(colors, '#536dfe', `日志ID:[${requestLog.logId}]`) : ''
-        const method = contextMessage ? colorHex(colors, '#ff3d68', `执行方法:[${contextMessage}]`) : ''
-        const url = requestLog ? colorHex(colors, '#fc5404', `接口地址:[${requestLog.url}]`) : ''
-        const duration = requestLog ? colorHex(colors, '#ff3d68', `耗时:${requestLog.durationMs}ms`) : ''
-        const header = [serviceName, processId, timestamp, level, logId, method, url, duration].filter(Boolean).join('  ')
+        const header = this.formatReadableHeader(logLevel, contextMessage, requestLog, this.options.colors === true, this.getTimestamp())
         const content = this.stringifyMessage(message, logLevel)
 
         return `${header}  ${content}${timestampDiff}\n`
@@ -114,19 +122,6 @@ export class ReadableConsoleLogger extends ConsoleLogger {
         const level = (options.logLevel === 'log' ? 'info' : options.logLevel) as LogLevel
         const timestamp = Date.now()
 
-        if (isRequestLogPayload(message)) {
-            return {
-                level,
-                pid: process.pid,
-                timestamp,
-                time: new Date(timestamp).toISOString(),
-                executionMethod,
-                ...message,
-                body: message.body ?? null,
-                ...(options.errorStack ? { stack: options.errorStack } : {})
-            }
-        }
-
         return {
             ...super.getJsonLogObject(message, { ...options, context: executionMethod }),
             level,
@@ -136,24 +131,56 @@ export class ReadableConsoleLogger extends ConsoleLogger {
         }
     }
 
-    protected override getTimestamp(): string {
-        const now = new Date()
-        const parts = new Intl.DateTimeFormat('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hourCycle: 'h23'
-        }).formatToParts(now)
-        const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
-        const milliseconds = now.getMilliseconds().toString().padStart(3, '0')
+    protected override printAsJson(message: unknown, options: JsonLogOptions): void {
+        if (!isRequestLogPayload(message)) {
+            super.printAsJson(message, options)
+            return
+        }
 
-        return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}.${milliseconds}`
+        const timestamp = Date.now()
+        const executionMethod = options.context.endsWith(':HTTP') ? 'LoggerMiddleware' : options.context
+        const record = {
+            level: options.logLevel === 'log' ? 'info' : options.logLevel,
+            time: new Date(timestamp).toISOString(),
+            message: this.formatReadableHeader(options.logLevel, executionMethod, message, false, formatTimestamp(new Date(timestamp))),
+            details: createRequestLogDetails(message),
+            ...(options.errorStack ? { stack: options.errorStack } : {})
+        }
+        const line = JSON.stringify(record)
+
+        if (this.options.forceConsole) {
+            if (options.writeStreamType === 'stderr') console.error(line)
+            else console.log(line)
+            return
+        }
+        process[options.writeStreamType ?? 'stdout'].write(`${line}\n`)
+    }
+
+    protected override getTimestamp(): string {
+        return formatTimestamp(new Date())
     }
 
     protected override formatContext(context: string): string {
         return context.endsWith(':HTTP') ? 'LoggerMiddleware' : context
+    }
+
+    private formatReadableHeader(
+        logLevel: LogLevel,
+        executionMethod: string,
+        requestLog: RequestLogPayload | undefined,
+        colors: boolean,
+        timestamp: string
+    ): string {
+        const serviceName = colorText(colors, 'greenBright', `服务名称:[${this.options.prefix ?? 'Nest'}]`)
+        const processId = colorHex(colors, '#fc5404', `进程ID:[${process.pid}]`)
+        const time = colorHex(colors, '#fb9300', timestamp)
+        const levelName = logLevel === 'log' ? 'INFO' : logLevel.toUpperCase()
+        const level = colorText(colors, logLevel === 'error' || logLevel === 'fatal' ? 'redBright' : 'greenBright', levelName)
+        const logId = requestLog ? colorHex(colors, '#536dfe', `日志ID:[${requestLog.logId}]`) : ''
+        const method = executionMethod ? colorHex(colors, '#ff3d68', `执行方法:[${executionMethod}]`) : ''
+        const url = requestLog ? colorHex(colors, '#fc5404', `接口地址:[${requestLog.url}]`) : ''
+        const duration = requestLog ? colorHex(colors, '#ff3d68', `耗时:${requestLog.durationMs}ms`) : ''
+
+        return [serviceName, processId, time, level, logId, method, url, duration].filter(Boolean).join('  ')
     }
 }
