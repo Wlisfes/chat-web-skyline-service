@@ -17,6 +17,8 @@ async function bootstrap() {
     app.enableShutdownHooks()
     app.use(requestContextMiddleware)
     app.use(createRequestLoggingMiddleware({ serviceName: process.env.NACOS_SERVICE_NAME }))
+    await app.init()
+
     return await setupSwagger(app, {
         title: `Chat Web Skyline 服务 API`,
         description: `Chat Web Skyline 服务接口文档`,
