@@ -1,5 +1,11 @@
 # Skyline 部署变更记录
 
+## 2026-08-29：部署前清理旧版 Nacos 覆盖项
+
+- 变更内容：部署流水线自动从主机 `.env` 移除 `NACOS_REQUEST_TIMEOUT`、`NACOS_REGISTER_PORT`、`NACOS_REGISTER_IP`、`NACOS_REGISTER_REQUIRED`、`NACOS_GROUP` 和 `NACOS_CONFIG_GROUP`，统一使用共享包默认值。
+- 修复原因：历史 `.env` 残留字段会覆盖新的端口和分组默认值，导致 Skyline 注册为旧端口 `4020` 而实际监听 `5040`。
+- 影响范围：仅修改 Skyline 部署主机的启动覆盖项，不影响 Nacos 远端业务配置。
+
 ## 2026-08-29：部署时自动同步共享 Nginx 路由
 
 - 影响范围：`chat-home-server` 的 Skyline 入口；不修改其他服务容器。
