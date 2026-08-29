@@ -184,12 +184,27 @@ jobs:
               run: |
                   set -eu
                   docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:5040/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
-                  curl --silent --show-error --fail --insecure \
-                    --resolve skyline.lisfes.com:443:127.0.0.1 \
-                    https://skyline.lisfes.com/health/live >/dev/null
-                  curl --silent --show-error --fail --insecure \
-                    --resolve skyline.lisfes.com:443:127.0.0.1 \
-                    https://skyline.lisfes.com/ | grep -F 'Hello World!' >/dev/null
+                  check_domain() {
+                    path=$1
+                    expected=$2
+                    attempt=1
+                    while [ "$attempt" -le 10 ]; do
+                      response=$(curl --silent --show-error --fail --insecure \
+                        --resolve skyline.lisfes.com:443:127.0.0.1 \
+                        "https://skyline.lisfes.com$path" || true)
+                      if [ "$path" = "/" ]; then
+                        printf '%s' "$response" | grep -F "$expected" >/dev/null && return 0
+                      elif [ "$response" = "$expected" ]; then
+                        return 0
+                      fi
+                      sleep 3
+                      attempt=$((attempt + 1))
+                    done
+                    echo "Skyline domain check failed: $path" >&2
+                    return 1
+                  }
+                  check_domain /health/live '{"status":"UP"}'
+                  check_domain / 'Hello World!'
 
             - name: Log out from GitHub Container Registry
               if: always()
