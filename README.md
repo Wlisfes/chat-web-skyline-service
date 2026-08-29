@@ -22,6 +22,13 @@ yarn dev
 - `GET /` 返回 `Hello World!`
 - `GET /health/live` 返回进程存活状态
 
+对外访问统一经过 Gateway：
+
+- `GET /api/skyline/` 返回 `Hello World!`
+- `GET /api/skyline/health/live` 返回进程存活状态
+
+`skyline.lisfes.com` 独立域名已经废弃，不再由共享 Nginx 直接代理 Skyline。
+
 服务通过 `@wlisfes/chat-web-base-schema` 的 `NacosModule` 读取 `chat-web-skyline-service.yaml` 并注册实例。
 
 ## 共享基础包
@@ -46,6 +53,6 @@ yarn build
 
 ## 部署
 
-仓库保留 `chat-home-server` Docker 自动部署。只有合并到 `main` 后才触发构建部署；日常开发继续使用 `developer`，普通开发完成后不立即合并发布。原另一台部署机器已废弃，不再创建部署任务。
+仓库保留 `chat-home-server` Docker 自动部署。只有合并到 `main` 后才触发构建部署；日常开发继续使用 `developer`，普通开发完成后不立即合并发布。部署完成后通过 Gateway `/api/skyline/**` 验证服务。原另一台部署机器已废弃，不再创建部署任务。
 
 部署细节与排障命令见 `deploy/RUNBOOK.md`。

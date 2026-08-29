@@ -136,7 +136,6 @@ jobs:
                   set -eu
                   install -m 0644 deploy/compose.yml "$DEPLOY_PATH/compose.yml"
                   install -m 0755 deploy/deploy.sh "$DEPLOY_PATH/deploy.sh"
-                  install -m 0644 deploy/shared-ingress.conf "$DEPLOY_PATH/shared-ingress.conf"
                   install -m 0600 deploy/.env.example "$DEPLOY_PATH/.env.example"
                   if [ ! -f "$DEPLOY_PATH/.env" ]; then
                     install -m 0600 deploy/.env.example "$DEPLOY_PATH/.env"
@@ -167,50 +166,43 @@ jobs:
                   cd "$DEPLOY_PATH"
                   DEPLOYMENT_ENVIRONMENT="$DEPLOYMENT_ENVIRONMENT" ./deploy.sh "$IMAGE" compose.yml
 
-            - name: 同步共享 Nginx Skyline 路由
+            - name: 清理废弃的 Skyline 独立域名入口
               shell: bash
               run: |
                   set -eu
                   nginx_container=chat-web-nginx
                   docker inspect "$nginx_container" >/dev/null
-                  route_files="$(docker exec "$nginx_container" sh -c "grep -RIl 'skyline\\.lisfes\\.com' /etc/nginx 2>/dev/null || true")"
-                  if [ -z "$route_files" ]; then
-                    docker cp deploy/shared-ingress.conf "$nginx_container:/etc/nginx/conf.d/chat-web-skyline-service.conf"
-                  else
-                    printf '%s\n' "$route_files" | while IFS= read -r route_file; do
-                      [ -n "$route_file" ] || continue
-                      docker exec "$nginx_container" sed -i -E 's#chat-web-skyline-service:[0-9]+#chat-web-skyline-service:5040#g' "$route_file"
-                    done
-                  fi
+                  for route_file in \
+                    /etc/nginx/conf.d/skyline.conf \
+                    /etc/nginx/conf.d/skyline.conf.previous \
+                    /etc/nginx/conf.d/chat-web-skyline-service.conf; do
+                    docker exec "$nginx_container" rm -f "$route_file"
+                  done
+                  legacy_routes="$(docker exec "$nginx_container" sh -c "grep -RIl 'skyline\\.lisfes\\.com' /etc/nginx 2>/dev/null || true")"
+                  [ -z "$legacy_routes" ] || { printf '仍存在 Skyline 独立域名配置：\n%s\n' "$legacy_routes" >&2; exit 1; }
                   docker exec "$nginx_container" nginx -t
                   docker exec "$nginx_container" nginx -s reload
 
-            - name: Verify container and domain
+            - name: Verify container and Gateway route
               shell: bash
               run: |
                   set -eu
                   docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:5040/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
-                  check_domain() {
+                  check_gateway() {
                     path=$1
                     expected=$2
                     attempt=1
                     while [ "$attempt" -le 10 ]; do
-                      response=$(curl --silent --show-error --fail --insecure \
-                        --resolve skyline.lisfes.com:443:127.0.0.1 \
-                        "https://skyline.lisfes.com$path" || true)
-                      if [ "$path" = "/" ]; then
-                        printf '%s' "$response" | grep -F "$expected" >/dev/null && return 0
-                      elif [ "$response" = "$expected" ]; then
-                        return 0
-                      fi
+                      response=$(docker exec chat-web-gateway-service node -e "fetch('http://127.0.0.1:5000/api/skyline$path').then(response => { if (!response.ok) process.exit(1); return response.text() }).then(body => process.stdout.write(body)).catch(() => process.exit(1))" || true)
+                      [ "$response" = "$expected" ] && return 0
                       sleep 3
                       attempt=$((attempt + 1))
                     done
-                    echo "Skyline domain check failed: $path" >&2
+                    echo "Skyline Gateway route check failed: $path" >&2
                     return 1
                   }
-                  check_domain /health/live '{"status":"UP"}'
-                  check_domain / 'Hello World!'
+                  check_gateway /health/live '{"status":"UP"}'
+                  check_gateway / 'Hello World!'
 
             - name: Log out from GitHub Container Registry
               if: always()
