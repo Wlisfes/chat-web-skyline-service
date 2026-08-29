@@ -1,5 +1,13 @@
 # Skyline 部署变更记录
 
+## 2026-08-29：部署时自动同步共享 Nginx 路由
+
+- 影响范围：`chat-home-server` 的 Skyline 入口；不修改其他服务容器。
+- 变更内容：部署步骤自动查找 `chat-web-nginx` 中包含 `skyline.lisfes.com` 的配置，将 Skyline upstream 更新为容器端口 `5040`；未找到既有配置时安装版本化入口文件，并在校验通过后 reload Nginx。
+- 修复原因：Skyline 容器已迁移到 `5040`，旧 Nginx upstream 仍指向 `4020`，导致域名首页返回 `502`。
+- 验证：部署后执行 Nginx 配置检查、容器 `/health/live`、域名 `/health/live` 及首页响应校验。
+- 回滚：恢复上一版 Skyline 镜像，并将 Nginx Skyline upstream 改回对应端口后执行 `docker exec chat-web-nginx nginx -s reload`。
+
 ## 2026-08-29：统一 Nacos 启动参数转换
 
 - 影响范围：本地开发和 `chat-home-server`；本次仅改造调用代码，不触发镜像构建或线上部署。
