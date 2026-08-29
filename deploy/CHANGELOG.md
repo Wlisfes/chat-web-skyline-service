@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-08-29：废弃 Skyline 独立域名并接入统一网关
+
+- 影响机器：`chat-home-server`；服务端口仍为 `5040`。
+- 关联版本：Skyline 本次完整 Git SHA 镜像；Gateway Nacos 路由 `/api/skyline/**`。
+- 变更内容：删除版本化独立 Nginx 入口，部署时清理 `skyline.lisfes.com` 遗留配置；公开访问统一改为 Gateway `/api/skyline/**`。
+- 机器侧操作：流水线删除共享 Nginx 中的 Skyline 专用配置并 reload，随后通过 Gateway 验证健康接口和首页。
+- 验证命令：访问 `https://chat.lisfes.com/api/skyline/health/live`，预期返回 `{"status":"UP"}`；确认 Nginx 配置中不存在 `skyline.lisfes.com`。
+- 回滚方法：恢复上一版 Skyline 镜像并从 Nacos 删除 `/api/skyline` 路由；如确需恢复旧域名，必须单独恢复 Nginx 配置和 DNS。
+
 ## 2026-08-29：部署前清理旧版 Nacos 覆盖项
 
 - 变更内容：部署流水线自动从主机 `.env` 移除 `NACOS_REQUEST_TIMEOUT`、`NACOS_REGISTER_PORT`、`NACOS_REGISTER_IP`、`NACOS_REGISTER_REQUIRED`、`NACOS_GROUP` 和 `NACOS_CONFIG_GROUP`，统一使用共享包默认值。

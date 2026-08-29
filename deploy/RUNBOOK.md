@@ -12,6 +12,7 @@ Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 
 - 容器端口：`5040`，不发布宿主机端口
 - 外部网络：`chat-web-infrastructure`
 - 健康接口：`GET /health/live`
+- 公开入口：Gateway `/api/skyline/**`
 - 日志：`json-file`，单文件最大 `20m`，保留 `30` 个文件
 
 ## 配置
@@ -23,12 +24,12 @@ Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 
 ```bash
 docker inspect chat-web-skyline-service --format '{{.Config.Image}} {{.State.Health.Status}} {{.RestartCount}}'
 docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:5040/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
-curl -kfsS --resolve skyline.lisfes.com:443:127.0.0.1 https://skyline.lisfes.com/health/live
-curl -kfsS --resolve skyline.lisfes.com:443:127.0.0.1 https://skyline.lisfes.com/
+docker exec chat-web-gateway-service node -e "fetch('http://127.0.0.1:5000/api/skyline/health/live').then(response => response.text()).then(console.log)"
+curl -kfsS --resolve chat.lisfes.com:443:127.0.0.1 https://chat.lisfes.com/api/skyline/health/live
 docker logs --tail 100 chat-web-skyline-service
 ```
 
-预期容器为 `running healthy`，运行用户为 `node`，健康接口返回 `{"status":"UP"}`，首页返回 `Hello World!`。
+预期容器为 `running healthy`，运行用户为 `node`，Gateway 健康接口返回 `{"status":"UP"}`。`skyline.lisfes.com` 已废弃，共享 Nginx 中不得保留对应 Server 配置。
 
 ## 日志轮转验证
 
