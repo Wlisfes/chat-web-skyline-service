@@ -1,5 +1,32 @@
 # Skyline 部署变更记录
 
+## 2026-08-29：统一 Nacos 启动参数转换
+
+- 影响范围：本地开发和 `chat-home-server`；本次仅改造调用代码，不触发镜像构建或线上部署。
+- 关联版本：等待 `@wlisfes/chat-web-base-schema` 发布包含 `forRootNacosRuntimeOptions` 的新版本。
+- 变更内容：Skyline 直接调用 `NacosModule.forRoot(forRootNacosRuntimeOptions(process.env))`，移除逐字段环境变量映射。
+- 机器侧操作：共享包发布并升级后再重建 Skyline；现有 Nacos 配置、端口和入口不变。
+- 验证命令：共享包发布后执行 `yarn build && yarn test`，再按本服务健康检查验证。
+- 回滚方法：恢复上一版共享包并还原旧的 `createNacosRuntimeOptions` 调用。
+
+## 2026-08-29：统一 Skyline 监听端口为 5040
+
+- 影响范围：本地开发和 `chat-home-server`；Company Runner 当前离线，本次不等待其部署结果。
+- 关联版本：Skyline 本次 `developer` 配置提交；未合并 `main`，不触发镜像构建或线上部署。
+- 变更内容：Skyline 容器、Nacos 注册、健康检查、Nginx upstream 和 `skyline.lisfes.com` 入口由 `4020` 统一为 `5040`；云端生产与 development Data ID 的 `server.port` 已同步为 `5040`。
+- 机器侧操作：下次部署重新创建 Skyline 容器并加载新的共享入口配置；域名、Docker 网络和服务数据不变。
+- 验证：检查容器内 `PORT=5040`、访问 `https://skyline.lisfes.com/health/live`，并确认 Nacos 注册实例端口为 `5040`。
+- 回滚：恢复上一条健康 Skyline 完整 SHA，并将 Nacos、Nginx upstream 与健康检查端口恢复为旧值。
+
+## 2026-08-29：统一环境示例并完善云端 Nacos 注释
+
+- 影响范围：本地开发和 `chat-home-server`；Company Runner 当前离线，本次不等待其部署结果。
+- 关联版本：Skyline 本次 `developer` 配置提交；未合并 `main`，不触发镜像构建或线上部署。
+- 变更内容：`.env.example` 与其他微服务统一只描述 `NODE_ENV`、`PORT` 和 Nacos 参数；业务配置留在云端 Nacos，并为生产及 development Data ID 补充中文注释。
+- 机器侧操作：无需修改端口、域名、Docker 网络或业务数据库；真实 Nacos 密钥继续只保存在部署主机 `.env`。
+- 验证：检查两个 Skyline Nacos Data ID 的注释、执行 `yarn build`，并验证 `/health/live` 与服务注册。
+- 回滚：恢复上一条健康 Skyline 完整 SHA；Nacos 配置和服务数据不回滚。
+
 ## 2026-08-29：Runner 标签统一为 chat-home-server
 
 - 影响范围：仅 `chat-home-server`；原另一台部署机器已废弃并下线，不再恢复双机部署。

@@ -9,20 +9,20 @@ Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 
 - Compose 项目：`chat-web-service`
 - Compose 服务：`skyline-service`
 - 容器：`chat-web-skyline-service`
-- 容器端口：`4020`，不发布宿主机端口
+- 容器端口：`5040`，不发布宿主机端口
 - 外部网络：`chat-web-infrastructure`
 - 健康接口：`GET /health/live`
 - 日志：`json-file`，单文件最大 `20m`，保留 `30` 个文件
 
 ## 配置
 
-机器配置位于 `/opt/chat-web-skyline-service/.env`。服务统一读取 `PORT`，容器内固定为 `4020`；此外还必须提供 `NACOS_SERVER`、`NACOS_SERVICE_NAME` 和 `NACOS_NAMESPACE`。默认 Data ID 为 `${NACOS_SERVICE_NAME}.yaml`，服务注册名为 `NACOS_SERVICE_NAME` 的值；真实机器配置不得提交到仓库。
+机器配置位于 `/opt/chat-web-skyline-service/.env`。服务统一读取 `PORT`，容器内固定为 `5040`；此外还必须提供 `NACOS_SERVER`、`NACOS_SERVICE_NAME` 和 `NACOS_NAMESPACE`。默认 Data ID 为 `${NACOS_SERVICE_NAME}.yaml`，服务注册名为 `NACOS_SERVICE_NAME` 的值；真实机器配置不得提交到仓库。
 
 ## 验证
 
 ```bash
 docker inspect chat-web-skyline-service --format '{{.Config.Image}} {{.State.Health.Status}} {{.RestartCount}}'
-docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:4020/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:5040/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 curl -kfsS --resolve skyline.lisfes.com:443:127.0.0.1 https://skyline.lisfes.com/health/live
 curl -kfsS --resolve skyline.lisfes.com:443:127.0.0.1 https://skyline.lisfes.com/
 docker logs --tail 100 chat-web-skyline-service

@@ -165,7 +165,7 @@ jobs:
               shell: bash
               run: |
                   set -eu
-                  docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:4020/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+                  docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:5040/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
                   curl --silent --show-error --fail --insecure \
                     --resolve skyline.lisfes.com:443:127.0.0.1 \
                     https://skyline.lisfes.com/health/live >/dev/null

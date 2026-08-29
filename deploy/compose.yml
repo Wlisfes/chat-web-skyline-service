@@ -17,11 +17,10 @@ services:
             - ${ENV_FILE:-.env}
         environment:
             NODE_ENV: production
-            PORT: 4020
+            PORT: 5040
             TZ: ${TZ:-Asia/Shanghai}
-            DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production-home}
         expose:
-            - '4020'
+            - '5040'
         networks:
             - infrastructure
         stop_grace_period: 20s

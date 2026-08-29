@@ -17,7 +17,7 @@ yarn install
 yarn dev
 ```
 
-未设置 `PORT` 时默认监听 `4020`：
+未设置 `PORT` 时默认监听 `5040`：
 
 - `GET /` 返回 `Hello World!`
 - `GET /health/live` 返回进程存活状态

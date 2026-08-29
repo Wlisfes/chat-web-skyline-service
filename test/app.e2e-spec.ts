@@ -17,7 +17,7 @@ describe('AppController (e2e)', () => {
                 namespace: 'test',
                 registerEnabled: false,
                 serviceName: 'chat-web-skyline-service',
-                registerPort: 3000
+                registerPort: 5040
             })
             .overrideProvider(NacosService)
             .useValue({})
