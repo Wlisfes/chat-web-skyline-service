@@ -8,6 +8,12 @@
 - 验证：部署后执行 Nginx 配置检查、容器 `/health/live`、域名 `/health/live` 及首页响应校验。
 - 回滚：恢复上一版 Skyline 镜像，并将 Nginx Skyline upstream 改回对应端口后执行 `docker exec chat-web-nginx nginx -s reload`。
 
+## 2026-08-29：放宽 Nginx reload 后域名校验时序
+
+- 变更内容：域名健康检查和首页检查各自最多重试 10 次，覆盖 Nginx reload 后 Docker DNS/连接短暂切换窗口。
+- 修复原因：容器和 Nginx 配置已正常，但 reload 后立即访问可能短暂返回 `502`，导致部署被误判失败。
+- 验证：容器健康接口、域名 `/health/live` 和首页内容均在重试窗口内通过后才判定部署成功。
+
 ## 2026-08-29：统一 Nacos 启动参数转换
 
 - 影响范围：本地开发和 `chat-home-server`；本次仅改造调用代码，不触发镜像构建或线上部署。
