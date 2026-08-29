@@ -107,7 +107,7 @@ if [ "$state" != "healthy" ]; then
     exit 1
 fi
 
-if ! docker exec "$CONTAINER" node -e "require('http').get('http://127.0.0.1:4020/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"; then
+if ! docker exec "$CONTAINER" node -e "require('http').get('http://127.0.0.1:5040/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"; then
     echo "Skyline liveness endpoint failed after the container became healthy." >&2
     rollback
     exit 1

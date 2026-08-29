@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { setupSwagger } from '@wlisfes/chat-web-base-schema'
