@@ -161,6 +161,24 @@ jobs:
                   cd "$DEPLOY_PATH"
                   DEPLOYMENT_ENVIRONMENT="$DEPLOYMENT_ENVIRONMENT" ./deploy.sh "$IMAGE" compose.yml
 
+            - name: 同步共享 Nginx Skyline 路由
+              shell: bash
+              run: |
+                  set -eu
+                  nginx_container=chat-web-nginx
+                  docker inspect "$nginx_container" >/dev/null
+                  route_files="$(docker exec "$nginx_container" sh -c "grep -RIl 'skyline\\.lisfes\\.com' /etc/nginx 2>/dev/null || true")"
+                  if [ -z "$route_files" ]; then
+                    docker cp deploy/shared-ingress.conf "$nginx_container:/etc/nginx/conf.d/chat-web-skyline-service.conf"
+                  else
+                    printf '%s\n' "$route_files" | while IFS= read -r route_file; do
+                      [ -n "$route_file" ] || continue
+                      docker exec "$nginx_container" sed -i -E 's#chat-web-skyline-service:[0-9]+#chat-web-skyline-service:5040#g' "$route_file"
+                    done
+                  fi
+                  docker exec "$nginx_container" nginx -t
+                  docker exec "$nginx_container" nginx -s reload
+
             - name: Verify container and domain
               shell: bash
               run: |
