@@ -1,5 +1,13 @@
 # Skyline 部署变更记录
 
+## 2026-08-31：升级共享基础包并统一本地依赖认证
+
+- 影响范围：Skyline 本地开发与后续部署构建。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.4.18`。
+- 变更内容：Skyline 升级共享基础包，依赖安装继续通过 `scripts/yarn-auth.cjs` 临时读取 GitHub CLI 凭据，避免 GitHub Packages 返回 401；不保存真实 Token。
+- 验证命令：`yarn install`、`yarn build`、`yarn test`。
+- 回滚方法：恢复上一版 package.json/yarn.lock 与依赖认证脚本。
+
 ## 2026-08-29：废弃 Skyline 独立域名并接入统一网关
 
 - 影响机器：`chat-home-server`；服务端口仍为 `5040`。
