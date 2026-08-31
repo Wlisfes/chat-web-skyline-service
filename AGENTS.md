@@ -1,6 +1,18 @@
 # Chat Web Skyline Service instructions
 
-本仓库继承 `F:/chat-web-service/AGENTS.md` 的通用微服务规约，并补充以下约束。
+本文件包含本仓库需要遵守的完整规则，不依赖 `F:/chat-web-service/AGENTS.md` 或其他工作区文件。
+
+## 通用工程规则
+
+- 使用 Node.js 22、Yarn 1.22.22、NestJS 11 和 TypeScript；源码使用 UTF-8，Shell、YAML 和 Dockerfile 使用 LF。
+- 统一使用 4 空格、无分号、单引号、`printWidth: 140`、无尾随逗号；内部源码统一使用 `@/*` 路径别名。
+- 文件名使用小写 kebab-case 和职责后缀；类、接口、枚举使用 PascalCase，变量、函数使用 camelCase，常量和注入 Token 使用 UPPER_SNAKE_CASE。
+- 日志、校验消息、Swagger 描述和面向维护者的错误信息使用中文，代码标识符使用英文。
+- HTTP Controller 只允许 GET、POST；GET 使用 query，POST 使用 body；多选参数必须是数组，禁止使用 `/:uid` 等路径参数。
+- 如新增分页接口，必须使用统一的 `page`、`size` 入参和 `page`、`size`、`total`、`list` 响应；不得引入 `pageSize`、`items`、`records` 或 `rows` 同义字段。
+- 请求日志必须包含 logId、方法、URL、状态码、来源、入参和耗时，并脱敏密码、Token 等敏感字段。
+- `.env.example` 只列出启动所需参数和明确占位符；真实密钥、Token、私钥和生产 `.env` 不得提交。
+- 每次改动至少执行格式检查、TypeScript 类型检查和 Nest 构建；涉及服务发现或部署时增加运行级验证。
 
 ## 修改范围
 
@@ -12,6 +24,7 @@
 - `@nestjs/typeorm`、`typeorm` 与 `redis` 仅作为 `chat-web-base-schema` 的对等依赖安装；在新业务方案确定前，不得创建数据库/Redis 连接或恢复相关业务模块。
 - 在新业务方案确定前，不得恢复 Vue、SSR、Webpack、Vite 或其他业务依赖。
 - 新功能继续在 `developer` 分支开发；普通功能完成后只提交并推送 `developer`，不得立即合并 `main` 或触发流水线。
+- 远程仓库只保留 `main`、`developer` 两个长期分支；临时需求分支必须先合并到 `developer`，发布时同步合并到 `main`，合并并验证通过后立即删除远程和本地临时分支。
 
 ## 部署边界
 
