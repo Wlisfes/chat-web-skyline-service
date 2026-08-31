@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-08-31：拆分快速单测与完整校验
+
+- 影响范围：Skyline 本地测试命令与 GitHub Actions 验证阶段；部署机器运行参数不变。
+- 关联版本：服务版本 `0.0.1`。
+- 变更内容：`yarn test` 改为快速单测，新增 `yarn test:unit`；完整单测、E2E 和构建使用 `yarn test:full`，流水线改用完整命令。
+- 机器侧操作：无需额外操作。
+- 验证命令：`yarn test:unit`、`yarn test:full`。
+- 回滚方法：恢复本次变更前的 `package.json` 与 Workflow 文件。
+
 ## 2026-08-31：升级共享基础包并统一本地依赖认证
 
 - 影响范围：Skyline 本地开发与后续部署构建。
