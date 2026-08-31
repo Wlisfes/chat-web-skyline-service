@@ -26,6 +26,19 @@
 - 新功能继续在 `developer` 分支开发；普通功能完成后只提交并推送 `developer`，不得立即合并 `main` 或触发流水线。
 - 远程仓库只保留 `main`、`developer` 两个长期分支；临时需求分支必须先合并到 `developer`，发布时同步合并到 `main`，合并并验证通过后立即删除远程和本地临时分支。
 
+## HTTP Controller 与 Service 编码基准
+
+- `chat-web-account-service/src/modules/menu/` 是 Controller、Service、DTO、Utils Service 和 Module 组织方式的唯一基准；Skyline 按 NestJS 空项目边界适配，不得另建接口风格。
+- Controller 必须保持为薄协议层：只声明路由、权限、Swagger/Apifox 元数据，接收 `query`、`body` 或必要请求/响应上下文，并将参数原样交给同名 Service 方法；禁止在 Controller 内实现业务判断、业务数据组装或记录业务日志。Cookie、响应头、重定向和流式响应等纯 HTTP 协议操作可以留在 Controller，但不得把 `Request`、`Response` 或响应发送逻辑传入业务 Service。
+- Controller 与对应 Service 的公开 HTTP 方法统一声明为 `public async`；CRUD、列表等通用动作通常使用 `httpBaseSkyline<Action><Resource>`，Tree、Resolver 等资源专属读取语义可使用 `httpBaseSkyline<Resource><Action>`，命名语义参考基准模块的 `httpBaseAccountMenuTree`、`httpBaseAccountMenuResolver`。两层方法名必须完全一致，不得只为统一单词顺序而机械倒装；Controller 直接返回同名 Service 调用结果，禁止再调用 `create`、`list`、`findOne`、`update` 等另一套短方法。
+- GET 只接收 `@Query()` DTO，POST 只接收 `@Body()` DTO；无请求 DTO 的接口不制造空 DTO。每个接口必须使用 `ApiServiceDecorator` 完整声明请求来源、请求 DTO、响应 DTO、数组标识和中文说明；纯文本、文件流等原始响应必须明确关闭统一响应外壳。
+- Service 负责业务编排，公开 HTTP 方法必须添加简洁中文职责注释并显式声明 `Promise<...>` 返回类型；欢迎信息和健康检查响应都由 Service 返回，Controller 不得内联常量或对象。模块请求 DTO 在 Service 中优先使用 `import * as XxxDto` 归组引用。
+- DTO 和接口枚举放在模块 `dto/` 目录，优先通过共享基础 DTO 复用字段；字段必须提供 Swagger 示例/说明、必要的类型转换和中文校验消息。分页 DTO 使用公共 `PageDto`，响应固定为 `page`、`size`、`total`、`list`。
+- 若项目数据边界允许实体查询，必须优先使用公共 `DataBaseService.builder`，QueryBuilder 别名固定为 `t`；禁止重复封装 QueryBuilder 或创建无意义 Repository Adapter。
+- 仅当查找、校验、锁、树结构或可复用转换形成独立职责时才创建 `<module>.utils.service.ts`，使用 `@Injectable()` 并由 Module 注册注入；仅调用一次且无复用价值的简单步骤不得机械拆成 Utils Service，当前空项目的欢迎信息和健康检查尤其不得为了形式制造 Utils Service。Module 按 `imports`、`controllers`、`providers`、`exports` 组织。
+- 普通业务可选入参统一使用 `class-validator` 的 `isEmpty`、`isNotEmpty` 判空，禁止手写 `input.xxx !== undefined && ...` 或用隐式 truthy/falsy 代替。只有必须区分“未传、显式 null、具体值”的三态字段可以直接判断 `undefined`，且必须紧邻中文语义说明；基础设施配置、协议、第三方返回值、布尔值、集合长度及已确认非空值比较不受此限制。
+- 重构不得改变 `/`、`/health/live` 路由、HTTP 状态、首页纯文本响应、健康响应结构和 Nacos 注册行为。
+
 ## 部署边界
 
 - 只部署到当前主机 `chat-home-server`，使用 `chat-home-server` Runner 标签和 `production-home` Environment；原另一台部署机器已废弃并下线，不得恢复多机部署任务。
