@@ -32,7 +32,7 @@ jobs:
               run: yarn install --frozen-lockfile --non-interactive
 
             - name: Run complete verification
-              run: yarn format:check && yarn typecheck && yarn test && yarn test:e2e && yarn build
+              run: yarn format:check && yarn typecheck && yarn test:full
 
     build:
         name: Build and publish image
