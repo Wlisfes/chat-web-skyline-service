@@ -66,7 +66,7 @@ export async function releaseSchemaMigrationLock(connection: mysql.Connection): 
 }
 
 /** 按文件名顺序幂等执行 Skyline 数据库增量 SQL。 */
-async function main(): Promise<void> {
+export async function applySchema(): Promise<void> {
     loadLocalEnvironment()
     const config = await loadSkylineDatabaseConfig()
     const database = getDatabaseName(config)
@@ -133,7 +133,7 @@ async function main(): Promise<void> {
 }
 
 if (require.main === module) {
-    main().catch(error => {
+    applySchema().catch(error => {
         process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
         process.exitCode = 1
     })
