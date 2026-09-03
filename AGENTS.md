@@ -24,7 +24,7 @@
 - `TbSkylineDatetaskSystem` Entity、完整 DTO、建表 SQL 和增量 SQL 必须来自 `@wlisfes/chat-web-base-schema/chat-web-skyline-mysql`；业务服务只注册实体和编排用例，不得复制或自行维护另一套表结构。TypeORM 必须使用 `synchronize: false`，数据库变更由版本化 Schema SQL 和部署前的 `yarn schema:apply` 完成。
 - 系统任务定义由服务启动时幂等初始化，管理页面只允许查询、启停、修改 Cron、手动触发和查看执行日志，不提供新增或删除接口。新增内置任务必须同时补充 Schema/初始化定义、处理器映射、DTO、接口文档和测试。
 - 任务调度器必须以数据库中的任务状态和 Cron 为准；多 Pod 场景使用 MySQL 会话级分布式锁，确保同一任务不会重复执行。调度失败要记录中文日志并保留可恢复的重试行为，不能因为单个任务异常产生未处理 Promise 拒绝。
-- 汇率同步任务通过 `FinanceFeignClient` 调用 Finance 服务 `/currency/exchange/sync`，外部汇率数据从 Frankfurter 获取。Feign 客户端统一复用 `chat-web-base-schema`，不得在 Skyline 中另写 HTTP 客户端契约；自动调度没有请求上下文时使用 Nacos `security.serviceToken`（本机临时覆盖可使用 `FINANCE_SERVICE_TOKEN`），凭据不得写入代码、日志或文档示例。
+- 汇率同步任务通过 `FinanceFeignClient` 调用 Finance 服务 `/currency/exchange/sync`，外部汇率数据从 Frankfurter 获取。Feign 客户端统一复用 `chat-web-base-schema`，不得在 Skyline 中另写 HTTP 客户端契约；自动调度没有请求上下文时使用 Nacos `feign.service_token`（本机临时覆盖可使用 `FINANCE_SERVICE_TOKEN`），凭据不得写入代码、日志或文档示例。
 - 本服务不恢复 Vue、SSR、Webpack、Vite 或其他前端业务依赖；管理页面属于 `chat-web-base-manager`，通过 Gateway `/api/skyline/**` 访问 Skyline 接口。
 - 新功能继续在 `developer` 分支开发；普通功能完成后只提交并推送 `developer`，不得立即合并 `main` 或触发流水线。
 - 远程仓库只保留 `main`、`developer` 两个长期分支；临时需求分支必须先合并到 `developer`，发布时同步合并到 `main`，合并并验证通过后立即删除远程和本地临时分支。

@@ -219,7 +219,7 @@ describe('CurrencyExchangeTaskService', () => {
 
         await expect(service.execute()).rejects.toEqual(
             expect.objectContaining<Partial<ServiceUnavailableException>>({
-                message: '缺少 Finance 服务内部 Bearer 凭据，请配置 security.serviceToken'
+                message: '缺少 Finance 服务内部 Bearer 凭据，请配置 feign.service_token'
             })
         )
     })

@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-09-03：适配嵌套 Feign 配置并改为只读校验 Nacos
+
+- 影响机器：`chat-home-server`。
+- 关联版本：Skyline 本次完整 Git SHA 镜像。
+- 变更内容：启动时将 Nacos `feign.chat-web-*.url/timeout` 映射为共享客户端兼容键，汇率任务凭据读取 `feign.service_token`；部署前脚本仅校验已有 Data ID，不再回写或补齐人工配置。
+- 机器侧操作：确认 Skyline Nacos 已配置 `server.port`、`database.chat-web-skyline`、`feign.service_token` 及 Account/Finance/CRM Feign 节点；`.env` 仅保留 Nacos 启动参数。
+- 验证命令：执行 `yarn build`、`yarn tsc -p tsconfig.json --noEmit`；部署后检查 `/health/live`、汇率同步 Feign 调用和 Nacos 注册状态。
+- 回滚方法：恢复上一版 Skyline 镜像和脚本；Nacos 配置与汇率数据不回滚。
+
 ## 2026-09-03：修复 mysql2 依赖安装完整性校验
 
 - 影响范围：Skyline `chat-home-server` 发布流水线；运行时配置和数据库结构不变。

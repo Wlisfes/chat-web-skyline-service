@@ -8,6 +8,7 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { DatabaseModule } from '@/modules/database/database.module'
 import { DatetaskModule } from '@/modules/datetask/datetask.module'
+import { FeignConfigModule } from '@/modules/feign/feign-config.module'
 
 /** Jest 的基础 e2e 只验证进程路由，不连接真实 MySQL；生产和本地运行始终启用业务模块。 */
 const isTestRuntime = process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID)
@@ -17,7 +18,7 @@ const isTestRuntime = process.env.NODE_ENV === 'test' || Boolean(process.env.JES
         HttpResponseModule,
         ConfigModule.forRoot({ isGlobal: true }),
         NacosModule.forRoot(forRootNacosRuntimeOptions(process.env)),
-        ...(isTestRuntime ? [] : [AccountRemoteAuthModule, DatabaseModule, DatetaskModule])
+        ...(isTestRuntime ? [] : [FeignConfigModule, AccountRemoteAuthModule, DatabaseModule, DatetaskModule])
     ],
     controllers: [AppController],
     providers: [Logger, AppService, ...(isTestRuntime ? [] : [{ provide: APP_GUARD, useExisting: JwtAuthGuard }])]
