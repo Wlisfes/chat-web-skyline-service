@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-09-03：修复 mysql2 依赖安装完整性校验
+
+- 影响范围：Skyline `chat-home-server` 发布流水线；运行时配置和数据库结构不变。
+- 关联版本：Skyline 完整 Git SHA 镜像构建。
+- 变更内容：锁定 `mysql2@3.23.3` 使用官方 npm tarball，并保留与上游元数据一致的 SHA-512 完整性校验，避免镜像源内容漂移导致安装失败。
+- 机器侧操作：无需修改主机 `.env`、Nacos 或数据库。
+- 验证：执行 `yarn format:check && yarn typecheck && yarn build && yarn test:unit`，并重新运行发布流水线依赖安装、容器健康和 Gateway 端点检查。
+- 回滚：恢复上一版 Skyline 完整 Git SHA；无需回滚数据库迁移。
+
 ## 2026-09-03：增加部署前 Skyline Nacos 配置校准
 
 - 影响范围：Skyline `chat-home-server` 部署流水线和对应 Nacos Data ID；不修改其他服务。
