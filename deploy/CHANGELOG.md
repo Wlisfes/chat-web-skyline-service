@@ -1,9 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-09-03：本地 Nacos 客户端端口冲突自动避让
+
+- `yarn dev`、`yarn start` 和 `yarn start:debug` 启动前优先检测默认端口 `7777`；检测到占用时自动随机选择本机可用端口并注入 `NODE_CLUSTER_CLIENT_PORT`。
+- 该端口仅用于 Node 客户端进程协调，不属于 Nacos 业务配置；生产 Docker 部署保持默认行为。
+
 ## 2026-09-03：修复本地 MySQL 地址覆盖与部署 Schema 权限失败
 
 - 影响范围：Skyline 本地开发与 `chat-home-server` 发布流水线。
-- 本地修复：增加 `NODE_CLUSTER_CLIENT_PORT` 示例，避免多个 Node.js 进程争用 7777；本机 `.env` 使用 `SKYLINE_MYSQL_HOST=127.0.0.1`、`SKYLINE_MYSQL_PORT=3306` 覆盖 Docker 内部 MySQL 地址，数据库账号、密码和库名仍由 Nacos 提供。
+- 本地修复：确认 `cluster-client` 默认使用 7777；仅在本机残留进程导致端口冲突时临时设置 `NODE_CLUSTER_CLIENT_PORT`，不作为常规环境变量。数据库地址、账号、密码和库名统一由 Nacos 提供。
 - 部署修复：新增 `dist/cli/apply-schema-bootstrap.js`，使用 Nacos 数据库管理员连接创建仅授权 Skyline 数据库的临时迁移账号，调用原 Schema 迁移逻辑后立即删除，避免 `root` 等全局权限账号触发隔离校验失败。
 - 验证：执行格式检查、TypeScript 类型检查、Nest 构建和 67 项单元测试；本地 `yarn dev` 已进入监听与任务加载流程。
 - 回滚：恢复上一版完整 SHA 和部署脚本；数据库迁移台账与已执行结构不回滚。

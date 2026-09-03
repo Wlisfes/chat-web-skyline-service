@@ -17,6 +17,8 @@ yarn install
 yarn dev
 ```
 
+本地启动会优先使用 Nacos 客户端默认端口 `7777`；如果检测到端口冲突，启动脚本会自动随机选择可用端口，不需要配置到 Nacos。
+
 未设置 `PORT` 时默认监听 `5040`：
 
 - `GET /` 返回 `Hello World!`
