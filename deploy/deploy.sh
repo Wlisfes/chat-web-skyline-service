@@ -78,8 +78,10 @@ done
 
 compose config >/dev/null
 
-# 先执行共享包提供的增量 SQL，确保新镜像启动时实体结构已经就绪。
-if ! docker run --rm --network "$network" --env-file .env --entrypoint node "$IMAGE" dist/cli/apply-schema.js; then
+# 先以临时的单库账号执行共享包提供的增量 SQL，确保新镜像启动时实体结构已经就绪。
+# 部署环境中的 Nacos 数据库账号可能是管理员账号；引导脚本不会直接用该账号执行业务 DDL，
+# 而是创建仅能访问 Skyline 数据库的临时账号，迁移结束后立即回收。
+if ! docker run --rm --network "$network" --env-file .env --entrypoint node "$IMAGE" dist/cli/apply-schema-bootstrap.js; then
     echo "Skyline 数据库 Schema 更新失败，保留当前运行版本。" >&2
     exit 1
 fi
