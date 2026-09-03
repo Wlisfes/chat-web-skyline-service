@@ -1,4 +1,5 @@
 import { Get, Header } from '@nestjs/common'
+import { Public } from '@wlisfes/chat-web-base-schema/auth'
 import { ApiServiceDecorator, ApifoxController } from '@wlisfes/chat-web-base-schema/decorator'
 import { SkylineLivenessResponseDto } from '@/dto/skyline-response.dto'
 import { AppService } from '@/app.service'
@@ -18,6 +19,7 @@ export class AppController {
         },
         produces: ['text/plain']
     })
+    @Public()
     @Header('Content-Type', 'text/plain; charset=utf-8')
     public async httpBaseSkylineWelcome(): Promise<string> {
         return this.appService.httpBaseSkylineWelcome()
@@ -27,6 +29,8 @@ export class AppController {
         operation: { summary: 'Skyline 服务存活检查' },
         response: { type: SkylineLivenessResponseDto, envelope: false, description: '进程正常时返回 UP' }
     })
+    @Public()
+    @Header('Content-Type', 'application/json; charset=utf-8')
     public async httpBaseSkylineLiveness(): Promise<SkylineLivenessResponseDto> {
         return this.appService.httpBaseSkylineLiveness()
     }

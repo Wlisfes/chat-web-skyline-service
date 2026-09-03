@@ -33,13 +33,19 @@ yarn dev
 
 ## 共享基础包
 
-项目安装 `@wlisfes/chat-web-base-schema@1.4.14`，并按照该包的 `peerDependencies` 与 `chat-web-account-service` 的版本补齐：
+项目安装 `@wlisfes/chat-web-base-schema`，并按照该包的 `peerDependencies` 与 `chat-web-account-service` 的版本补齐：
 
 - `@nestjs/swagger`、`@nestjs/typeorm`
 - `class-transformer`、`express`
 - `redis`、`typeorm`
 
-这些依赖用于保证 Base Schema 的全部导出入口可以正常解析；当前空项目仍未连接数据库或 Redis。`@wlisfes` 私有包通过仓库 `.npmrc` 指向 GitHub Packages，`yarn run install` 和 `yarn run schema:update` 会依次复用 `NODE_AUTH_TOKEN`、`gh auth token` 或用户级 `~/.npmrc` 中的 GitHub Packages Token。CI 和 Docker 构建继续使用 `NODE_AUTH_TOKEN`/BuildKit Secret，不在仓库保存 Token。
+这些依赖用于保证 Base Schema 的全部导出入口可以正常解析。Skyline 业务数据库由 Nacos 的 `database.chat-web-skyline` 节点提供，镜像内置 `yarn schema:apply` 增量迁移命令，部署脚本会在启动新容器前自动应用共享 Schema SQL，并通过 `tb_skyline_schema_migration` 保存文件校验和；TypeORM 保持 `synchronize: false`，服务启动时不会自动改表。`@wlisfes` 私有包通过仓库 `.npmrc` 指向 GitHub Packages，`yarn run install` 和 `yarn run schema:update` 会依次复用 `NODE_AUTH_TOKEN`、`gh auth token` 或用户级 `~/.npmrc` 中的 GitHub Packages Token。CI 和 Docker 构建继续使用 `NODE_AUTH_TOKEN`/BuildKit Secret，不在仓库保存 Token。
+
+## 系统任务
+
+系统任务管理页面对应 `POST /api/skyline/deploy/datetask/column`（以及同目录下的 `status/update`、`cron/update`、`trigger`、`log/column` 接口）。任务定义由服务启动时幂等初始化，页面不提供新增和删除操作。首个内置任务每天从 [Frankfurter](https://api.frankfurter.dev) 获取 USD 基准汇率，再通过共享 Feign 客户端调用 Finance 的 `/currency/exchange/sync` 写入汇率表。
+
+定时执行需要一个可被账号服务接受的内部 Bearer 凭据。请在 Nacos `security.serviceToken`（或仅本机覆盖的 `FINANCE_SERVICE_TOKEN`）配置，不要把真实令牌提交到仓库；手动触发时会沿用当前请求的 `Authorization`。
 
 ## 验证
 
@@ -54,5 +60,7 @@ yarn build
 ## 部署
 
 仓库保留 `chat-home-server` Docker 自动部署。只有合并到 `main` 后才触发构建部署；日常开发继续使用 `developer`，普通开发完成后不立即合并发布。部署完成后通过 Gateway `/api/skyline/**` 验证服务。原另一台部署机器已废弃，不再创建部署任务。
+
+流水线在切换 Skyline 容器前会通过 `node:22-alpine` 执行 `deploy/bootstrap-nacos-config.cjs`，读取并校准已有的 Skyline Nacos Data ID。脚本会固定 `server.port: 5040`、补齐 Finance/Frankfurter 非敏感默认配置，并校验 `database.chat-web-skyline` 与 `security.serviceToken`；不会创建数据库账号、生成凭据或输出配置正文。缺少数据库节点或服务间凭据时部署会停止，需先在 Nacos 或部署主机 `.env`（`FINANCE_SERVICE_TOKEN` 临时覆盖）补齐配置。
 
 部署细节与排障命令见 `deploy/RUNBOOK.md`。
