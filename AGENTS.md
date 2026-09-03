@@ -20,17 +20,20 @@
 
 ## 当前工程边界
 
-- 当前代码为 NestJS 11 初始化后的空项目，只保留默认首页、`/health/live` 和 `chat-web-base-schema` 提供的 Nacos 配置与服务注册能力。
-- `@nestjs/typeorm`、`typeorm` 与 `redis` 仅作为 `chat-web-base-schema` 的对等依赖安装；在新业务方案确定前，不得创建数据库/Redis 连接或恢复相关业务模块。
-- 在新业务方案确定前，不得恢复 Vue、SSR、Webpack、Vite 或其他业务依赖。
+- Skyline 服务包含系统任务管理（`src/modules/datetask/`）和 Skyline 专属 MySQL 数据库连接（`src/modules/database/`），同时保留默认首页、`/health/live` 以及 `chat-web-base-schema` 提供的 Nacos 配置与服务注册能力。
+- `TbSkylineDatetaskSystem` Entity、完整 DTO、建表 SQL 和增量 SQL 必须来自 `@wlisfes/chat-web-base-schema/chat-web-skyline-mysql`；业务服务只注册实体和编排用例，不得复制或自行维护另一套表结构。TypeORM 必须使用 `synchronize: false`，数据库变更由版本化 Schema SQL 和部署前的 `yarn schema:apply` 完成。
+- 系统任务定义由服务启动时幂等初始化，管理页面只允许查询、启停、修改 Cron、手动触发和查看执行日志，不提供新增或删除接口。新增内置任务必须同时补充 Schema/初始化定义、处理器映射、DTO、接口文档和测试。
+- 任务调度器必须以数据库中的任务状态和 Cron 为准；多 Pod 场景使用 MySQL 会话级分布式锁，确保同一任务不会重复执行。调度失败要记录中文日志并保留可恢复的重试行为，不能因为单个任务异常产生未处理 Promise 拒绝。
+- 汇率同步任务通过 `FinanceFeignClient` 调用 Finance 服务 `/currency/exchange/sync`，外部汇率数据从 Frankfurter 获取。Feign 客户端统一复用 `chat-web-base-schema`，不得在 Skyline 中另写 HTTP 客户端契约；自动调度没有请求上下文时使用 Nacos `security.serviceToken`（本机临时覆盖可使用 `FINANCE_SERVICE_TOKEN`），凭据不得写入代码、日志或文档示例。
+- 本服务不恢复 Vue、SSR、Webpack、Vite 或其他前端业务依赖；管理页面属于 `chat-web-base-manager`，通过 Gateway `/api/skyline/**` 访问 Skyline 接口。
 - 新功能继续在 `developer` 分支开发；普通功能完成后只提交并推送 `developer`，不得立即合并 `main` 或触发流水线。
 - 远程仓库只保留 `main`、`developer` 两个长期分支；临时需求分支必须先合并到 `developer`，发布时同步合并到 `main`，合并并验证通过后立即删除远程和本地临时分支。
 
 ## HTTP Controller 与 Service 编码基准
 
-- `chat-web-account-service/src/modules/menu/` 是 Controller、Service、DTO、Utils Service 和 Module 组织方式的唯一基准；Skyline 按 NestJS 空项目边界适配，不得另建接口风格。
+- `chat-web-account-service/src/modules/sheet/` 是 Controller、Service、DTO、Utils Service 和 Module 组织方式的唯一基准；Skyline 按 NestJS 空项目边界适配，不得另建接口风格。
 - Controller 必须保持为薄协议层：只声明路由、权限、Swagger/Apifox 元数据，接收 `query`、`body` 或必要请求/响应上下文，并将参数原样交给同名 Service 方法；禁止在 Controller 内实现业务判断、业务数据组装或记录业务日志。Cookie、响应头、重定向和流式响应等纯 HTTP 协议操作可以留在 Controller，但不得把 `Request`、`Response` 或响应发送逻辑传入业务 Service。
-- Controller 与对应 Service 的公开 HTTP 方法统一声明为 `public async`；CRUD、列表等通用动作通常使用 `httpBaseSkyline<Action><Resource>`，Tree、Resolver 等资源专属读取语义可使用 `httpBaseSkyline<Resource><Action>`，命名语义参考基准模块的 `httpBaseAccountMenuTree`、`httpBaseAccountMenuResolver`。两层方法名必须完全一致，不得只为统一单词顺序而机械倒装；Controller 直接返回同名 Service 调用结果，禁止再调用 `create`、`list`、`findOne`、`update` 等另一套短方法。
+- Controller 与对应 Service 的公开 HTTP 方法统一声明为 `public async`；CRUD、列表等通用动作通常使用 `httpBaseSkyline<Action><Resource>`，Tree、Resolver 等资源专属读取语义可使用 `httpBaseSkyline<Resource><Action>`，命名语义参考基准模块的 `httpBaseAccountSheetTree`、`httpBaseAccountSheetResolver`。两层方法名必须完全一致，不得只为统一单词顺序而机械倒装；Controller 直接返回同名 Service 调用结果，禁止再调用 `create`、`list`、`findOne`、`update` 等另一套短方法。
 - GET 只接收 `@Query()` DTO，POST 只接收 `@Body()` DTO；无请求 DTO 的接口不制造空 DTO。每个接口必须使用 `ApiServiceDecorator` 完整声明请求来源、请求 DTO、响应 DTO、数组标识和中文说明；纯文本、文件流等原始响应必须明确关闭统一响应外壳。
 - Service 负责业务编排，公开 HTTP 方法必须添加简洁中文职责注释并显式声明 `Promise<...>` 返回类型；欢迎信息和健康检查响应都由 Service 返回，Controller 不得内联常量或对象。模块请求 DTO 在 Service 中优先使用 `import * as XxxDto` 归组引用。
 - DTO 和接口枚举放在模块 `dto/` 目录，优先通过共享基础 DTO 复用字段；字段必须提供 Swagger 示例/说明、必要的类型转换和中文校验消息。分页 DTO 使用公共 `PageDto`，响应固定为 `page`、`size`、`total`、`list`。

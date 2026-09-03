@@ -136,6 +136,7 @@ jobs:
                   set -eu
                   install -m 0644 deploy/compose.yml "$DEPLOY_PATH/compose.yml"
                   install -m 0755 deploy/deploy.sh "$DEPLOY_PATH/deploy.sh"
+                  install -m 0644 deploy/bootstrap-nacos-config.cjs "$DEPLOY_PATH/bootstrap-nacos-config.cjs"
                   install -m 0600 deploy/.env.example "$DEPLOY_PATH/.env.example"
                   if [ ! -f "$DEPLOY_PATH/.env" ]; then
                     install -m 0600 deploy/.env.example "$DEPLOY_PATH/.env"
@@ -148,6 +149,26 @@ jobs:
               run: |
                   set -eu
                   sed -i -E '/^NACOS_(REQUEST_TIMEOUT|REGISTER_PORT|REGISTER_IP|REGISTER_REQUIRED|GROUP|CONFIG_GROUP)=/d' "$DEPLOY_PATH/.env"
+
+            - name: 校准 Skyline Nacos 配置
+              shell: bash
+              run: |
+                  set -eu
+                  network=$(sed -n 's/^DOCKER_NETWORK=//p' "$DEPLOY_PATH/.env" | tail -n 1 | tr -d '\r')
+                  network=${network:-chat-web-infrastructure}
+                  case "$network" in
+                    *[!A-Za-z0-9_.-]*|'')
+                      echo "Invalid DOCKER_NETWORK in deployment environment" >&2
+                      exit 1
+                      ;;
+                  esac
+                  docker network inspect "$network" >/dev/null
+                  docker run --rm \
+                    --network "$network" \
+                    --env-file "$DEPLOY_PATH/.env" \
+                    -v "$DEPLOY_PATH/bootstrap-nacos-config.cjs:/app/bootstrap-nacos-config.cjs:ro" \
+                    -w /app \
+                    node:22-alpine node bootstrap-nacos-config.cjs
 
             - name: Pull and deploy image
               shell: bash
