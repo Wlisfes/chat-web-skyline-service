@@ -4,7 +4,7 @@
 
 - 影响范围：Skyline `chat-home-server` 发布流水线；运行时配置和数据库结构不变。
 - 关联版本：Skyline 完整 Git SHA 镜像构建。
-- 变更内容：锁定 `mysql2@3.23.3` 使用官方 npm tarball，并保留与上游元数据一致的 SHA-512 完整性校验，避免镜像源内容漂移导致安装失败。
+- 变更内容：锁定 `mysql2@3.23.3` 使用官方 npm tarball，修正被截断一位的 SHA-1 URL 片段，并保留与上游元数据一致的 SHA-512 完整性校验。
 - 机器侧操作：无需修改主机 `.env`、Nacos 或数据库。
 - 验证：执行 `yarn format:check && yarn typecheck && yarn build && yarn test:unit`，并重新运行发布流水线依赖安装、容器健康和 Gateway 端点检查。
 - 回滚：恢复上一版 Skyline 完整 Git SHA；无需回滚数据库迁移。
