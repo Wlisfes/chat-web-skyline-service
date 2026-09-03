@@ -3,13 +3,15 @@
 /**
  * Skyline 部署前 Nacos 配置校准。
  *
- * 该脚本只会读取并合并已经存在的配置，不会创建数据库、数据库账号或服务凭据。
- * 这样可以避免把部署机上的真实密码/Token 写入仓库或在首次部署时生成不可追踪的凭据。
+ * 该脚本只读取并校验已经存在的配置，不会创建数据库、数据库账号、服务凭据或回写 Nacos。
+ * 这样可以避免部署过程覆盖人工维护的配置，或生成不可追踪的凭据。
  */
 
 const DEFAULT_SERVER_PORT = 5040
 const DEFAULT_FINANCE_SERVICE_URL = 'http://chat-web-finance-service:5030'
 const DEFAULT_FINANCE_SERVICE_TIMEOUT_MS = 5000
+const DEFAULT_CRM_SERVICE_URL = 'http://chat-web-crm-service:5020'
+const DEFAULT_CRM_SERVICE_TIMEOUT_MS = 3000
 const DEFAULT_SKYLINE_FRANKFURTER_URL = 'https://api.frankfurter.dev/v2/rates'
 const DEFAULT_FRANKFURTER_TIMEOUT_MS = 10_000
 
@@ -166,56 +168,60 @@ function validateDatabaseConfig(lines) {
 }
 
 function validateServiceToken(lines, environment = process.env) {
+    const feign = findRootBlock(lines, 'feign')
+    const feignToken = feign ? (findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')) : undefined
+    if (feignToken && scalarPresent(feignToken.value)) return
     const security = findRootBlock(lines, 'security')
     const serviceToken = security ? findDirectField(lines, security, 'serviceToken') : undefined
     if (serviceToken && scalarPresent(serviceToken.value)) return
     // 允许部署主机通过 env_file 临时覆盖，但不把该值回写到 Nacos，避免凭据扩散。
     if (typeof environment.FINANCE_SERVICE_TOKEN === 'string' && environment.FINANCE_SERVICE_TOKEN.trim()) return
-    throw new Error('Skyline Nacos 配置缺少 security.serviceToken，请先配置 Finance 服务间凭据')
+    throw new Error('Skyline Nacos 配置缺少 feign.service_token，请先配置 Finance 服务间凭据')
 }
 
-function ensureServerPort(lines) {
+function validateServerPort(lines) {
     const server = findRootBlock(lines, 'server')
     if (!server) throw new Error('Skyline Nacos 配置缺少 server 节点')
     const port = findDirectField(lines, server, 'port')
-    if (port) {
-        lines[port.index] = `${lines[port.index].slice(0, lines[port.index].indexOf('port:') + 'port:'.length)} ${DEFAULT_SERVER_PORT}`
-        return
+    if (!port || !scalarPresent(port.value) || String(port.value).trim() !== String(DEFAULT_SERVER_PORT)) {
+        throw new Error(`Skyline Nacos 配置 server.port 必须为 ${DEFAULT_SERVER_PORT}`)
     }
-    lines.splice(server.start + 1, 0, `${' '.repeat(server.indent + 2)}port: ${DEFAULT_SERVER_PORT}`)
 }
 
-const DEFAULT_ENTRIES = [
-    {
-        key: 'FINANCE_SERVICE_URL',
-        value: JSON.stringify(DEFAULT_FINANCE_SERVICE_URL),
-        comment: '# Finance 服务的内部 Feign 地址。'
-    },
-    {
-        key: 'FINANCE_SERVICE_TIMEOUT_MS',
-        value: String(DEFAULT_FINANCE_SERVICE_TIMEOUT_MS),
-        comment: '# Finance 服务 Feign 请求超时时间（毫秒）。'
-    },
-    {
-        key: 'SKYLINE_FRANKFURTER_URL',
-        value: JSON.stringify(DEFAULT_SKYLINE_FRANKFURTER_URL),
-        comment: '# Frankfurter 汇率接口地址。'
-    },
-    {
-        key: 'FRANKFURTER_TIMEOUT_MS',
-        value: String(DEFAULT_FRANKFURTER_TIMEOUT_MS),
-        comment: '# Frankfurter 请求超时时间（毫秒）。'
+function validateFeignService(lines, feign, name) {
+    const service = findChildBlock(lines, feign, name)
+    if (!service) throw new Error(`Skyline Nacos 配置缺少 feign.${name}`)
+    const url = findDirectField(lines, service, 'url')
+    if (!url || !scalarPresent(url.value)) throw new Error(`Skyline Nacos 配置缺少 feign.${name}.url`)
+    const normalizedUrl = String(url.value)
+        .trim()
+        .replace(/^(['"])(.*)\1$/, '$2')
+    try {
+        const parsed = new URL(normalizedUrl)
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error()
+    } catch {
+        throw new Error(`Skyline Nacos 配置 feign.${name}.url 必须使用 http:// 或 https://`)
     }
-]
+    const timeout = findDirectField(lines, service, 'timeout')
+    if (!timeout || !/^\d+$/.test(String(timeout.value).trim()) || Number(timeout.value) < 100 || Number(timeout.value) > 30_000) {
+        throw new Error(`Skyline Nacos 配置 feign.${name}.timeout 必须是 100-30000 之间的整数`)
+    }
+}
 
-function appendMissingDefaults(lines) {
-    const existingKeys = new Set(lines.map(rootKey).filter(Boolean))
-    const missing = DEFAULT_ENTRIES.filter(entry => !existingKeys.has(entry.key))
-    if (!missing.length) return
-    if (lines.length && lines[lines.length - 1].trim()) lines.push('')
-    for (const entry of missing) {
-        lines.push(entry.comment, `${entry.key}: ${entry.value}`)
+function validateFeignConfig(lines, environment = process.env, requireServiceToken = true) {
+    const feign = findRootBlock(lines, 'feign')
+    if (!feign) throw new Error('Skyline Nacos 配置缺少 feign 节点')
+    const token = findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')
+    if (
+        requireServiceToken &&
+        (!token || !scalarPresent(token.value)) &&
+        !(typeof environment.FINANCE_SERVICE_TOKEN === 'string' && environment.FINANCE_SERVICE_TOKEN.trim())
+    ) {
+        throw new Error('Skyline Nacos 配置缺少 feign.service_token')
     }
+    validateFeignService(lines, feign, 'chat-web-account')
+    validateFeignService(lines, feign, 'chat-web-finance')
+    validateFeignService(lines, feign, 'chat-web-crm')
 }
 
 /**
@@ -227,11 +233,11 @@ function appendMissingDefaults(lines) {
 function sanitizeSkylineConfig(content, environment = process.env, options = { requireServiceToken: true }) {
     if (typeof content !== 'string' || !content.trim()) throw new Error('Skyline Nacos 配置不能为空')
     const lines = normalizeContent(content).trimEnd().split('\n')
-    ensureServerPort(lines)
+    validateServerPort(lines)
     validateDatabaseConfig(lines)
+    validateFeignConfig(lines, environment, options.requireServiceToken !== false)
     if (options.requireServiceToken !== false) validateServiceToken(lines, environment)
-    appendMissingDefaults(lines)
-    return `${lines.join('\n').trim()}\n`
+    return normalizeContent(content)
 }
 
 /** 仅用于人工准备完整配置的辅助函数；部署主流程不会在缺失配置时调用。 */
@@ -246,6 +252,17 @@ function createSkylineConfig(environment = process.env) {
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('SKYLINE_MYSQL_PORT 必须是 1-65535 之间的整数')
     return `server:
   port: ${DEFAULT_SERVER_PORT}
+feign:
+  service_token: ${scalar(token)}
+  chat-web-account:
+    url: ${scalar(environment.ACCOUNT_SERVICE_URL || 'http://chat-web-account-service:5010')}
+    timeout: ${Number(environment.ACCOUNT_AUTH_TIMEOUT_MS || 3000)}
+  chat-web-finance:
+    url: ${scalar(environment.FINANCE_SERVICE_URL || DEFAULT_FINANCE_SERVICE_URL)}
+    timeout: ${Number(environment.FINANCE_SERVICE_TIMEOUT_MS || DEFAULT_FINANCE_SERVICE_TIMEOUT_MS)}
+  chat-web-crm:
+    url: ${scalar(environment.CRM_SERVICE_URL || DEFAULT_CRM_SERVICE_URL)}
+    timeout: ${Number(environment.CRM_SERVICE_TIMEOUT_MS || DEFAULT_CRM_SERVICE_TIMEOUT_MS)}
 database:
   chat-web-skyline:
     host: ${scalar(host)}
@@ -253,48 +270,22 @@ database:
     name: ${scalar(database)}
     username: ${scalar(username)}
     password: ${scalar(password)}
-security:
-  serviceToken: ${scalar(token)}
-
-${DEFAULT_ENTRIES.map(entry => `${entry.comment}\n${entry.key}: ${entry.value}`).join('\n')}
 `
-}
-
-async function publishConfig(dataId, content, environment = process.env) {
-    const body = new URLSearchParams({
-        dataId,
-        group: environment.NACOS_CONFIG_GROUP?.trim() || environment.NACOS_GROUP?.trim() || 'DEFAULT_GROUP',
-        tenant: required('NACOS_NAMESPACE', environment),
-        type: 'yaml',
-        content
-    })
-    const accessToken = await getNacosAccessToken(environment)
-    if (accessToken) body.set('accessToken', accessToken)
-    const response = await fetch(`${getBaseUrl(environment)}/nacos/v1/cs/configs`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body
-    })
-    const result = await response.text()
-    if (!response.ok || result.trim() !== 'true') {
-        throw new Error(`发布 Skyline Nacos 配置失败：HTTP ${response.status}`)
-    }
 }
 
 async function main() {
     const dataId = required('NACOS_CONFIG_DATA_ID')
     const existing = await readConfig(dataId)
     if (!existing) {
-        throw new Error(`未找到 Skyline Nacos 配置：${dataId}；请先创建 server、database.chat-web-skyline 和 security.serviceToken`)
+        throw new Error(`未找到 Skyline Nacos 配置：${dataId}；请先创建 server、database.chat-web-skyline 和 feign.service_token`)
     }
     const sanitized = sanitizeSkylineConfig(existing, process.env, { requireServiceToken: true })
     const normalizedExisting = normalizeContent(existing)
     if (sanitized !== normalizedExisting) {
-        await publishConfig(dataId, sanitized)
-        process.stdout.write(`Skyline Nacos 配置已校准：${dataId}\n`)
+        process.stdout.write(`Skyline Nacos 配置格式已规范化但未回写：${dataId}\n`)
         return
     }
-    process.stdout.write(`Skyline Nacos 配置无需变更：${dataId}\n`)
+    process.stdout.write(`Skyline Nacos 配置校验通过且未修改：${dataId}\n`)
 }
 
 if (require.main === module) {
@@ -309,10 +300,13 @@ module.exports = {
     DEFAULT_SERVER_PORT,
     DEFAULT_FINANCE_SERVICE_URL,
     DEFAULT_FINANCE_SERVICE_TIMEOUT_MS,
+    DEFAULT_CRM_SERVICE_URL,
+    DEFAULT_CRM_SERVICE_TIMEOUT_MS,
     DEFAULT_SKYLINE_FRANKFURTER_URL,
     DEFAULT_FRANKFURTER_TIMEOUT_MS,
     createSkylineConfig,
     sanitizeSkylineConfig,
     validateDatabaseConfig,
-    validateServiceToken
+    validateServiceToken,
+    validateFeignConfig
 }

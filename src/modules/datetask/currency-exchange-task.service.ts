@@ -173,10 +173,11 @@ export class CurrencyExchangeTaskService {
 
         const configured = [
             this.configService.get<string>('FINANCE_SERVICE_TOKEN'),
+            this.configService.get<string>('feign.service_token'),
             this.configService.get<string>('security.serviceToken')
         ].find(value => typeof value === 'string' && value.trim())
         if (!configured) {
-            throw new ServiceUnavailableException('缺少 Finance 服务内部 Bearer 凭据，请配置 security.serviceToken')
+            throw new ServiceUnavailableException('缺少 Finance 服务内部 Bearer 凭据，请配置 feign.service_token')
         }
         const token = configured.trim()
         return /^Bearer\s+/i.test(token) ? token : `Bearer ${token}`

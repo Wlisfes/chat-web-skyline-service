@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { ConfigService } from '@nestjs/config'
+import { syncFeignConfiguration } from '@/modules/feign/feign-config.module'
 
 // 部署脚本运行在 node:22-alpine 中，不能依赖 Skyline 的 node_modules；测试直接加载其 CommonJS 导出。
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -21,27 +23,33 @@ describe('Skyline Nacos 部署配置校准', () => {
     username: "skyline"
     password: "keep-this-password"`
 
-    it('应固定端口、补齐汇率任务默认项并保留已有敏感配置', () => {
+    it('应校验现有配置并保持 Feign 与敏感字段原样', () => {
         const source = `server:
-  port: 4020
+  port: 5040
+feign:
+  service_token: "keep-this-token"
+  chat-web-account:
+    url: "http://chat-web-account-service:5010"
+    timeout: 3000
+  chat-web-finance:
+    url: "http://chat-web-finance-service:5030"
+    timeout: 3000
+  chat-web-crm:
+    url: "http://chat-web-crm-service:5020"
+    timeout: 3000
 ${database}
-security:
-  serviceToken: "keep-this-token"
 `
 
         const result = sanitizeSkylineConfig(source, {})
 
         expect(result).toContain('port: 5040')
-        expect(result).not.toContain('port: 4020')
         expect(result).toContain('password: "keep-this-password"')
-        expect(result).toContain('serviceToken: "keep-this-token"')
-        expect(result).toContain('FINANCE_SERVICE_URL: "http://chat-web-finance-service:5030"')
-        expect(result).toContain('SKYLINE_FRANKFURTER_URL: "https://api.frankfurter.dev/v2/rates"')
-        expect(result).toContain('FRANKFURTER_TIMEOUT_MS: 10000')
+        expect(result).toContain('service_token: "keep-this-token"')
+        expect(result).toContain('chat-web-finance:')
     })
 
     it('缺少 Skyline 数据库节点时应拒绝校准', () => {
-        expect(() => sanitizeSkylineConfig('server:\n  port: 5040\nsecurity:\n  serviceToken: token')).toThrow('database.chat-web-skyline')
+        expect(() => sanitizeSkylineConfig('server:\n  port: 5040\nfeign:\n  service_token: token')).toThrow('database.chat-web-skyline')
     })
 
     it('缺少服务间凭据时应拒绝校准，但允许明确的主机临时覆盖', () => {
@@ -49,25 +57,30 @@ security:
   port: 5040
 ${database}`
 
-        expect(() => sanitizeSkylineConfig(source, {})).toThrow('security.serviceToken')
-        expect(sanitizeSkylineConfig(source, { FINANCE_SERVICE_TOKEN: 'host-only-token' })).toContain('port: 5040')
+        expect(() => sanitizeSkylineConfig(source, {})).toThrow('feign 节点')
+        expect(() =>
+            sanitizeSkylineConfig(
+                `${source}\nfeign:\n  chat-web-account:\n    url: http://chat-web-account-service:5010\n    timeout: 3000\n  chat-web-finance:\n    url: http://chat-web-finance-service:5030\n    timeout: 3000\n  chat-web-crm:\n    url: http://chat-web-crm-service:5020\n    timeout: 3000`,
+                { FINANCE_SERVICE_TOKEN: 'host-only-token' }
+            )
+        ).not.toThrow()
     })
 
     it('完整配置再次执行应保持幂等', () => {
         const source = `server:
   port: 5040
 ${database}
-security:
-  serviceToken: token
-
-# Finance 服务的内部 Feign 地址。
-FINANCE_SERVICE_URL: "http://chat-web-finance-service:5030"
-# Finance 服务 Feign 请求超时时间（毫秒）。
-FINANCE_SERVICE_TIMEOUT_MS: 5000
-# Frankfurter 汇率接口地址。
-SKYLINE_FRANKFURTER_URL: "https://api.frankfurter.dev/v2/rates"
-# Frankfurter 请求超时时间（毫秒）。
-FRANKFURTER_TIMEOUT_MS: 10000
+feign:
+  service_token: token
+  chat-web-account:
+    url: "http://chat-web-account-service:5010"
+    timeout: 3000
+  chat-web-finance:
+    url: "http://chat-web-finance-service:5030"
+    timeout: 3000
+  chat-web-crm:
+    url: "http://chat-web-crm-service:5020"
+    timeout: 3000
 `
 
         expect(sanitizeSkylineConfig(source, {})).toBe(source)
@@ -82,7 +95,7 @@ FRANKFURTER_TIMEOUT_MS: 10000
             FINANCE_SERVICE_TOKEN: 'finance-token'
         })
         expect(source).toContain('name: "chat_web_skyline"')
-        expect(source).toContain('serviceToken: "finance-token"')
+        expect(source).toContain('service_token: "finance-token"')
 
         const script = readFileSync(resolve(__dirname, '../../deploy/bootstrap-nacos-config.cjs'), 'utf8')
         expect(script).toContain('if (!existing)')
@@ -97,5 +110,21 @@ FRANKFURTER_TIMEOUT_MS: 10000
         expect(installIndex).toBeGreaterThanOrEqual(0)
         expect(bootstrapIndex).toBeGreaterThan(installIndex)
         expect(deployIndex).toBeGreaterThan(bootstrapIndex)
+    })
+
+    it('应用启动时将嵌套 Feign 配置映射为共享客户端键', () => {
+        const config = new ConfigService({
+            feign: {
+                'chat-web-account': { url: 'http://chat-web-account-service:5010', timeout: 3000 },
+                'chat-web-finance': { url: 'http://chat-web-finance-service:5030', timeout: 3000 },
+                'chat-web-crm': { url: 'http://chat-web-crm-service:5020', timeout: 3000 }
+            }
+        })
+
+        syncFeignConfiguration(config)
+
+        expect(config.get('ACCOUNT_SERVICE_URL')).toBe('http://chat-web-account-service:5010')
+        expect(config.get('FINANCE_SERVICE_URL')).toBe('http://chat-web-finance-service:5030')
+        expect(config.get('CRM_SERVICE_URL')).toBe('http://chat-web-crm-service:5020')
     })
 })

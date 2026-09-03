@@ -6,22 +6,22 @@ import { ReadableConsoleLogger, createRequestLoggingMiddleware } from '@wlisfes/
 import { requestContextMiddleware } from '@wlisfes/chat-web-base-schema/request-context'
 import { AppModule } from '@/app.module'
 
-const serviceName = process.env.NACOS_SERVICE_NAME ?? 'chat-web-skyline-service'
-const logger = new ReadableConsoleLogger({ NODE_ENV: process.env.NODE_ENV, prefix: serviceName })
+const logger = new ReadableConsoleLogger({
+    NODE_ENV: process.env.NODE_ENV,
+    prefix: process.env.NACOS_SERVICE_NAME
+})
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger })
     app.enableShutdownHooks()
     app.use(requestContextMiddleware)
-    app.use(createRequestLoggingMiddleware(serviceName))
-    await app.init()
-
+    app.use(createRequestLoggingMiddleware(process.env.NACOS_SERVICE_NAME))
     return await setupSwagger(app, {
         title: `Chat Web Skyline 服务 API`,
         description: `Chat Web Skyline 服务接口文档`,
         port: process.env.PORT,
         NODE_ENV: process.env.NODE_ENV ?? 'development'
     }).then(async event => {
-        logger.log(`Chat Web 天线基础服务启动[${event.NODE_ENV}]：http://127.0.0.1:${event.port}`, 'Bootstrap')
+        logger.log(`Chat Web Skyline 服务启动[${event.NODE_ENV}]：http://127.0.0.1:${event.port}`, 'Bootstrap')
         logger.log(`Swagger 文档：http://127.0.0.1:${event.port}/api/swagger`, 'Bootstrap')
     })
 }
