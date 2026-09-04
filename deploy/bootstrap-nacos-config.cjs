@@ -177,6 +177,15 @@ function validateServiceToken(lines) {
     throw new Error('Skyline Nacos 配置缺少 feign.service_token，请先配置 Finance 服务间凭据')
 }
 
+function hasConfiguredServiceToken(lines) {
+    const feign = findRootBlock(lines, 'feign')
+    const feignToken = feign ? (findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')) : undefined
+    if (feignToken && scalarPresent(feignToken.value)) return true
+    const security = findRootBlock(lines, 'security')
+    const securityToken = security ? findDirectField(lines, security, 'serviceToken') : undefined
+    return Boolean(securityToken && scalarPresent(securityToken.value))
+}
+
 function validateServerPort(lines) {
     const server = findRootBlock(lines, 'server')
     if (!server) throw new Error('Skyline Nacos 配置缺少 server 节点')
@@ -209,8 +218,7 @@ function validateFeignService(lines, feign, name) {
 function validateFeignConfig(lines, requireServiceToken = true) {
     const feign = findRootBlock(lines, 'feign')
     if (!feign) throw new Error('Skyline Nacos 配置缺少 feign 节点')
-    const token = findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')
-    if (requireServiceToken && (!token || !scalarPresent(token.value))) {
+    if (requireServiceToken && !hasConfiguredServiceToken(lines)) {
         throw new Error('Skyline Nacos 配置缺少 feign.service_token')
     }
     validateFeignService(lines, feign, 'chat-web-account')

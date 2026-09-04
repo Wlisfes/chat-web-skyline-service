@@ -1,5 +1,12 @@
 # Skyline 部署变更记录
 
+## 2026-09-04：兼容历史 Nacos 字段且禁止配置回写
+
+- 影响范围：Skyline 本地启动与 `chat-home-server` 部署镜像。
+- 变更内容：汇率任务兼容 Nacos 历史 `security.serviceToken`、`SKYLINE_FRANKFURTER_URL` 和 `FRANKFURTER_TIMEOUT_MS`，并优先使用当前嵌套键；部署校验继续只读，不创建、覆盖或回写 Nacos；恢复环境示例中的注册开关、权重字段和中文注释。
+- 机器侧操作：无需重命名或重排 Nacos 字段，继续使用现有人工配置。
+- 验证命令：执行 `yarn build`、`yarn typecheck` 和 `yarn test:unit`。
+
 ## 2026-09-04：升级共享基础包并统一 Nacos 数据库与 Feign 配置
 
 - 影响范围：Skyline 本地启动与 `chat-home-server` 部署镜像。

@@ -15,7 +15,7 @@ import { SKYLINE_MYSQL_CONFIG_KEY, SKYLINE_MYSQL_ENTITIES } from '@/modules/data
             useFactory: async (configService: ConfigService, nacosService: NacosService) => {
                 await nacosService.loadConfig()
                 const configured = configService.get<Record<string, unknown>>(SKYLINE_MYSQL_CONFIG_KEY)
-                // 兼容尚未迁移的历史 Nacos 字段；后续保存配置统一使用 database。
+                // 仅在内存中兼容 Nacos 的历史 name 字段，不修改或回写远端配置。
                 if (configured && typeof configured.database !== 'string' && typeof configured.name === 'string') {
                     configService.set(SKYLINE_MYSQL_CONFIG_KEY, { ...configured, database: configured.name })
                 }

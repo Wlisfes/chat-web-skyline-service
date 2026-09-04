@@ -58,7 +58,11 @@ export class CurrencyExchangeTaskService {
 
     private async fetchFrankfurterRates(): Promise<{ date: string; rates: Array<{ currency: string; rate: number }> }> {
         const requestedDate = this.formatDate(new Date())
-        const endpoint = this.configService.get<string>('integration.frankfurter.url')?.trim() || 'https://api.frankfurter.dev/v2/rates'
+        // 优先使用当前 Nacos 嵌套配置，同时兼容历史顶层键，避免为了代码升级强制改动人工配置。
+        const endpoint =
+            this.configService.get<string>('integration.frankfurter.url')?.trim() ||
+            this.configService.get<string>('SKYLINE_FRANKFURTER_URL')?.trim() ||
+            'https://api.frankfurter.dev/v2/rates'
         const requestedUrl = this.createFrankfurterUrl(endpoint, requestedDate)
         let payload: unknown
         let rows: FrankfurterRateRow[] = []
@@ -174,7 +178,9 @@ export class CurrencyExchangeTaskService {
         const requestToken = authorization?.trim()
         if (requestToken && /^Bearer\s+\S+$/i.test(requestToken)) return requestToken
 
-        const configured = this.configService.get<string>('feign.service_token')
+        // `feign.service_token` 是当前约定；`security.serviceToken` 是历史 Nacos 字段，均只读不回写。
+        const configured =
+            this.configService.get<string>('feign.service_token')?.trim() || this.configService.get<string>('security.serviceToken')?.trim()
         if (typeof configured !== 'string' || !configured.trim()) {
             throw new ServiceUnavailableException('缺少 Finance 服务内部 Bearer 凭据，请配置 feign.service_token')
         }
@@ -183,7 +189,9 @@ export class CurrencyExchangeTaskService {
     }
 
     private getTimeout(): number {
-        const configured = this.configService.get<number | string>('integration.frankfurter.timeout')
+        const configured =
+            this.configService.get<number | string>('integration.frankfurter.timeout') ??
+            this.configService.get<number | string>('FRANKFURTER_TIMEOUT_MS')
         const timeout = configured === undefined || configured === '' ? 10_000 : Number(configured)
         return Number.isInteger(timeout) && timeout >= 1000 && timeout <= 60_000 ? timeout : 10_000
     }

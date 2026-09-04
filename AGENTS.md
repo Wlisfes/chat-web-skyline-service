@@ -8,6 +8,7 @@
 - 统一使用 4 空格、无分号、单引号、`printWidth: 140`、无尾随逗号；内部源码统一使用 `@/*` 路径别名。
 - 文件名使用小写 kebab-case 和职责后缀；类、接口、枚举使用 PascalCase，变量、函数使用 camelCase，常量和注入 Token 使用 UPPER_SNAKE_CASE。
 - 日志、校验消息、Swagger 描述和面向维护者的错误信息使用中文，代码标识符使用英文。
+- 业务源码和配置文件必须编写清晰、必要的中文注释；配置文件包括 Nacos YAML、Compose、Dockerfile、Actions 和 `.env.example`。新增配置项必须同步说明用途，修改或格式化时必须保留既有注释，不得删除、覆盖或改写；注释中不得出现真实密码、Token、私钥等敏感信息。
 - HTTP Controller 只允许 GET、POST；GET 使用 query，POST 使用 body；多选参数必须是数组，禁止使用 `/:uid` 等路径参数。
 - 如新增分页接口，必须使用统一的 `page`、`size` 入参和 `page`、`size`、`total`、`list` 响应；不得引入 `pageSize`、`items`、`records` 或 `rows` 同义字段。
 - 请求日志必须包含 logId、方法、URL、状态码、来源、入参和耗时，并脱敏密码、Token 等敏感字段。
@@ -24,7 +25,7 @@
 - `TbSkylineDatetaskSystem` Entity、完整 DTO、建表 SQL 和增量 SQL 必须来自 `@wlisfes/chat-web-base-schema/chat-web-skyline-mysql`；业务服务只注册实体和编排用例，不得复制或自行维护另一套表结构。TypeORM 必须使用 `synchronize: false`，数据库变更由版本化 Schema SQL 和部署前的 `yarn schema:apply` 完成。
 - 系统任务定义由服务启动时幂等初始化，管理页面只允许查询、启停、修改 Cron、手动触发和查看执行日志，不提供新增或删除接口。新增内置任务必须同时补充 Schema/初始化定义、处理器映射、DTO、接口文档和测试。
 - 任务调度器必须以数据库中的任务状态和 Cron 为准；多 Pod 场景使用 MySQL 会话级分布式锁，确保同一任务不会重复执行。调度失败要记录中文日志并保留可恢复的重试行为，不能因为单个任务异常产生未处理 Promise 拒绝。
-- 汇率同步任务通过 `FinanceFeignClient` 调用 Finance 服务 `/currency/exchange/sync`，外部汇率数据从 Frankfurter 获取。Feign 客户端统一复用 `chat-web-base-schema`，不得在 Skyline 中另写 HTTP 客户端契约；自动调度没有请求上下文时使用 Nacos `feign.service_token`（本机临时覆盖可使用 `FINANCE_SERVICE_TOKEN`），凭据不得写入代码、日志或文档示例。
+- 汇率同步任务通过 `FeignClientFinance` 调用 Finance 服务 `/currency/exchange/sync`，外部汇率数据从 Frankfurter 获取。Feign 客户端统一复用 `chat-web-base-schema`，不得在 Skyline 中另写 HTTP 客户端契约；自动调度没有请求上下文时使用 Nacos `feign.service_token`（兼容历史 `security.serviceToken`），凭据不得写入代码、日志或文档示例。
 - 本服务不恢复 Vue、SSR、Webpack、Vite 或其他前端业务依赖；管理页面属于 `chat-web-base-manager`，通过 Gateway `/api/skyline/**` 访问 Skyline 接口。
 - 新功能继续在 `developer` 分支开发；普通功能完成后只提交并推送 `developer`，不得立即合并 `main` 或触发流水线。
 - 远程仓库只保留 `main`、`developer` 两个长期分支；临时需求分支必须先合并到 `developer`，发布时同步合并到 `main`，合并并验证通过后立即删除远程和本地临时分支。
