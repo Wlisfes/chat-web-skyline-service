@@ -167,15 +167,13 @@ function validateDatabaseConfig(lines) {
     }
 }
 
-function validateServiceToken(lines, environment = process.env) {
+function validateServiceToken(lines) {
     const feign = findRootBlock(lines, 'feign')
     const feignToken = feign ? (findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')) : undefined
     if (feignToken && scalarPresent(feignToken.value)) return
     const security = findRootBlock(lines, 'security')
     const serviceToken = security ? findDirectField(lines, security, 'serviceToken') : undefined
     if (serviceToken && scalarPresent(serviceToken.value)) return
-    // 允许部署主机通过 env_file 临时覆盖，但不把该值回写到 Nacos，避免凭据扩散。
-    if (typeof environment.FINANCE_SERVICE_TOKEN === 'string' && environment.FINANCE_SERVICE_TOKEN.trim()) return
     throw new Error('Skyline Nacos 配置缺少 feign.service_token，请先配置 Finance 服务间凭据')
 }
 
@@ -208,15 +206,11 @@ function validateFeignService(lines, feign, name) {
     }
 }
 
-function validateFeignConfig(lines, environment = process.env, requireServiceToken = true) {
+function validateFeignConfig(lines, requireServiceToken = true) {
     const feign = findRootBlock(lines, 'feign')
     if (!feign) throw new Error('Skyline Nacos 配置缺少 feign 节点')
     const token = findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')
-    if (
-        requireServiceToken &&
-        (!token || !scalarPresent(token.value)) &&
-        !(typeof environment.FINANCE_SERVICE_TOKEN === 'string' && environment.FINANCE_SERVICE_TOKEN.trim())
-    ) {
+    if (requireServiceToken && (!token || !scalarPresent(token.value))) {
         throw new Error('Skyline Nacos 配置缺少 feign.service_token')
     }
     validateFeignService(lines, feign, 'chat-web-account')
@@ -227,16 +221,15 @@ function validateFeignConfig(lines, environment = process.env, requireServiceTok
 /**
  * 校准 Skyline 配置并返回规范化文本。
  * @param {string} content Nacos 返回的 YAML 文本
- * @param {Record<string, string | undefined>} environment 部署环境变量
  * @param {{ requireServiceToken?: boolean }} options 是否强制要求服务间凭据
  */
-function sanitizeSkylineConfig(content, environment = process.env, options = { requireServiceToken: true }) {
+function sanitizeSkylineConfig(content, options = { requireServiceToken: true }) {
     if (typeof content !== 'string' || !content.trim()) throw new Error('Skyline Nacos 配置不能为空')
     const lines = normalizeContent(content).trimEnd().split('\n')
     validateServerPort(lines)
     validateDatabaseConfig(lines)
-    validateFeignConfig(lines, environment, options.requireServiceToken !== false)
-    if (options.requireServiceToken !== false) validateServiceToken(lines, environment)
+    validateFeignConfig(lines, options.requireServiceToken !== false)
+    if (options.requireServiceToken !== false) validateServiceToken(lines)
     return normalizeContent(content)
 }
 
@@ -279,7 +272,7 @@ async function main() {
     if (!existing) {
         throw new Error(`未找到 Skyline Nacos 配置：${dataId}；请先创建 server、database.chat-web-skyline 和 feign.service_token`)
     }
-    const sanitized = sanitizeSkylineConfig(existing, process.env, { requireServiceToken: true })
+    const sanitized = sanitizeSkylineConfig(existing, { requireServiceToken: true })
     const normalizedExisting = normalizeContent(existing)
     if (sanitized !== normalizedExisting) {
         process.stdout.write(`Skyline Nacos 配置格式已规范化但未回写：${dataId}\n`)

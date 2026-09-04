@@ -1,6 +1,6 @@
 import { Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { FinanceFeignClient } from '@wlisfes/chat-web-base-schema/feign'
+import { FeignClientFinance } from '@wlisfes/chat-web-base-schema/feign'
 import { CurrencyExchangeTaskService } from './currency-exchange-task.service'
 
 describe('CurrencyExchangeTaskService', () => {
@@ -19,7 +19,7 @@ describe('CurrencyExchangeTaskService', () => {
         const syncCurrencyExchange = jest.fn().mockResolvedValue({ date: '2026-09-02', count: 2, list: [] })
         const financeFeignClient = {
             syncCurrencyExchange
-        } as unknown as FinanceFeignClient
+        } as unknown as FeignClientFinance
         const logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() } as unknown as Logger
         const service = new CurrencyExchangeTaskService(configService, financeFeignClient, logger)
         return { service, configService, financeFeignClient, syncCurrencyExchange, logger }
@@ -30,7 +30,7 @@ describe('CurrencyExchangeTaskService', () => {
     }
 
     it('应读取当日数组汇率并通过 Finance Feign 写入', async () => {
-        const { service, financeFeignClient } = createService({ FINANCE_SERVICE_TOKEN: 'finance-token' })
+        const { service, financeFeignClient } = createService({ 'feign.service_token': 'finance-token' })
         fetchMock = jest.fn().mockResolvedValue(
             mockResponse([
                 { date: '2026-09-02', base: 'USD', quote: 'EUR', rate: 0.91 },
@@ -57,7 +57,7 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('当日没有数据时应回退最新汇率并优先使用请求凭据', async () => {
-        const { service, financeFeignClient } = createService({ FINANCE_SERVICE_TOKEN: 'configured-token' })
+        const { service, financeFeignClient } = createService({ 'feign.service_token': 'configured-token' })
         fetchMock = jest
             .fn()
             .mockResolvedValueOnce(mockResponse({ message: 'weekend' }, false, 404))
@@ -85,7 +85,7 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('当日接口以 200 返回空数组时也应回退最新汇率', async () => {
-        const { service, financeFeignClient } = createService({ FINANCE_SERVICE_TOKEN: 'configured-token' })
+        const { service, financeFeignClient } = createService({ 'feign.service_token': 'configured-token' })
         fetchMock = jest
             .fn()
             .mockResolvedValueOnce(mockResponse([]))
@@ -107,7 +107,7 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('当日接口网络失败时仍应回退最新汇率', async () => {
-        const { service, financeFeignClient } = createService({ FINANCE_SERVICE_TOKEN: 'configured-token' })
+        const { service, financeFeignClient } = createService({ 'feign.service_token': 'configured-token' })
         fetchMock = jest
             .fn()
             .mockRejectedValueOnce(new Error('连接超时'))
@@ -128,8 +128,8 @@ describe('CurrencyExchangeTaskService', () => {
 
     it('配置 Frankfurter 根域名时应自动使用 v2 rates 接口', async () => {
         const { service, financeFeignClient } = createService({
-            FINANCE_SERVICE_TOKEN: 'configured-token',
-            SKYLINE_FRANKFURTER_URL: 'https://api.frankfurter.dev'
+            'feign.service_token': 'configured-token',
+            'integration.frankfurter.url': 'https://api.frankfurter.dev'
         })
         fetchMock = jest.fn().mockResolvedValue(mockResponse([{ date: '2026-09-02', quote: 'EUR', rate: 0.9 }]))
         global.fetch = fetchMock
@@ -141,14 +141,14 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('请求 Frankfurter 时应使用 UTC 日历日期', () => {
-        const { service } = createService({ FINANCE_SERVICE_TOKEN: 'configured-token' })
+        const { service } = createService({ 'feign.service_token': 'configured-token' })
         const formatDate = (service as unknown as { formatDate(value: Date): string }).formatDate.bind(service)
 
         expect(formatDate(new Date('2026-09-02T23:30:00.000Z'))).toBe('2026-09-02')
     })
 
     it('应将外部汇率舍入到 Finance 支持的 6 位小数', async () => {
-        const { service, financeFeignClient } = createService({ FINANCE_SERVICE_TOKEN: 'configured-token' })
+        const { service, financeFeignClient } = createService({ 'feign.service_token': 'configured-token' })
         fetchMock = jest.fn().mockResolvedValue(mockResponse([{ date: '2026-09-02', quote: 'CNY', rate: 7.253456789 }]))
         global.fetch = fetchMock
 
@@ -164,7 +164,7 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('应拒绝第三方响应中的空值和非 ISO 币种编码', async () => {
-        const { service, financeFeignClient } = createService({ FINANCE_SERVICE_TOKEN: 'configured-token' })
+        const { service, financeFeignClient } = createService({ 'feign.service_token': 'configured-token' })
         fetchMock = jest.fn().mockResolvedValue(
             mockResponse([
                 { date: '2026-09-02', quote: 'CNY', rate: 7.1 },
@@ -189,7 +189,7 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('汇率超过 Finance 单次上限时应分批同步并合并结果', async () => {
-        const { service, syncCurrencyExchange } = createService({ FINANCE_SERVICE_TOKEN: 'configured-token' })
+        const { service, syncCurrencyExchange } = createService({ 'feign.service_token': 'configured-token' })
         const rates = Array.from({ length: 200 }, (_, index) => ({
             date: '2026-09-02',
             quote: `X${String.fromCharCode(65 + Math.floor(index / 26))}${String.fromCharCode(65 + (index % 26))}`,
@@ -225,7 +225,7 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('无有效汇率数据时应拒绝执行', async () => {
-        const { service } = createService({ FINANCE_SERVICE_TOKEN: 'token' })
+        const { service } = createService({ 'feign.service_token': 'token' })
         fetchMock = jest
             .fn()
             .mockResolvedValueOnce(mockResponse([{ quote: 'EUR', rate: 'invalid' }]))
@@ -236,7 +236,7 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('当日响应只有非法汇率时应回退最新汇率', async () => {
-        const { service, financeFeignClient } = createService({ FINANCE_SERVICE_TOKEN: 'configured-token' })
+        const { service, financeFeignClient } = createService({ 'feign.service_token': 'configured-token' })
         fetchMock = jest
             .fn()
             .mockResolvedValueOnce(mockResponse([{ date: '2026-09-02', quote: 'EUR', rate: 'invalid' }]))

@@ -1,7 +1,10 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { FinanceFeignClient } from '@wlisfes/chat-web-base-schema/feign'
-import { FinanceCurrencyExchangeSyncRequest, FinanceCurrencyExchangeSyncResponse } from '@wlisfes/chat-web-base-schema/feign'
+import {
+    FeignClientFinance,
+    FinanceCurrencyExchangeSyncRequest,
+    FinanceCurrencyExchangeSyncResponse
+} from '@wlisfes/chat-web-base-schema/feign'
 
 interface FrankfurterRateRow {
     date?: string
@@ -24,7 +27,7 @@ const FINANCE_SYNC_BATCH_SIZE = 200
 export class CurrencyExchangeTaskService {
     constructor(
         private readonly configService: ConfigService,
-        private readonly financeFeignClient: FinanceFeignClient,
+        private readonly financeFeignClient: FeignClientFinance,
         private readonly logger: Logger
     ) {}
 
@@ -55,7 +58,7 @@ export class CurrencyExchangeTaskService {
 
     private async fetchFrankfurterRates(): Promise<{ date: string; rates: Array<{ currency: string; rate: number }> }> {
         const requestedDate = this.formatDate(new Date())
-        const endpoint = this.configService.get<string>('SKYLINE_FRANKFURTER_URL')?.trim() || 'https://api.frankfurter.dev/v2/rates'
+        const endpoint = this.configService.get<string>('integration.frankfurter.url')?.trim() || 'https://api.frankfurter.dev/v2/rates'
         const requestedUrl = this.createFrankfurterUrl(endpoint, requestedDate)
         let payload: unknown
         let rows: FrankfurterRateRow[] = []
@@ -171,12 +174,8 @@ export class CurrencyExchangeTaskService {
         const requestToken = authorization?.trim()
         if (requestToken && /^Bearer\s+\S+$/i.test(requestToken)) return requestToken
 
-        const configured = [
-            this.configService.get<string>('FINANCE_SERVICE_TOKEN'),
-            this.configService.get<string>('feign.service_token'),
-            this.configService.get<string>('security.serviceToken')
-        ].find(value => typeof value === 'string' && value.trim())
-        if (!configured) {
+        const configured = this.configService.get<string>('feign.service_token')
+        if (typeof configured !== 'string' || !configured.trim()) {
             throw new ServiceUnavailableException('缺少 Finance 服务内部 Bearer 凭据，请配置 feign.service_token')
         }
         const token = configured.trim()
@@ -184,7 +183,7 @@ export class CurrencyExchangeTaskService {
     }
 
     private getTimeout(): number {
-        const configured = this.configService.get<number | string>('FRANKFURTER_TIMEOUT_MS')
+        const configured = this.configService.get<number | string>('integration.frankfurter.timeout')
         const timeout = configured === undefined || configured === '' ? 10_000 : Number(configured)
         return Number.isInteger(timeout) && timeout >= 1000 && timeout <= 60_000 ? timeout : 10_000
     }

@@ -14,11 +14,14 @@ import { SKYLINE_MYSQL_CONFIG_KEY, SKYLINE_MYSQL_ENTITIES } from '@/modules/data
             inject: [ConfigService, NacosService],
             useFactory: async (configService: ConfigService, nacosService: NacosService) => {
                 await nacosService.loadConfig()
+                const configured = configService.get<Record<string, unknown>>(SKYLINE_MYSQL_CONFIG_KEY)
+                // 兼容尚未迁移的历史 Nacos 字段；后续保存配置统一使用 database。
+                if (configured && typeof configured.database !== 'string' && typeof configured.name === 'string') {
+                    configService.set(SKYLINE_MYSQL_CONFIG_KEY, { ...configured, database: configured.name })
+                }
                 return createMysqlOptions(configService, {
                     configKey: SKYLINE_MYSQL_CONFIG_KEY,
-                    entities: [...SKYLINE_MYSQL_ENTITIES],
-                    environmentPrefix: 'SKYLINE_MYSQL',
-                    environmentOverrides: ['host', 'port', 'username', 'password', 'database']
+                    entities: [...SKYLINE_MYSQL_ENTITIES]
                 })
             }
         }),
