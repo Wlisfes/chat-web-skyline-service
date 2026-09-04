@@ -1,5 +1,11 @@
 # Skyline 部署变更记录
 
+## 2026-09-04：升级共享基础包并统一 Nacos 数据库与 Feign 配置
+
+- 影响范围：Skyline 本地启动与 `chat-home-server` 部署镜像。
+- 变更内容：升级 `@wlisfes/chat-web-base-schema` 至 `1.4.25`，使用共享 `FeignClientFinance` 并直接读取 Nacos 嵌套配置；数据库运行时仅在内存中兼容历史 `name` 字段，不修改 Nacos；示例 `.env` 仅保留 Node/Nacos 启动参数。
+- 验证命令：执行 `yarn build`、`yarn typecheck` 和 `yarn test:unit`，启动后检查 `/health/live`、`/health` 与 Swagger。
+
 ## 2026-09-03：本地 Nacos 客户端端口冲突自动避让
 
 - `yarn dev`、`yarn start` 和 `yarn start:debug` 启动前优先检测默认端口 `7777`；检测到占用时自动随机选择本机可用端口并注入 `NODE_CLUSTER_CLIENT_PORT`。
@@ -35,7 +41,7 @@
 
 - 影响范围：Skyline `chat-home-server` 部署流水线和对应 Nacos Data ID；不修改其他服务。
 - 变更内容：新增 `deploy/bootstrap-nacos-config.cjs`，在切换容器前读取并校准已有配置，固定 `server.port: 5040`，补齐 Finance/Frankfurter 非敏感默认项，并校验 `database.chat-web-skyline` 与 `security.serviceToken`。
-- 安全边界：脚本不创建数据库、数据库账号或服务 Token，不把配置正文、密码和 Token 输出到 Runner 日志；可使用主机 `.env` 的 `FINANCE_SERVICE_TOKEN` 作为临时覆盖，但不会回写 Nacos。
+- 安全边界：脚本不创建数据库、数据库账号或服务 Token，不把配置正文、密码和 Token 输出到 Runner 日志；服务间凭据必须预先配置在 Nacos，不接受主机 `.env` 覆盖。
 - 失败处理：Data ID 不存在、数据库节点不完整或缺少服务间凭据时在部署前失败，当前容器不会切换；补齐 Nacos 配置后重新运行流水线。
 - 验证：执行 `yarn format:check && yarn typecheck && yarn test:full`，并在部署后按本手册执行 Nacos、Schema、容器和 Gateway 健康检查。
 
@@ -43,7 +49,7 @@
 
 - 影响范围：Skyline 服务本身及其 `chat-home-server` 数据库；Finance 通过既有 Feign 同步接口接收汇率。
 - 变更内容：新增系统任务管理接口和 `tb_skyline_datetask_system` 实体接入；服务启动时幂等初始化每日汇率任务，支持启停、Cron 调整、手动触发和最近执行日志查询。调度器调用 Frankfurter 获取 USD 基准汇率，再调用 Finance `/currency/exchange/sync` 写入财务汇率表。
-- 配置：数据库节点使用 Nacos `database.chat-web-skyline`；自动调度所需内部 Bearer 凭据使用 Nacos `security.serviceToken`（或主机 `.env` 的 `FINANCE_SERVICE_TOKEN` 临时覆盖），真实令牌不得提交。
+- 配置：数据库节点使用 Nacos `database.chat-web-skyline`；自动调度所需内部 Bearer 凭据使用 Nacos `feign.service_token`，真实令牌不得提交。
 - 数据库：新增 `dist/cli/apply-schema.js` 增量迁移命令，部署脚本在切换容器前自动执行 `@wlisfes/chat-web-base-schema` 发布包中的 Skyline Schema SQL，并用 `tb_skyline_schema_migration` 保存校验和；TypeORM 保持 `synchronize: false`，服务不会在启动时自动改表。
 - 验证：执行 `yarn format:check && yarn typecheck && yarn test:full && yarn build`；部署后验证容器 `/health/live`、Gateway `/api/skyline/deploy/datetask/column` 及手动触发结果。
 - 回滚：回滚 Skyline 完整 SHA；数据库增量 SQL 为不可逆结构版本，按 Schema 迁移工具记录处理，不手工删除任务表。
