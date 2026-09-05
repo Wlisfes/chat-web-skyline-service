@@ -286,3 +286,7 @@ docker logs --tail 100 chat-web-skyline-service
 - 自动部署失败时由 `deploy.sh` 恢复上一完整 SHA 镜像。
 - 手工回滚只对 `skyline-service` 执行 `docker compose up -d --no-deps`，不得使用 `--remove-orphans`。
 - Nacos 和共享 Nginx 配置保持不变；本次没有数据库、Redis 或其他有状态数据需要回滚。
+# 2026-09-06：补齐网关身份上下文运行配置
+
+- 变更内容：保留既有 Skyline Nacos 配置，仅追加缺失的 `gateway.principal` 节点，使最新共享鉴权链路可以启动。
+- 影响机器：`chat-home-server`；不修改既有数据库、Redis、服务凭据及注释。
