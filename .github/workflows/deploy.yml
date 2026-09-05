@@ -204,11 +204,13 @@ jobs:
                   docker exec "$nginx_container" nginx -t
                   docker exec "$nginx_container" nginx -s reload
 
-            - name: Verify container and Gateway route
+            - name: Verify container and Gateway health route
               shell: bash
               run: |
                   set -eu
                   docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:5040/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+                  # Skyline 业务根路径受网关入口鉴权保护；部署验证使用公开的存活路由，避免
+                  # 在未携带用户令牌的流水线请求中把预期的 401 误判为部署失败。
                   check_gateway() {
                     path=$1
                     expected=$2
@@ -223,7 +225,6 @@ jobs:
                     return 1
                   }
                   check_gateway /health/live '{"status":"UP"}'
-                  check_gateway / 'Hello World!'
 
             - name: Log out from GitHub Container Registry
               if: always()
