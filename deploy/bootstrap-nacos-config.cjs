@@ -8,10 +8,9 @@
  */
 
 const DEFAULT_SERVER_PORT = 5040
-const DEFAULT_FINANCE_SERVICE_URL = 'http://chat-web-finance-service:5030'
-const DEFAULT_FINANCE_SERVICE_TIMEOUT_MS = 5000
-const DEFAULT_CRM_SERVICE_URL = 'http://chat-web-crm-service:5020'
-const DEFAULT_CRM_SERVICE_TIMEOUT_MS = 3000
+// 服务间调用统一经网关按 /feign/<服务名> 前缀转发，不再逐个配置目标服务地址。
+const DEFAULT_GATEWAY_SERVICE_URL = 'http://chat-web-gateway-service:5000'
+const DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS = 5000
 const DEFAULT_SKYLINE_FRANKFURTER_URL = 'https://api.frankfurter.dev/v2/rates'
 const DEFAULT_FRANKFURTER_TIMEOUT_MS = 10_000
 
@@ -221,9 +220,19 @@ function validateFeignConfig(lines, requireServiceToken = true) {
     if (requireServiceToken && !hasConfiguredServiceToken(lines)) {
         throw new Error('Skyline Nacos 配置缺少 feign.service_token')
     }
-    validateFeignService(lines, feign, 'chat-web-account')
-    validateFeignService(lines, feign, 'chat-web-finance')
-    validateFeignService(lines, feign, 'chat-web-crm')
+    // 服务间调用统一经网关按 /feign/<服务名> 前缀转发，只保留单个网关地址。
+    validateFeignService(lines, feign, 'gateway')
+}
+
+/** 校验网关身份上下文签名配置；密钥缺失会让所有受保护接口在启动后立即失败。 */
+function validateGatewayPrincipal(lines) {
+    const gateway = findRootBlock(lines, 'gateway')
+    if (!gateway) throw new Error('Skyline Nacos 配置缺少 gateway.principal.secret')
+    const principal = findChildBlock(lines, gateway, 'principal')
+    if (!principal) throw new Error('Skyline Nacos 配置缺少 gateway.principal')
+    const secret = findDirectField(lines, principal, 'secret')
+    const value = secret?.value?.trim().replace(/^(['"])(.*)\1$/, '$2')
+    if (!value || value.length < 32) throw new Error('Skyline Nacos 配置 gateway.principal.secret 必须至少32位')
 }
 
 /**
@@ -237,6 +246,7 @@ function sanitizeSkylineConfig(content, options = { requireServiceToken: true })
     validateServerPort(lines)
     validateDatabaseConfig(lines)
     validateFeignConfig(lines, options.requireServiceToken !== false)
+    validateGatewayPrincipal(lines)
     if (options.requireServiceToken !== false) validateServiceToken(lines)
     return normalizeContent(content)
 }
@@ -255,15 +265,13 @@ function createSkylineConfig(environment = process.env) {
   port: ${DEFAULT_SERVER_PORT}
 feign:
   service_token: ${scalar(token)}
-  chat-web-account:
-    url: ${scalar(environment.ACCOUNT_SERVICE_URL || 'http://chat-web-account-service:5010')}
-    timeout: ${Number(environment.ACCOUNT_AUTH_TIMEOUT_MS || 3000)}
-  chat-web-finance:
-    url: ${scalar(environment.FINANCE_SERVICE_URL || DEFAULT_FINANCE_SERVICE_URL)}
-    timeout: ${Number(environment.FINANCE_SERVICE_TIMEOUT_MS || DEFAULT_FINANCE_SERVICE_TIMEOUT_MS)}
-  chat-web-crm:
-    url: ${scalar(environment.CRM_SERVICE_URL || DEFAULT_CRM_SERVICE_URL)}
-    timeout: ${Number(environment.CRM_SERVICE_TIMEOUT_MS || DEFAULT_CRM_SERVICE_TIMEOUT_MS)}
+  gateway:
+    url: ${scalar(environment.GATEWAY_SERVICE_URL || DEFAULT_GATEWAY_SERVICE_URL)}
+    timeout: ${Number(environment.GATEWAY_SERVICE_TIMEOUT_MS || DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS)}
+gateway:
+  principal:
+    secret: ${scalar(required('GATEWAY_PRINCIPAL_SECRET', environment, false))}
+    maxAgeSeconds: ${Number(environment.GATEWAY_PRINCIPAL_MAX_AGE_SECONDS || 60)}
 database:
   chat-web-skyline:
     host: ${scalar(host)}
@@ -299,15 +307,14 @@ if (require.main === module) {
 
 module.exports = {
     DEFAULT_SERVER_PORT,
-    DEFAULT_FINANCE_SERVICE_URL,
-    DEFAULT_FINANCE_SERVICE_TIMEOUT_MS,
-    DEFAULT_CRM_SERVICE_URL,
-    DEFAULT_CRM_SERVICE_TIMEOUT_MS,
+    DEFAULT_GATEWAY_SERVICE_URL,
+    DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS,
     DEFAULT_SKYLINE_FRANKFURTER_URL,
     DEFAULT_FRANKFURTER_TIMEOUT_MS,
     createSkylineConfig,
     sanitizeSkylineConfig,
     validateDatabaseConfig,
+    validateGatewayPrincipal,
     validateServiceToken,
     validateFeignConfig
 }

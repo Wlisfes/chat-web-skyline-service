@@ -1,5 +1,30 @@
 # Skyline 部署与排障手册
 
+## Nacos 配置清单
+
+认证迁到网关后，`chat-web-skyline-service.yaml` 的相关配置有增有删：
+
+```yaml
+# 新增：服务间调用统一经网关按 /feign/<服务名> 前缀转发。
+feign:
+    service_token: '<服务间共享凭据>'
+    gateway:
+        url: http://chat-web-gateway-service:5000
+        timeout: 5000
+
+# 新增：校验网关签发的身份上下文，密钥必须与网关完全一致。
+gateway:
+    principal:
+        secret: '<与网关一致的至少32位随机串>'
+        maxAgeSeconds: 60
+```
+
+**必须删除**：`feign.chat-web-account`、`feign.chat-web-finance`、`feign.chat-web-crm`（已被 `feign.gateway` 取代）。
+
+汇率同步任务改为请求 `/feign/finance/currency/exchange/sync`，此前因为客户端被错误加上 `feign` 前缀而请求了不存在的路径。
+
+部署脚本 `deploy/bootstrap-nacos-config.cjs` 会在切换容器前校验上述字段，缺失时直接中止部署。
+
 ## 当前形态
 
 Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 `chat-home-server`，GitHub Environment 为 `production-home`。原另一台部署机器已废弃并下线，不再创建部署任务。
