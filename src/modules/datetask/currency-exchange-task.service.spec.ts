@@ -1,6 +1,6 @@
 import { Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { FeignClientFinance } from '@wlisfes/chat-web-base-schema/feign'
+import { FeignClientFinanceManager } from '@wlisfes/chat-web-base-schema/feign'
 import { CurrencyExchangeTaskService } from './currency-exchange-task.service'
 
 describe('CurrencyExchangeTaskService', () => {
@@ -19,7 +19,7 @@ describe('CurrencyExchangeTaskService', () => {
         const syncCurrencyExchange = jest.fn().mockResolvedValue({ date: '2026-09-02', count: 2, list: [] })
         const financeFeignClient = {
             syncCurrencyExchange
-        } as unknown as FeignClientFinance
+        } as unknown as FeignClientFinanceManager
         const logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() } as unknown as Logger
         const service = new CurrencyExchangeTaskService(configService, financeFeignClient, logger)
         return { service, configService, financeFeignClient, syncCurrencyExchange, logger }

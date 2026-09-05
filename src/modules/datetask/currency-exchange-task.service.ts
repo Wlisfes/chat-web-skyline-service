@@ -1,7 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import {
-    FeignClientFinance,
+    FeignClientFinanceManager,
     FinanceCurrencyExchangeSyncRequest,
     FinanceCurrencyExchangeSyncResponse
 } from '@wlisfes/chat-web-base-schema/feign'
@@ -27,7 +27,7 @@ const FINANCE_SYNC_BATCH_SIZE = 200
 export class CurrencyExchangeTaskService {
     constructor(
         private readonly configService: ConfigService,
-        private readonly financeFeignClient: FeignClientFinance,
+        private readonly financeFeignClient: FeignClientFinanceManager,
         private readonly logger: Logger
     ) {}
 
