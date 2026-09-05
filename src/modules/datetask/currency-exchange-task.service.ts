@@ -32,9 +32,9 @@ export class CurrencyExchangeTaskService {
     ) {}
 
     /** 执行一次每日汇率同步任务。 */
-    public async execute(authorization?: string): Promise<FinanceCurrencyExchangeSyncResponse> {
+    public async execute(): Promise<FinanceCurrencyExchangeSyncResponse> {
         const fetched = await this.fetchFrankfurterRates()
-        const token = this.resolveAuthorization(authorization)
+        const token = this.resolveAuthorization()
         const results: FinanceCurrencyExchangeSyncResponse[] = []
 
         // Finance 的同步 DTO 限制单次最多 200 个币种。Frankfurter 的覆盖范围会随数据源变化，
@@ -174,13 +174,9 @@ export class CurrencyExchangeTaskService {
         })
     }
 
-    private resolveAuthorization(authorization?: string): string {
-        const requestToken = authorization?.trim()
-        if (requestToken && /^Bearer\s+\S+$/i.test(requestToken)) return requestToken
-
-        // `feign.service_token` 是当前约定；`security.serviceToken` 是历史 Nacos 字段，均只读不回写。
-        const configured =
-            this.configService.get<string>('feign.service_token')?.trim() || this.configService.get<string>('security.serviceToken')?.trim()
+    private resolveAuthorization(): string {
+        // 汇率同步是服务间调用，始终使用 Nacos 中的服务凭据，不接收或转发用户 JWT。
+        const configured = this.configService.get<string>('feign.service_token')?.trim()
         if (typeof configured !== 'string' || !configured.trim()) {
             throw new ServiceUnavailableException('缺少 Finance 服务内部 Bearer 凭据，请配置 feign.service_token')
         }

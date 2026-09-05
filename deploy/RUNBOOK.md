@@ -2,20 +2,14 @@
 
 ## Nacos 配置清单
 
-认证迁到网关后，`chat-web-skyline-service.yaml` 的相关配置如下。业务 Feign 客户端直连目标服务，不能再使用一个网关地址代替所有目标服务：
+认证迁到网关后，`chat-web-skyline-service.yaml` 的相关配置如下。业务 Feign 客户端统一访问 Gateway，目标服务由 Gateway 的 `/feign/<服务名>` 路由决定：
 
 ```yaml
 # 服务间凭据由各服务共享；真实值只保存在 Nacos。
 feign:
     service_token: '<服务间共享凭据>'
-    chat-web-account:
-        url: http://chat-web-account-service:5010
-        timeout: 3000
-    chat-web-finance:
-        url: http://chat-web-finance-service:5030
-        timeout: 5000
-    chat-web-crm:
-        url: http://chat-web-crm-service:5020
+    gateway:
+        url: http://chat-web-gateway-service:5000
         timeout: 3000
 
 # 网关签发的身份上下文由业务服务校验；密钥必须与网关完全一致。
@@ -25,7 +19,7 @@ gateway:
         maxAgeSeconds: 60
 ```
 
-`feign.chat-web-account`、`feign.chat-web-finance`、`feign.chat-web-crm` 是当前客户端实际读取的节点；缺少任一节点时部署校验会中止。不要新增或恢复 `feign.gateway` 作为业务客户端地址。
+所有业务 Feign 客户端只读取 `feign.gateway.url/timeout`；缺少任一字段时部署校验会中止。目标服务地址只在 Gateway Nacos 的 `gateway.routes` 中维护，不要在 Skyline Nacos 重复配置。
 
 汇率同步任务改为请求 `/feign/finance/currency/exchange/sync`，此前因为客户端被错误加上 `feign` 前缀而请求了不存在的路径。
 
@@ -52,9 +46,9 @@ Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 
 
 Skyline 的业务数据库配置位于 Nacos `database.chat-web-skyline`，对应表为 `tb_skyline_datetask_system`。`deploy.sh` 会使用待发布镜像执行 `dist/cli/apply-schema-bootstrap.js`：先使用 Nacos 中的管理员连接创建仅授权 Skyline 数据库的临时账号，再以该账号调用 `dist/cli/apply-schema.js`，迁移结束后立即回收临时账号。增量 SQL 按文件名顺序应用，并在 `tb_skyline_schema_migration` 中保存文件校验和；迁移失败时不会切换当前容器。TypeORM 保持 `synchronize: false`，不会在服务启动时自行改表。系统任务初始化失败会在容器日志中记录并触发健康检查失败。
 
-流水线会先把 `deploy/bootstrap-nacos-config.cjs` 安装到 `/opt/chat-web-skyline-service`，再使用 `node:22-alpine`（加入 `chat-web-infrastructure` 网络）执行只读校验。脚本不会回写 Nacos，不会补齐或覆盖任何业务配置；它校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `feign.service_token` 和 Account/Finance/CRM 的 `url`、`timeout`。脚本不会把 Nacos 配置正文或凭据写入 Runner 日志；缺少节点/凭据时应先人工配置后重跑流水线。
+流水线会先把 `deploy/bootstrap-nacos-config.cjs` 安装到 `/opt/chat-web-skyline-service`，再使用 `node:22-alpine`（加入 `chat-web-infrastructure` 网络）执行只读校验。脚本不会回写 Nacos，不会补齐或覆盖任何业务配置；它校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `feign.service_token`、`feign.gateway.url/timeout`。脚本不会把 Nacos 配置正文或凭据写入 Runner 日志；缺少节点/凭据时应先人工配置后重跑流水线。
 
-每日汇率任务通过 Feign 调用 Finance `/currency/exchange/sync`。自动调度没有用户请求上下文，必须在 Nacos `feign.service_token` 配置内部 Bearer 凭据；手动触发会转发当前请求的 Bearer 令牌。令牌不得写入仓库或日志。
+每日汇率任务通过 Gateway Feign 路由调用 Finance `/feign/finance/currency/exchange/sync`。自动调度和手动触发都使用 Nacos `feign.service_token` 服务凭据，不转发用户 Bearer 令牌。令牌不得写入仓库或日志。
 
 ## 验证
 

@@ -56,7 +56,7 @@ describe('CurrencyExchangeTaskService', () => {
         })
     })
 
-    it('当日没有数据时应回退最新汇率并优先使用请求凭据', async () => {
+    it('当日没有数据时应回退最新汇率并继续使用服务凭据', async () => {
         const { service, financeFeignClient } = createService({ 'feign.service_token': 'configured-token' })
         fetchMock = jest
             .fn()
@@ -70,11 +70,11 @@ describe('CurrencyExchangeTaskService', () => {
             )
         global.fetch = fetchMock
 
-        await service.execute('Bearer request-token')
+        await service.execute()
 
         expect(fetchMock).toHaveBeenCalledTimes(2)
         expect(String(fetchMock.mock.calls[1][0])).not.toContain('date=')
-        expect(financeFeignClient.syncCurrencyExchange).toHaveBeenCalledWith('Bearer request-token', {
+        expect(financeFeignClient.syncCurrencyExchange).toHaveBeenCalledWith('Bearer configured-token', {
             date: '2026-09-01',
             rates: [
                 { currency: 'USD', rate: 1 },

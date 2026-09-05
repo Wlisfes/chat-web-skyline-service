@@ -8,11 +8,9 @@
  */
 
 const DEFAULT_SERVER_PORT = 5040
-// Feign 客户端分别读取目标服务地址；网关只负责外部 API 路由和身份上下文签发。
-const DEFAULT_FINANCE_SERVICE_URL = 'http://chat-web-finance-service:5030'
-const DEFAULT_FINANCE_SERVICE_TIMEOUT_MS = 5000
-const DEFAULT_CRM_SERVICE_URL = 'http://chat-web-crm-service:5020'
-const DEFAULT_CRM_SERVICE_TIMEOUT_MS = 3000
+// 所有 Feign 客户端统一访问 Gateway，目标服务由 /feign/<服务名> 路由决定。
+const DEFAULT_GATEWAY_SERVICE_URL = 'http://chat-web-gateway-service:5000'
+const DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS = 3000
 const DEFAULT_SKYLINE_FRANKFURTER_URL = 'https://api.frankfurter.dev/v2/rates'
 const DEFAULT_FRANKFURTER_TIMEOUT_MS = 10_000
 
@@ -172,19 +170,13 @@ function validateServiceToken(lines) {
     const feign = findRootBlock(lines, 'feign')
     const feignToken = feign ? (findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')) : undefined
     if (feignToken && scalarPresent(feignToken.value)) return
-    const security = findRootBlock(lines, 'security')
-    const serviceToken = security ? findDirectField(lines, security, 'serviceToken') : undefined
-    if (serviceToken && scalarPresent(serviceToken.value)) return
     throw new Error('Skyline Nacos 配置缺少 feign.service_token，请先配置 Finance 服务间凭据')
 }
 
 function hasConfiguredServiceToken(lines) {
     const feign = findRootBlock(lines, 'feign')
     const feignToken = feign ? (findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')) : undefined
-    if (feignToken && scalarPresent(feignToken.value)) return true
-    const security = findRootBlock(lines, 'security')
-    const securityToken = security ? findDirectField(lines, security, 'serviceToken') : undefined
-    return Boolean(securityToken && scalarPresent(securityToken.value))
+    return Boolean(feignToken && scalarPresent(feignToken.value))
 }
 
 function validateServerPort(lines) {
@@ -222,10 +214,8 @@ function validateFeignConfig(lines, requireServiceToken = true) {
     if (requireServiceToken && !hasConfiguredServiceToken(lines)) {
         throw new Error('Skyline Nacos 配置缺少 feign.service_token')
     }
-    // Feign 客户端分别读取目标服务地址；网关不作为业务客户端的配置源。
-    validateFeignService(lines, feign, 'chat-web-account')
-    validateFeignService(lines, feign, 'chat-web-finance')
-    validateFeignService(lines, feign, 'chat-web-crm')
+    // Feign 客户端只读取 Gateway 地址；目标服务由 Gateway 的服务间路由选择。
+    validateFeignService(lines, feign, 'gateway')
 }
 
 /** 校验网关身份上下文签名配置；密钥缺失会让所有受保护接口在启动后立即失败。 */
@@ -269,15 +259,9 @@ function createSkylineConfig(environment = process.env) {
   port: ${DEFAULT_SERVER_PORT}
 feign:
   service_token: ${scalar(token)}
-  chat-web-account:
-    url: ${scalar(environment.ACCOUNT_SERVICE_URL || 'http://chat-web-account-service:5010')}
-    timeout: ${Number(environment.ACCOUNT_SERVICE_TIMEOUT_MS || environment.ACCOUNT_AUTH_TIMEOUT_MS || 3000)}
-  chat-web-finance:
-    url: ${scalar(environment.FINANCE_SERVICE_URL || DEFAULT_FINANCE_SERVICE_URL)}
-    timeout: ${Number(environment.FINANCE_SERVICE_TIMEOUT_MS || DEFAULT_FINANCE_SERVICE_TIMEOUT_MS)}
-  chat-web-crm:
-    url: ${scalar(environment.CRM_SERVICE_URL || DEFAULT_CRM_SERVICE_URL)}
-    timeout: ${Number(environment.CRM_SERVICE_TIMEOUT_MS || DEFAULT_CRM_SERVICE_TIMEOUT_MS)}
+  gateway:
+    url: ${scalar(environment.GATEWAY_SERVICE_URL || DEFAULT_GATEWAY_SERVICE_URL)}
+    timeout: ${Number(environment.GATEWAY_SERVICE_TIMEOUT_MS || DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS)}
 gateway:
   principal:
     secret: ${scalar(required('GATEWAY_PRINCIPAL_SECRET', environment, false))}
@@ -317,10 +301,8 @@ if (require.main === module) {
 
 module.exports = {
     DEFAULT_SERVER_PORT,
-    DEFAULT_FINANCE_SERVICE_URL,
-    DEFAULT_FINANCE_SERVICE_TIMEOUT_MS,
-    DEFAULT_CRM_SERVICE_URL,
-    DEFAULT_CRM_SERVICE_TIMEOUT_MS,
+    DEFAULT_GATEWAY_SERVICE_URL,
+    DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS,
     DEFAULT_SKYLINE_FRANKFURTER_URL,
     DEFAULT_FRANKFURTER_TIMEOUT_MS,
     createSkylineConfig,

@@ -1,4 +1,4 @@
-import { Body, Get, Headers, Post, Query } from '@nestjs/common'
+import { Body, Get, Post, Query } from '@nestjs/common'
 import { ApiServiceDecorator, ApifoxController } from '@wlisfes/chat-web-base-schema/decorator'
 import { DatetaskService } from '@/modules/datetask/datetask.service'
 import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
@@ -59,10 +59,9 @@ export class DatetaskController {
         bearerAuth: true
     })
     public async httpBaseSkylineTriggerDatetask(
-        @Body() input: DatetaskDto.TriggerDatetaskDto,
-        @Headers('authorization') authorization?: string
+        @Body() input: DatetaskDto.TriggerDatetaskDto
     ): Promise<DatetaskDto.TriggerDatetaskResponseDto> {
-        return this.datetaskService.httpBaseSkylineTriggerDatetask(input, authorization)
+        return this.datetaskService.httpBaseSkylineTriggerDatetask(input)
     }
 
     @ApiServiceDecorator(Post('log/column'), {

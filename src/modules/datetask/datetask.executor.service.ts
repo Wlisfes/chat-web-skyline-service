@@ -27,7 +27,7 @@ export class DatetaskExecutorService {
     ) {}
 
     /** 执行一次任务；同一进程内同一任务不会并发执行。 */
-    public async execute(taskId: string, authorization?: string): Promise<DatetaskExecutionResultDto> {
+    public async execute(taskId: string): Promise<DatetaskExecutionResultDto> {
         if (this.running.has(taskId)) {
             this.logger.warn(`任务正在执行，跳过本次触发：${taskId}`, DatetaskExecutorService.name)
             return { skipped: true, reason: '任务正在执行' }
@@ -56,7 +56,7 @@ export class DatetaskExecutorService {
             const startedAt = new Date()
             executionId = this.datetaskLogService.appendRunning(taskId, startedAt, task.taskName)
             try {
-                const result = await this.executeHandler(task, authorization)
+                const result = await this.executeHandler(task)
                 const endedAt = new Date()
                 await this.updateLastTime(task, endedAt, distributedLock.queryRunner.manager)
                 const record = {
@@ -102,9 +102,9 @@ export class DatetaskExecutorService {
         return this.running.has(taskId)
     }
 
-    private async executeHandler(task: DatetaskRecord, authorization?: string): Promise<DatetaskExecutionResultDto> {
+    private async executeHandler(task: DatetaskRecord): Promise<DatetaskExecutionResultDto> {
         if (task.handler === CURRENCY_EXCHANGE_TASK_HANDLER) {
-            return this.currencyExchangeTaskService.execute(authorization)
+            return this.currencyExchangeTaskService.execute()
         }
         throw new BadRequestException(`未注册的任务处理器：${task.handler}`)
     }

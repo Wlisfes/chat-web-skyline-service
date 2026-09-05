@@ -39,8 +39,8 @@ describe('DatetaskExecutorService', () => {
     it('应执行汇率处理器、更新时间并记录成功日志', async () => {
         const { service, manager, utils, logs, currency, queryRunner } = createService()
 
-        await expect(service.execute('2149446185344106496', 'Bearer token')).resolves.toEqual({ date: '2026-09-02', count: 30 })
-        expect(currency.execute).toHaveBeenCalledWith('Bearer token')
+        await expect(service.execute('2149446185344106496')).resolves.toEqual({ date: '2026-09-02', count: 30 })
+        expect(currency.execute).toHaveBeenCalledWith()
         expect(manager.update).toHaveBeenCalledWith(
             TbSkylineDatetaskSystem,
             { taskId: '2149446185344106496' },

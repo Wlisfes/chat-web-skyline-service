@@ -47,7 +47,7 @@ yarn dev
 
 系统任务管理页面对应 `POST /api/skyline/deploy/datetask/column`（以及同目录下的 `status/update`、`cron/update`、`trigger`、`log/column` 接口）。任务定义由服务启动时幂等初始化，页面不提供新增和删除操作。首个内置任务每天从 [Frankfurter](https://api.frankfurter.dev) 获取 USD 基准汇率，再通过共享 Feign 客户端调用 Finance 的 `/currency/exchange/sync` 写入汇率表。
 
-定时执行需要一个可被 Finance 服务接受的内部 Bearer 凭据，该凭据统一从 Nacos `feign.service_token` 读取；手动触发时会沿用当前请求的 `Authorization`。
+定时执行和手动触发都使用统一的内部 Bearer 凭据，该凭据从 Nacos `feign.service_token` 读取；不会把终端用户的 `Authorization` 转发给 Finance。
 
 ## 验证
 

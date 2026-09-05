@@ -123,11 +123,11 @@ describe('DatetaskService', () => {
         expect(manager.update).toHaveBeenCalledWith(TbSkylineDatetaskSystem, { taskId: baseTask.taskId }, { cron: '0 1 8 * * *' })
         expect(scheduler.schedule).toHaveBeenCalledWith(baseTask.taskId)
 
-        await expect(service.httpBaseSkylineTriggerDatetask({ taskId: baseTask.taskId }, 'Bearer token')).resolves.toEqual({
+        await expect(service.httpBaseSkylineTriggerDatetask({ taskId: baseTask.taskId })).resolves.toEqual({
             success: true,
             result: { count: 30 }
         })
-        expect(executor.execute).toHaveBeenCalledWith(baseTask.taskId, 'Bearer token')
+        expect(executor.execute).toHaveBeenCalledWith(baseTask.taskId)
 
         const input = { taskId: baseTask.taskId, page: 1, size: 10, status: DatetaskLogStatus.SUCCESS }
         await expect(service.httpBaseSkylineColumnDatetaskLog(input)).resolves.toEqual({ page: 1, size: 10, total: 0, list: [] })

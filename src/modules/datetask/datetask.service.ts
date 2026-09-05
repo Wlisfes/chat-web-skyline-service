@@ -84,12 +84,9 @@ export class DatetaskService {
     }
 
     /** 手动触发一次系统任务。 */
-    public async httpBaseSkylineTriggerDatetask(
-        input: DatetaskDto.TriggerDatetaskDto,
-        authorization?: string
-    ): Promise<DatetaskDto.TriggerDatetaskResponseDto> {
+    public async httpBaseSkylineTriggerDatetask(input: DatetaskDto.TriggerDatetaskDto): Promise<DatetaskDto.TriggerDatetaskResponseDto> {
         const task = await this.datetaskUtilsService.findRequired(input.taskId)
-        const result = await this.datetaskExecutorService.execute(task.taskId, authorization)
+        const result = await this.datetaskExecutorService.execute(task.taskId)
         return { success: true, result }
     }
 

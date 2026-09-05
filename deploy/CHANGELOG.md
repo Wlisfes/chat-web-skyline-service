@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-09-05：统一 Feign 经 Gateway 转发并隔离用户鉴权
+
+- 影响机器：`chat-home-server`。
+- 关联版本：待发布 `@wlisfes/chat-web-base-schema@1.6.2`。
+- 变更内容：Skyline 的 Finance Feign 客户端统一读取 `feign.gateway.url/timeout`；Gateway `/feign/**` 只按服务路由转发，不调用 Auth 的用户令牌内省；汇率任务无论自动调度还是手动触发都只携带 `feign.service_token`。
+- 机器侧操作：在 Skyline Nacos 保留 `feign.service_token`，新增或确认 `feign.gateway.url` 与 `feign.gateway.timeout`；删除逐服务 `feign.chat-web-*` 地址前先确认新镜像已切换，保留原注释和其他配置。
+- 验证命令：`yarn format:check && yarn typecheck && yarn build && yarn test:unit`；部署后验证 `/api/skyline/deploy/datetask/column` 和汇率同步任务。
+- 回滚方法：恢复上一完整 Git SHA 与共享包版本，并恢复调用方所需的逐服务地址；数据库、服务凭据和 Gateway 路由不回滚。
+
 ## 2026-09-05：修复 Skyline Feign 配置导致的业务接口 502
 
 - 影响机器：`chat-home-server`。
