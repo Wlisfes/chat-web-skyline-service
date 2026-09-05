@@ -19,6 +19,7 @@ import { SKYLINE_MYSQL_CONFIG_KEY, SKYLINE_MYSQL_ENTITIES } from '@/modules/data
                 if (configured && typeof configured.database !== 'string' && typeof configured.name === 'string') {
                     configService.set(SKYLINE_MYSQL_CONFIG_KEY, { ...configured, database: configured.name })
                 }
+                console.log(configured)
                 return createMysqlOptions(configService, {
                     configKey: SKYLINE_MYSQL_CONFIG_KEY,
                     entities: [...SKYLINE_MYSQL_ENTITIES]
