@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-09-05：修复 Skyline Feign 配置导致的业务接口 502
+
+- 影响机器：`chat-home-server`。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.6.1`。
+- 变更内容：Skyline 升级共享包并让 Finance 客户端读取 Nacos `feign.chat-web-finance.url/timeout`；部署校验脚本同步校验当前实际的 Account、Finance、CRM Feign 节点，避免旧客户端读取不存在的 `feign.gateway.url` 后把 `/auth/token/introspect` 错误返回为 502。
+- 机器侧操作：不修改 Nacos 现有值或注释；发布新镜像后确认容器加载共享包 `1.6.1`，再验证系统任务分页和 Skyline 健康接口。
+- 验证命令：`yarn format:check`、`yarn typecheck`、`yarn test:full`；部署后使用带 Bearer Token 的 `/api/skyline/deploy/datetask/column` 验证响应不再为 `Cannot GET /auth/token/introspect`。
+- 回滚方法：恢复上一完整 Git SHA 与共享包 `1.6.0`，同时恢复旧客户端配置前先确认 Nacos 已提供对应字段；业务数据和 Nacos 内容不回滚。
+
 ## 2026-09-05：Nacos 配置项收敛到网关
 
 - 影响机器：`chat-home-server`。
