@@ -1,5 +1,16 @@
 # Skyline 部署变更记录
 
+## 2026-09-05：适配鉴权服务拆分并修复汇率同步路径
+
+- 影响机器：`chat-home-server`。
+- 关联版本：共享包升级到 `@wlisfes/chat-web-base-schema@1.5.2`。
+- 变更内容：
+    - 令牌校验改由新增的 `chat-web-auth-service` 承担，Skyline 代码无需改动。
+    - 财务客户端重命名为 `FeignClientFinanceManager`，并修复此前被错误加上 `/feign` 前缀导致汇率同步请求 404 的问题，路径恢复为 `/currency/exchange/sync`。
+- 机器侧操作：在 Nacos `chat-web-skyline-service.yaml` 新增 `feign.chat-web-auth.url`（`http://chat-web-auth-service:5050`）与 `feign.chat-web-auth.timeout`（`3000`）；确认 `feign.service_token` 与财务、鉴权服务一致。必须先部署鉴权服务。
+- 验证命令：`yarn format:check && yarn typecheck && yarn test`；部署后手动触发一次汇率同步任务并确认财务侧写入成功。
+- 回滚方法：恢复上一版完整 Git SHA 并回退共享包依赖；Nacos 新增字段可保留。
+
 ## 2026-09-04：兼容历史 Nacos 字段且禁止配置回写
 
 - 影响范围：Skyline 本地启动与 `chat-home-server` 部署镜像。
