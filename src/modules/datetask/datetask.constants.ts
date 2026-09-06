@@ -47,6 +47,6 @@ export const SYSTEM_TASK_DEFINITIONS = [
         cron: CURRENCY_EXCHANGE_TASK_CRON,
         type: DatetaskType.SYSTEM,
         status: DatetaskStatus.RUNNING,
-        body: { base: 'USD' }
+        body: {}
     }
 ] as const

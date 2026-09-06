@@ -18,7 +18,10 @@ export class DatetaskInitializerService implements OnModuleInit {
     public async onModuleInit(): Promise<void> {
         for (const definition of SYSTEM_TASK_DEFINITIONS) {
             const existing = await this.repository.findOne({ where: { taskId: definition.taskId } })
-            if (existing) continue
+            if (existing) {
+                await this.synchronizeDefinition(existing, definition)
+                continue
+            }
 
             try {
                 const result = await this.repository
@@ -38,6 +41,32 @@ export class DatetaskInitializerService implements OnModuleInit {
             }
         }
         await this.datetaskSchedulerService.refresh(true)
+    }
+
+    /** 同步系统控制的任务元数据，同时保留管理员调整过的 Cron、状态和执行时间。 */
+    private async synchronizeDefinition(
+        existing: TbSkylineDatetaskSystem,
+        definition: (typeof SYSTEM_TASK_DEFINITIONS)[number]
+    ): Promise<void> {
+        const body = { ...definition.body }
+        if (
+            existing.taskName === definition.taskName &&
+            existing.handler === definition.handler &&
+            existing.comment === definition.comment &&
+            existing.type === definition.type &&
+            JSON.stringify(existing.body ?? {}) === JSON.stringify(body)
+        ) {
+            return
+        }
+        this.repository.merge(existing, {
+            taskName: definition.taskName,
+            handler: definition.handler,
+            comment: definition.comment,
+            type: definition.type,
+            body
+        })
+        await this.repository.save(existing)
+        this.logger.log(`已同步系统任务定义：${definition.taskName}（${definition.taskId}）`, DatetaskInitializerService.name)
     }
 
     private isDuplicateKeyError(error: unknown): boolean {

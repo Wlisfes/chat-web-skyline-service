@@ -4,7 +4,7 @@
 
 - 影响机器：`chat-home-server`。
 - 关联版本：`@wlisfes/chat-web-base-schema@1.6.3`。
-- 变更内容：删除 Skyline 中的 Frankfurter 请求、解析、过滤和分批传输逻辑；任务只携带 `feign.service_token` 调用一次 Finance `/feign/finance/currency/exchange/sync`，且不发送业务请求体。
+- 变更内容：删除 Skyline 中的 Frankfurter 请求、解析、过滤和分批传输逻辑；任务只携带 `feign.service_token` 调用一次 Finance `/feign/finance/currency/exchange/sync`，且不发送业务请求体。服务启动时同步内置任务的系统元数据和职责描述，但保留管理员调整的 Cron、启停状态与执行时间。
 - 机器侧操作：Skyline Nacos 无需增加或修改 Frankfurter 配置；确认现有 `feign.service_token` 与 Finance 一致。
 - 验证命令：`yarn format:check && yarn typecheck && yarn test:full`；部署后手动触发汇率任务并确认返回 Finance 的同步结果。
 - 回滚方法：恢复上一完整 Git SHA 与共享包版本；数据库和 Nacos 配置不回滚。
