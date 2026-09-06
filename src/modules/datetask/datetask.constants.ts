@@ -43,7 +43,7 @@ export const SYSTEM_TASK_DEFINITIONS = [
         taskId: CURRENCY_EXCHANGE_TASK_ID,
         taskName: '汇率同步定时任务',
         handler: CURRENCY_EXCHANGE_TASK_HANDLER,
-        comment: '每天从 Frankfurter 获取汇率并通过 Finance 服务写入数据库',
+        comment: '每天触发 Finance 服务拉取汇率并写入财务数据库',
         cron: CURRENCY_EXCHANGE_TASK_CRON,
         type: DatetaskType.SYSTEM,
         status: DatetaskStatus.RUNNING,

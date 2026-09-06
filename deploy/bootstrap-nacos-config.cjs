@@ -11,8 +11,6 @@ const DEFAULT_SERVER_PORT = 5040
 // 所有 Feign 客户端统一访问 Gateway，目标服务由 /feign/<服务名> 路由决定。
 const DEFAULT_GATEWAY_SERVICE_URL = 'http://chat-web-gateway-service:5000'
 const DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS = 3000
-const DEFAULT_SKYLINE_FRANKFURTER_URL = 'https://api.frankfurter.dev/v2/rates'
-const DEFAULT_FRANKFURTER_TIMEOUT_MS = 10_000
 
 function required(name, environment = process.env, trim = true) {
     const raw = environment[name]
@@ -303,8 +301,6 @@ module.exports = {
     DEFAULT_SERVER_PORT,
     DEFAULT_GATEWAY_SERVICE_URL,
     DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS,
-    DEFAULT_SKYLINE_FRANKFURTER_URL,
-    DEFAULT_FRANKFURTER_TIMEOUT_MS,
     createSkylineConfig,
     sanitizeSkylineConfig,
     validateDatabaseConfig,
