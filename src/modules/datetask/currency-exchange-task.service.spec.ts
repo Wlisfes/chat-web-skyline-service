@@ -20,7 +20,7 @@ describe('CurrencyExchangeTaskService', () => {
     }
 
     it('应只携带服务凭据触发 Finance 汇率同步', async () => {
-        const { service, syncCurrencyExchange, logger } = createService({ 'feign.service_token': 'finance-token' })
+        const { service, syncCurrencyExchange, logger } = createService({ 'gateway.feign.service_token': 'finance-token' })
 
         await expect(service.execute()).resolves.toEqual({
             date: '2026-09-05',
@@ -33,7 +33,7 @@ describe('CurrencyExchangeTaskService', () => {
     })
 
     it('已带 Bearer 前缀的服务凭据不应重复拼接', async () => {
-        const { service, syncCurrencyExchange } = createService({ 'feign.service_token': 'Bearer finance-token' })
+        const { service, syncCurrencyExchange } = createService({ 'gateway.feign.service_token': 'Bearer finance-token' })
 
         await service.execute()
 
@@ -45,7 +45,7 @@ describe('CurrencyExchangeTaskService', () => {
 
         await expect(service.execute()).rejects.toEqual(
             expect.objectContaining<Partial<ServiceUnavailableException>>({
-                message: 'Nacos 配置 feign.service_token 未配置服务间凭据'
+                message: 'Nacos 配置 gateway.feign.service_token 未配置服务间凭据'
             })
         )
         expect(syncCurrencyExchange).not.toHaveBeenCalled()

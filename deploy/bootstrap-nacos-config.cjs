@@ -8,9 +8,8 @@
  */
 
 const DEFAULT_SERVER_PORT = 5040
-// Skyline 只调用 Finance，目标服务地址单独维护在 feign.chat-web-finance。
-const DEFAULT_FINANCE_SERVICE_URL = 'http://chat-web-finance-service:5030'
-const DEFAULT_FINANCE_SERVICE_TIMEOUT_MS = 3000
+const DEFAULT_GATEWAY_SERVICE_URL = 'http://chat-web-gateway-service:5000'
+const DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS = 3000
 
 function required(name, environment = process.env, trim = true) {
     const raw = environment[name]
@@ -165,15 +164,17 @@ function validateDatabaseConfig(lines) {
 }
 
 function validateServiceToken(lines) {
-    const feign = findRootBlock(lines, 'feign')
-    const feignToken = feign ? (findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')) : undefined
+    const gateway = findRootBlock(lines, 'gateway')
+    const feign = gateway ? findChildBlock(lines, gateway, 'feign') : undefined
+    const feignToken = feign ? findDirectField(lines, feign, 'service_token') : undefined
     if (feignToken && scalarPresent(feignToken.value)) return
-    throw new Error('Skyline Nacos 配置缺少 feign.service_token，请先配置 Finance 服务间凭据')
+    throw new Error('Skyline Nacos 配置缺少 gateway.feign.service_token，请先配置服务间凭据')
 }
 
 function hasConfiguredServiceToken(lines) {
-    const feign = findRootBlock(lines, 'feign')
-    const feignToken = feign ? (findDirectField(lines, feign, 'service_token') ?? findDirectField(lines, feign, 'serviceToken')) : undefined
+    const gateway = findRootBlock(lines, 'gateway')
+    const feign = gateway ? findChildBlock(lines, gateway, 'feign') : undefined
+    const feignToken = feign ? findDirectField(lines, feign, 'service_token') : undefined
     return Boolean(feignToken && scalarPresent(feignToken.value))
 }
 
@@ -186,11 +187,16 @@ function validateServerPort(lines) {
     }
 }
 
-function validateFeignService(lines, feign, name) {
-    const service = findChildBlock(lines, feign, name)
-    if (!service) throw new Error(`Skyline Nacos 配置缺少 feign.${name}`)
-    const url = findDirectField(lines, service, 'url')
-    if (!url || !scalarPresent(url.value)) throw new Error(`Skyline Nacos 配置缺少 feign.${name}.url`)
+function validateFeignConfig(lines, requireServiceToken = true) {
+    const gateway = findRootBlock(lines, 'gateway')
+    if (!gateway) throw new Error('Skyline Nacos 配置缺少 gateway.feign')
+    const feign = findChildBlock(lines, gateway, 'feign')
+    if (!feign) throw new Error('Skyline Nacos 配置缺少 gateway.feign')
+    if (requireServiceToken && !hasConfiguredServiceToken(lines)) {
+        throw new Error('Skyline Nacos 配置缺少 gateway.feign.service_token')
+    }
+    const url = findDirectField(lines, feign, 'url')
+    if (!url || !scalarPresent(url.value)) throw new Error('Skyline Nacos 配置缺少 gateway.feign.url')
     const normalizedUrl = String(url.value)
         .trim()
         .replace(/^(['"])(.*)\1$/, '$2')
@@ -198,22 +204,12 @@ function validateFeignService(lines, feign, name) {
         const parsed = new URL(normalizedUrl)
         if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error()
     } catch {
-        throw new Error(`Skyline Nacos 配置 feign.${name}.url 必须使用 http:// 或 https://`)
+        throw new Error('Skyline Nacos 配置 gateway.feign.url 必须使用 http:// 或 https://')
     }
-    const timeout = findDirectField(lines, service, 'timeout')
+    const timeout = findDirectField(lines, feign, 'timeout')
     if (!timeout || !/^\d+$/.test(String(timeout.value).trim()) || Number(timeout.value) < 100 || Number(timeout.value) > 30_000) {
-        throw new Error(`Skyline Nacos 配置 feign.${name}.timeout 必须是 100-30000 之间的整数`)
+        throw new Error('Skyline Nacos 配置 gateway.feign.timeout 必须是 100-30000 之间的整数')
     }
-}
-
-function validateFeignConfig(lines, requireServiceToken = true) {
-    const feign = findRootBlock(lines, 'feign')
-    if (!feign) throw new Error('Skyline Nacos 配置缺少 feign 节点')
-    if (requireServiceToken && !hasConfiguredServiceToken(lines)) {
-        throw new Error('Skyline Nacos 配置缺少 feign.service_token')
-    }
-    // Skyline 只调用 Finance，直接读取目标服务地址。
-    validateFeignService(lines, feign, 'chat-web-finance')
 }
 
 /** 校验网关身份上下文签名配置；密钥缺失会让所有受保护接口在启动后立即失败。 */
@@ -255,12 +251,11 @@ function createSkylineConfig(environment = process.env) {
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('SKYLINE_MYSQL_PORT 必须是 1-65535 之间的整数')
     return `server:
   port: ${DEFAULT_SERVER_PORT}
-feign:
-  service_token: ${scalar(token)}
-  chat-web-finance:
-    url: ${scalar(environment.FINANCE_SERVICE_URL || DEFAULT_FINANCE_SERVICE_URL)}
-    timeout: ${Number(environment.FINANCE_SERVICE_TIMEOUT_MS || DEFAULT_FINANCE_SERVICE_TIMEOUT_MS)}
 gateway:
+  feign:
+    service_token: ${scalar(token)}
+    url: ${scalar(environment.GATEWAY_SERVICE_URL || DEFAULT_GATEWAY_SERVICE_URL)}
+    timeout: ${Number(environment.GATEWAY_SERVICE_TIMEOUT_MS || DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS)}
   principal:
     secret: ${scalar(required('GATEWAY_PRINCIPAL_SECRET', environment, false))}
     maxAgeSeconds: ${Number(environment.GATEWAY_PRINCIPAL_MAX_AGE_SECONDS || 60)}
@@ -278,7 +273,7 @@ async function main() {
     const dataId = required('NACOS_CONFIG_DATA_ID')
     const existing = await readConfig(dataId)
     if (!existing) {
-        throw new Error(`未找到 Skyline Nacos 配置：${dataId}；请先创建 server、database.chat-web-skyline 和 feign.service_token`)
+        throw new Error(`未找到 Skyline Nacos 配置：${dataId}；请先创建 server、database.chat-web-skyline 和 gateway.feign`)
     }
     const sanitized = sanitizeSkylineConfig(existing, { requireServiceToken: true })
     const normalizedExisting = normalizeContent(existing)
@@ -299,8 +294,8 @@ if (require.main === module) {
 
 module.exports = {
     DEFAULT_SERVER_PORT,
-    DEFAULT_FINANCE_SERVICE_URL,
-    DEFAULT_FINANCE_SERVICE_TIMEOUT_MS,
+    DEFAULT_GATEWAY_SERVICE_URL,
+    DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS,
     createSkylineConfig,
     sanitizeSkylineConfig,
     validateDatabaseConfig,

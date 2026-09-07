@@ -47,7 +47,7 @@ yarn dev
 
 系统任务管理页面对应 `POST /api/skyline/deploy/datetask/column`（以及同目录下的 `status/update`、`cron/update`、`trigger`、`log/column` 接口）。任务定义由服务启动时幂等初始化，页面不提供新增和删除操作。首个内置任务只通过共享 Feign 客户端调用 Finance 的 `/feign/finance/currency/exchange/sync`；外部汇率拉取、解析、过滤和数据库写入均由 Finance 完成。
 
-定时执行和手动触发都使用统一的内部 Bearer 凭据，该凭据从 Nacos `feign.service_token` 读取；不会把终端用户的 `Authorization` 转发给 Finance。
+定时执行和手动触发都使用统一的内部 Bearer 凭据，该凭据从 Nacos `gateway.feign.service_token` 读取；不会把终端用户的 `Authorization` 转发给 Finance。
 
 ## 验证
 
@@ -63,6 +63,6 @@ yarn build
 
 仓库保留 `chat-home-server` Docker 自动部署。只有合并到 `main` 后才触发构建部署；日常开发继续使用 `developer`，普通开发完成后不立即合并发布。部署完成后通过 Gateway `/api/skyline/**` 验证服务。原另一台部署机器已废弃，不再创建部署任务。
 
-流水线在切换 Skyline 容器前会通过 `node:22-alpine` 执行 `deploy/bootstrap-nacos-config.cjs`，仅读取并校验已有的 Skyline Nacos Data ID，不会回写人工配置。脚本校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `feign.service_token` 和 Account/Finance/CRM 的地址与超时；不会修改 Nacos 或输出配置正文。随后 `deploy.sh` 使用待发布镜像的 `apply-schema-bootstrap.js` 临时创建仅限 Skyline 数据库的迁移账号，执行完成后立即删除，避免直接使用拥有全局权限的管理员账号执行业务 DDL。缺少配置或数据库管理员不具备创建临时账号的权限时部署会停止，需先在 Nacos 补齐配置。
+流水线在切换 Skyline 容器前会通过 `node:22-alpine` 执行 `deploy/bootstrap-nacos-config.cjs`，仅读取并校验已有的 Skyline Nacos Data ID，不会回写人工配置。脚本校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `gateway.feign.service_token/url/timeout`；不会修改 Nacos 或输出配置正文。随后 `deploy.sh` 使用待发布镜像的 `apply-schema-bootstrap.js` 临时创建仅限 Skyline 数据库的迁移账号，执行完成后立即删除，避免直接使用拥有全局权限的管理员账号执行业务 DDL。缺少配置或数据库管理员不具备创建临时账号的权限时部署会停止，需先在 Nacos 补齐配置。
 
 部署细节与排障命令见 `deploy/RUNBOOK.md`。
