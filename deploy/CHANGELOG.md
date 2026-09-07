@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-09-07：按目标服务拆分 Skyline Feign 地址
+
+- 影响机器：Home（`chat-home-server`）。
+- 关联版本：待发布 Skyline 完整 Git SHA；共享包需包含独立目标地址键。
+- 变更内容：Skyline Finance Feign 客户端直接读取 `feign.chat-web-finance.url/timeout`；删除 Skyline Nacos 生产和 development 配置中的 Gateway、Account、CRM 未使用节点。
+- 机器侧操作：更新对应 Nacos Data ID，保留 Finance 地址、超时和 `feign.service_token`，再发布 Skyline 镜像。
+- 验证命令：`yarn format:check && yarn typecheck && yarn test:full`；部署后检查 `/health/live` 和汇率同步任务。
+- 回滚方法：恢复上一完整 Git SHA，并按备份恢复旧 Feign 节点。
+
 ## 2026-09-07：扩展汇率任务 Feign 重试窗口
 
 - 影响机器：`chat-home-server`。

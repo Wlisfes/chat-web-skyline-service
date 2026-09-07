@@ -23,11 +23,11 @@ describe('Skyline Nacos 部署配置校准', () => {
     secret: "0123456789abcdef0123456789abcdef"
     maxAgeSeconds: 60`
 
-    // 所有 Feign 客户端共用 Gateway 地址，目标服务由 Gateway 路由选择。
+    // Skyline 只调用 Finance，目标服务地址独立维护。
     const feign = `feign:
   service_token: "keep-this-token"
-  gateway:
-    url: "http://chat-web-gateway-service:5000"
+  chat-web-finance:
+    url: "http://chat-web-finance-service:5030"
     timeout: 3000`
 
     it('应校验现有配置并保持 Feign 与敏感字段原样', () => {
@@ -43,7 +43,7 @@ ${database}
         expect(result).toContain('port: 5040')
         expect(result).toContain('password: "keep-this-password"')
         expect(result).toContain('service_token: "keep-this-token"')
-        expect(result).toContain('gateway:')
+        expect(result).toContain('chat-web-finance:')
     })
 
     it('缺少 Skyline 数据库节点时应拒绝校准', () => {
@@ -57,7 +57,7 @@ ${database}`
 
         expect(() => sanitizeSkylineConfig(source)).toThrow('feign 节点')
         expect(() =>
-            sanitizeSkylineConfig(`${source}\nfeign:\n  gateway:\n    url: http://chat-web-gateway-service:5000\n    timeout: 3000`)
+            sanitizeSkylineConfig(`${source}\nfeign:\n  chat-web-finance:\n    url: http://chat-web-finance-service:5030\n    timeout: 3000`)
         ).toThrow('feign.service_token')
     })
 
@@ -92,7 +92,7 @@ ${principal}
         })
         expect(source).toContain('name: "chat_web_skyline"')
         expect(source).toContain('service_token: "finance-token"')
-        expect(source).toContain('url: "http://chat-web-gateway-service:5000"')
+        expect(source).toContain('url: "http://chat-web-finance-service:5030"')
         expect(source).toContain('secret: "0123456789abcdef0123456789abcdef"')
 
         const script = readFileSync(resolve(__dirname, '../../deploy/bootstrap-nacos-config.cjs'), 'utf8')

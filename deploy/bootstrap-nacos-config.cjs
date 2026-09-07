@@ -8,9 +8,9 @@
  */
 
 const DEFAULT_SERVER_PORT = 5040
-// 所有 Feign 客户端统一访问 Gateway，目标服务由 /feign/<服务名> 路由决定。
-const DEFAULT_GATEWAY_SERVICE_URL = 'http://chat-web-gateway-service:5000'
-const DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS = 3000
+// Skyline 只调用 Finance，目标服务地址单独维护在 feign.chat-web-finance。
+const DEFAULT_FINANCE_SERVICE_URL = 'http://chat-web-finance-service:5030'
+const DEFAULT_FINANCE_SERVICE_TIMEOUT_MS = 3000
 
 function required(name, environment = process.env, trim = true) {
     const raw = environment[name]
@@ -212,8 +212,8 @@ function validateFeignConfig(lines, requireServiceToken = true) {
     if (requireServiceToken && !hasConfiguredServiceToken(lines)) {
         throw new Error('Skyline Nacos 配置缺少 feign.service_token')
     }
-    // Feign 客户端只读取 Gateway 地址；目标服务由 Gateway 的服务间路由选择。
-    validateFeignService(lines, feign, 'gateway')
+    // Skyline 只调用 Finance，直接读取目标服务地址。
+    validateFeignService(lines, feign, 'chat-web-finance')
 }
 
 /** 校验网关身份上下文签名配置；密钥缺失会让所有受保护接口在启动后立即失败。 */
@@ -257,9 +257,9 @@ function createSkylineConfig(environment = process.env) {
   port: ${DEFAULT_SERVER_PORT}
 feign:
   service_token: ${scalar(token)}
-  gateway:
-    url: ${scalar(environment.GATEWAY_SERVICE_URL || DEFAULT_GATEWAY_SERVICE_URL)}
-    timeout: ${Number(environment.GATEWAY_SERVICE_TIMEOUT_MS || DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS)}
+  chat-web-finance:
+    url: ${scalar(environment.FINANCE_SERVICE_URL || DEFAULT_FINANCE_SERVICE_URL)}
+    timeout: ${Number(environment.FINANCE_SERVICE_TIMEOUT_MS || DEFAULT_FINANCE_SERVICE_TIMEOUT_MS)}
 gateway:
   principal:
     secret: ${scalar(required('GATEWAY_PRINCIPAL_SECRET', environment, false))}
@@ -299,8 +299,8 @@ if (require.main === module) {
 
 module.exports = {
     DEFAULT_SERVER_PORT,
-    DEFAULT_GATEWAY_SERVICE_URL,
-    DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS,
+    DEFAULT_FINANCE_SERVICE_URL,
+    DEFAULT_FINANCE_SERVICE_TIMEOUT_MS,
     createSkylineConfig,
     sanitizeSkylineConfig,
     validateDatabaseConfig,

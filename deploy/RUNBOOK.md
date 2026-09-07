@@ -2,14 +2,14 @@
 
 ## Nacos 配置清单
 
-认证迁到网关后，`chat-web-skyline-service.yaml` 的相关配置如下。业务 Feign 客户端统一访问 Gateway，目标服务由 Gateway 的 `/feign/<服务名>` 路由决定：
+`chat-web-skyline-service.yaml` 的相关配置如下。Skyline 只调用 Finance，目标服务地址单独配置：
 
 ```yaml
 # 服务间凭据由各服务共享；真实值只保存在 Nacos。
 feign:
     service_token: '<服务间共享凭据>'
-    gateway:
-        url: http://chat-web-gateway-service:5000
+    chat-web-finance:
+        url: http://chat-web-finance-service:5030
         timeout: 30000
 
 # 网关签发的身份上下文由业务服务校验；密钥必须与网关完全一致。
@@ -19,7 +19,7 @@ gateway:
         maxAgeSeconds: 60
 ```
 
-所有业务 Feign 客户端只读取 `feign.gateway.url/timeout`；缺少任一字段时部署校验会中止。目标服务地址只在 Gateway Nacos 的 `gateway.routes` 中维护，不要在 Skyline Nacos 重复配置。
+Skyline 只读取 `feign.chat-web-finance.url/timeout`；缺少任一字段时部署校验会中止。不要在 Skyline Nacos 配置未使用的目标服务节点。
 
 汇率同步任务只请求 `/feign/finance/currency/exchange/sync` 且不发送业务请求体。Frankfurter 地址、超时、汇率解析和数据库写入均属于 Finance 配置与实现，Skyline Nacos 不维护这些字段。
 
@@ -46,9 +46,9 @@ Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 
 
 Skyline 的业务数据库配置位于 Nacos `database.chat-web-skyline`，对应表为 `tb_skyline_datetask_system`。`deploy.sh` 会使用待发布镜像执行 `dist/cli/apply-schema-bootstrap.js`：先使用 Nacos 中的管理员连接创建仅授权 Skyline 数据库的临时账号，再以该账号调用 `dist/cli/apply-schema.js`，迁移结束后立即回收临时账号。增量 SQL 按文件名顺序应用，并在 `tb_skyline_schema_migration` 中保存文件校验和；迁移失败时不会切换当前容器。TypeORM 保持 `synchronize: false`，不会在服务启动时自行改表。系统任务初始化失败会在容器日志中记录并触发健康检查失败。
 
-流水线会先把 `deploy/bootstrap-nacos-config.cjs` 安装到 `/opt/chat-web-skyline-service`，再使用 `node:22-alpine`（加入 `chat-web-infrastructure` 网络）执行只读校验。脚本不会回写 Nacos，不会补齐或覆盖任何业务配置；它校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `feign.service_token`、`feign.gateway.url/timeout`。脚本不会把 Nacos 配置正文或凭据写入 Runner 日志；缺少节点/凭据时应先人工配置后重跑流水线。
+流水线会先把 `deploy/bootstrap-nacos-config.cjs` 安装到 `/opt/chat-web-skyline-service`，再使用 `node:22-alpine`（加入 `chat-web-infrastructure` 网络）执行只读校验。脚本不会回写 Nacos，不会补齐或覆盖任何业务配置；它校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `feign.service_token`、`feign.chat-web-finance.url/timeout`。脚本不会把 Nacos 配置正文或凭据写入 Runner 日志；缺少节点/凭据时应先人工配置后重跑流水线。
 
-每日汇率任务通过 Gateway Feign 路由调用 Finance `/feign/finance/currency/exchange/sync`，Skyline 只触发一次并原样返回 Finance 结果。自动调度和手动触发都使用 Nacos `feign.service_token` 服务凭据，不转发用户 Bearer 令牌。令牌不得写入仓库或日志。
+每日汇率任务通过独立 Finance Feign 地址调用 `/feign/finance/currency/exchange/sync`，Skyline 只触发一次并原样返回 Finance 结果。自动调度和手动触发都使用 Nacos `feign.service_token` 服务凭据，不转发用户 Bearer 令牌。令牌不得写入仓库或日志。
 
 ## 验证
 
