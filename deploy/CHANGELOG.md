@@ -1,11 +1,11 @@
 # Skyline 部署变更记录
 
-## 2026-09-06：延长汇率任务 Feign 超时
+## 2026-09-07：扩展汇率任务 Feign 重试窗口
 
 - 影响机器：`chat-home-server`。
-- 变更内容：线上验证发现 Finance 汇率同步包含外部数据源请求，原 `feign.gateway.timeout: 3000` 会在 3 秒后被 Skyline 客户端中止；已在 Skyline Nacos 将该字段单独调整为 `15000` 毫秒，其他配置、参数值和注释保持不变。
+- 变更内容：Finance 增加 Frankfurter 外部请求重试后，Skyline Nacos `feign.gateway.timeout` 从 `15000` 调整为 `30000` 毫秒，为完整重试窗口留出时间；其他配置、参数值和注释保持不变。
 - 验证结果：重新部署后，任务描述已同步，手动触发链路需确认返回 Finance 的同步结果且执行日志为成功。
-- 回滚方法：如需回滚，将 Skyline Nacos `feign.gateway.timeout` 恢复为调整前的值，并回退到上一完整 Git SHA。
+- 回滚方法：如需回滚，将 Skyline Nacos `feign.gateway.timeout` 恢复为 `15000`，并回退到上一完整 Git SHA。
 
 ## 2026-09-06：Skyline 汇率任务收敛为调度触发
 

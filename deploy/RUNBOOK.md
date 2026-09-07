@@ -10,7 +10,7 @@ feign:
     service_token: '<服务间共享凭据>'
     gateway:
         url: http://chat-web-gateway-service:5000
-        timeout: 15000
+        timeout: 30000
 
 # 网关签发的身份上下文由业务服务校验；密钥必须与网关完全一致。
 gateway:
