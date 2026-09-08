@@ -33,7 +33,7 @@ export class UpdateDatetaskStatusDto extends DatetaskKeyDto {
 
 /** 更新系统任务 Cron 参数。 */
 export class UpdateDatetaskCronDto extends DatetaskKeyDto {
-    @ApiProperty({ description: 'Cron 表达式', example: '0 0 8 * * *' })
+    @ApiProperty({ description: 'Cron 表达式；汇率任务默认每天 08:00、20:00 各执行一次', example: '0 0 8,20 * * *' })
     @IsString({ message: 'Cron表达式必须是字符串' })
     @IsNotEmpty({ message: 'Cron表达式不能为空' })
     @MaxLength(32, { message: 'Cron表达式长度不能超过32位' })

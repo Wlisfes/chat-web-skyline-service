@@ -9,8 +9,8 @@ export const CURRENCY_EXCHANGE_TASK_ID = '2149446185344106496'
 /** 汇率同步任务处理器标识。 */
 export const CURRENCY_EXCHANGE_TASK_HANDLER = 'datetask-sync-exchange-rate'
 
-/** 默认每天 08:00（Asia/Shanghai）执行；Cron 为秒、分、时、日、月、周。 */
-export const CURRENCY_EXCHANGE_TASK_CRON = '0 0 8 * * *'
+/** 默认每天 08:00、20:00（Asia/Shanghai）各执行一次；Cron 为秒、分、时、日、月、周。 */
+export const CURRENCY_EXCHANGE_TASK_CRON = '0 0 8,20 * * *'
 
 /** 任务类型值，与共享 Skyline Schema 和管理端字典保持一致。 */
 export { DatetaskStatus, DatetaskType }
