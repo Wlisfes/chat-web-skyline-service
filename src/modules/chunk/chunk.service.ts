@@ -20,10 +20,12 @@ export class ChunkService {
         const page = input.page ?? 1
         const size = input.size ?? 50
         return this.database.builder(this.repository, async qb => {
+            if (isNotEmpty(input.module)) qb.andWhere('t.module = :module', { module: input.module })
             if (isNotEmpty(input.type)) qb.andWhere('t.type = :type', { type: input.type })
             if (isNotEmpty(input.status)) qb.andWhere('t.status = :status', { status: input.status })
             if (input.pid !== undefined) qb.andWhere('t.pid = :pid', { pid: input.pid })
-            qb.orderBy('t.type', 'ASC')
+            qb.orderBy('t.module', 'ASC')
+                .addOrderBy('t.type', 'ASC')
                 .addOrderBy('t.pid', 'ASC')
                 .addOrderBy('t.sort', 'ASC')
                 .addOrderBy('t.keyId', 'ASC')
