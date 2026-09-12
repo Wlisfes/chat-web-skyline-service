@@ -18,7 +18,7 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineColumnChunk(input)
     }
 
-    @ApiServiceDecorator(Get('resolver'), {
+    @ApiServiceDecorator(Get('resolve'), {
         operation: { summary: '枚举字典详情' },
         request: { source: 'query', type: ChunkDto.ChunkKeyDto },
         response: { type: ChunkDto.ChunkResponseDto, description: '枚举字典详情' },

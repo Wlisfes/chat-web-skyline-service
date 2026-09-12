@@ -18,7 +18,7 @@ export class DatetaskController {
         return this.datetaskService.httpBaseSkylineColumnDatetask(input)
     }
 
-    @ApiServiceDecorator(Get('resolver'), {
+    @ApiServiceDecorator(Get('resolve'), {
         operation: { summary: '系统任务详情' },
         request: { source: 'query', type: DatetaskDto.ResolveDatetaskDto },
         response: { type: DatetaskDto.DatetaskResponseDto, description: '系统任务详情' },
