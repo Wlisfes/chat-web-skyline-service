@@ -17,6 +17,7 @@ type LockRow = RowDataPacket & { acquired?: number | string | null }
 const MIGRATION_TABLE = 'tb_skyline_schema_migration'
 export const SCHEMA_MIGRATION_LOCK_NAME = 'chat-web-skyline:schema-migration'
 const TASK_ID_UNIQUE_MIGRATION = '20260902230000__tb_skyline_datetask_system__task_id_unique.sql'
+const CHUNK_MODULE_NORMALIZE_MIGRATION = '20260912130000__tb_skyline_chunk__normalize_module.sql'
 
 /** 找到公共包中随版本发布的 Skyline 增量 SQL。 */
 function changesDirectory(): string {
@@ -65,6 +66,33 @@ export async function releaseSchemaMigrationLock(connection: mysql.Connection): 
     await connection.query('SELECT RELEASE_LOCK(?)', [SCHEMA_MIGRATION_LOCK_NAME])
 }
 
+/** 兼容历史迁移台账已记录但 Skyline 枚举表实际缺少 module 列的数据库。 */
+export async function ensureChunkModuleColumn(connection: mysql.Connection): Promise<boolean> {
+    const [tableRows] = await connection.query<(RowDataPacket & { count: number })[]>(
+        `SELECT COUNT(*) AS count
+           FROM information_schema.tables
+          WHERE table_schema = DATABASE()
+            AND table_name = 'tb_skyline_chunk'`
+    )
+    if (Number(tableRows[0]?.count) === 0) return false
+
+    const [columnRows] = await connection.query<(RowDataPacket & { count: number })[]>(
+        `SELECT COUNT(*) AS count
+           FROM information_schema.columns
+          WHERE table_schema = DATABASE()
+            AND table_name = 'tb_skyline_chunk'
+            AND column_name = 'module'`
+    )
+    if (Number(columnRows[0]?.count) > 0) return false
+
+    await connection.query(
+        'ALTER TABLE `tb_skyline_chunk`\n' +
+            "    ADD COLUMN `module` varchar(32) NOT NULL DEFAULT 'CHUNK_SYSTEM'\n" +
+            "    COMMENT '枚举所属模块：CHUNK_SYSTEM=系统；CHUNK_CRM=CRM；CHUNK_SRM=SRM' AFTER `pid`"
+    )
+    return true
+}
+
 /** 按文件名顺序幂等执行 Skyline 数据库增量 SQL。 */
 export async function applySchema(): Promise<void> {
     loadLocalEnvironment()
@@ -98,6 +126,7 @@ export async function applySchema(): Promise<void> {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Skyline Schema增量记录表'`
         )
 
+        await ensureChunkModuleColumn(connection)
         const directory = changesDirectory()
         const filenames = (await readdir(directory)).filter(name => name.endsWith('.sql')).sort()
         for (const filename of filenames) {
@@ -113,7 +142,10 @@ export async function applySchema(): Promise<void> {
             }
             let applied = true
             if (filename === TASK_ID_UNIQUE_MIGRATION) applied = await ensureTaskIdUniqueIndex(connection)
-            else await connection.query(sql)
+            else {
+                if (filename === CHUNK_MODULE_NORMALIZE_MIGRATION) await ensureChunkModuleColumn(connection)
+                await connection.query(sql)
+            }
             await connection.execute(`INSERT INTO \`${MIGRATION_TABLE}\` (filename, checksum) VALUES (?, ?)`, [filename, checksum])
             process.stdout.write(`Schema migration ${applied ? 'applied' : 'skipped (唯一索引已存在)'}: ${filename}\n`)
         }

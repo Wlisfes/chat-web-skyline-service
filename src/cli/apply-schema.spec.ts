@@ -1,5 +1,35 @@
 import mysql from 'mysql2/promise'
-import { acquireSchemaMigrationLock, ensureTaskIdUniqueIndex, releaseSchemaMigrationLock, SCHEMA_MIGRATION_LOCK_NAME } from './apply-schema'
+import {
+    acquireSchemaMigrationLock,
+    ensureChunkModuleColumn,
+    ensureTaskIdUniqueIndex,
+    releaseSchemaMigrationLock,
+    SCHEMA_MIGRATION_LOCK_NAME
+} from './apply-schema'
+
+describe('Skyline 枚举表兼容修复', () => {
+    it('迁移台账漂移时应在实际迁移连接上补齐 module 列', async () => {
+        const connection = { query: jest.fn() } as unknown as mysql.Connection
+        const query = connection.query as jest.Mock
+        query
+            .mockResolvedValueOnce([[{ count: 1 }], []])
+            .mockResolvedValueOnce([[{ count: 0 }], []])
+            .mockResolvedValueOnce([[], []])
+
+        await expect(ensureChunkModuleColumn(connection)).resolves.toBe(true)
+        expect(query).toHaveBeenCalledTimes(3)
+        expect(query.mock.calls[2][0]).toContain('ADD COLUMN `module`')
+    })
+
+    it('枚举表不存在时不应提前执行补列 DDL', async () => {
+        const connection = { query: jest.fn() } as unknown as mysql.Connection
+        const query = connection.query as jest.Mock
+        query.mockResolvedValueOnce([[{ count: 0 }], []])
+
+        await expect(ensureChunkModuleColumn(connection)).resolves.toBe(false)
+        expect(query).toHaveBeenCalledTimes(1)
+    })
+})
 
 describe('ensureTaskIdUniqueIndex', () => {
     const createConnection = () => ({ query: jest.fn() }) as unknown as mysql.Connection
