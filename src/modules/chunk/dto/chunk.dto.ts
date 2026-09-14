@@ -5,7 +5,10 @@ import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 import { PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
 
 /** 枚举字典分页查询参数。 */
-export class ListChunkDto extends IntersectionType(PageDto, PartialType(PickType(TbSkylineChunkDto, ['module', 'type', 'pid', 'status'] as const))) {}
+export class ListChunkDto extends IntersectionType(
+    PageDto,
+    PartialType(PickType(TbSkylineChunkDto, ['module', 'type', 'pid', 'status'] as const))
+) {}
 
 /** 枚举字典主键参数。 */
 export class ChunkKeyDto {
