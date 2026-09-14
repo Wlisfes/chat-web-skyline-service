@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import mysql from 'mysql2/promise'
+import mysql, { RowDataPacket } from 'mysql2/promise'
 import { applySchema } from '@/cli/apply-schema'
 import { getDatabaseName, loadLocalEnvironment, loadSkylineDatabaseConfig } from '@/cli/database-config'
 
@@ -9,6 +9,23 @@ const MYSQL_ACCOUNT_HOST = '%'
 type MigrationCredentials = {
     username: string
     password: string
+}
+
+/** 兼容历史迁移台账已记录但 module 列实际缺失的数据库。 */
+async function ensureChunkModuleColumn(connection: mysql.Connection): Promise<void> {
+    const [rows] = await connection.query<(RowDataPacket & { count: number })[]>(
+        `SELECT COUNT(*) AS count
+           FROM information_schema.columns
+          WHERE table_schema = DATABASE()
+            AND table_name = 'tb_skyline_chunk'
+            AND column_name = 'module'`
+    )
+    if (Number(rows[0]?.count) > 0) return
+    await connection.query(
+        'ALTER TABLE `tb_skyline_chunk`\n' +
+            "    ADD COLUMN `module` varchar(32) NOT NULL DEFAULT 'CHUNK_SYSTEM'\n" +
+            "    COMMENT '枚举所属模块：CHUNK_SYSTEM=系统；CHUNK_CRM=CRM；CHUNK_SRM=SRM' AFTER `pid`"
+    )
 }
 
 /** 生成长度符合 MySQL 账号限制的临时迁移账号。 */
@@ -56,6 +73,7 @@ async function main(): Promise<void> {
     const credentials = createMigrationCredentials()
 
     try {
+        await ensureChunkModuleColumn(adminConnection)
         await createMigrationUser(adminConnection, database, credentials)
         const previousEnvironment = {
             host: process.env.SKYLINE_MYSQL_HOST,
