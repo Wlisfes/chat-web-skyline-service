@@ -1,7 +1,28 @@
 import mysql from 'mysql2/promise'
-import { createMigrationCredentials, createMigrationUser, dropMigrationUser } from './apply-schema-bootstrap'
+import { createAdminConnectionOptions, createMigrationCredentials, createMigrationUser, dropMigrationUser } from './apply-schema-bootstrap'
 
 describe('Skyline Schema 临时迁移账号', () => {
+    it('管理员连接应显式选择 Skyline 数据库', () => {
+        expect(
+            createAdminConnectionOptions(
+                {
+                    host: 'mysql.example',
+                    port: 3306,
+                    username: 'admin',
+                    password: 'secret'
+                },
+                'chat_web_skyline'
+            )
+        ).toEqual({
+            host: 'mysql.example',
+            port: 3306,
+            user: 'admin',
+            password: 'secret',
+            database: 'chat_web_skyline',
+            charset: 'utf8mb4'
+        })
+    })
+
     it('生成的账号长度和字符集符合 MySQL 限制', () => {
         const credentials = createMigrationCredentials(Buffer.alloc(18, 1))
 

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import mysql, { RowDataPacket } from 'mysql2/promise'
 import { applySchema } from '@/cli/apply-schema'
-import { getDatabaseName, loadLocalEnvironment, loadSkylineDatabaseConfig } from '@/cli/database-config'
+import { DatabaseConfig, getDatabaseName, loadLocalEnvironment, loadSkylineDatabaseConfig } from '@/cli/database-config'
 
 const MIGRATION_USER_PREFIX = 'skyline_mig_'
 const MYSQL_ACCOUNT_HOST = '%'
@@ -9,6 +9,21 @@ const MYSQL_ACCOUNT_HOST = '%'
 type MigrationCredentials = {
     username: string
     password: string
+}
+
+/** 组装已选中 Skyline 数据库的管理员连接参数，供兼容性检查和账号授权使用。 */
+export function createAdminConnectionOptions(config: DatabaseConfig, database: string): mysql.ConnectionOptions {
+    const host = process.env.SKYLINE_MYSQL_HOST?.trim() || config.host
+    const port = Number(process.env.SKYLINE_MYSQL_PORT || config.port || 3306)
+
+    return {
+        host,
+        port,
+        user: process.env.SKYLINE_MYSQL_USERNAME?.trim() || config.username,
+        password: process.env.SKYLINE_MYSQL_PASSWORD ?? config.password,
+        database,
+        charset: process.env.SKYLINE_MYSQL_CHARSET || config.charset || 'utf8mb4'
+    }
 }
 
 /** 兼容历史迁移台账已记录但 module 列实际缺失的数据库。 */
@@ -59,17 +74,8 @@ async function main(): Promise<void> {
     loadLocalEnvironment()
     const config = await loadSkylineDatabaseConfig()
     const database = getDatabaseName(config)
-    const host = process.env.SKYLINE_MYSQL_HOST?.trim() || config.host
-    const port = Number(process.env.SKYLINE_MYSQL_PORT || config.port || 3306)
-    const adminUsername = process.env.SKYLINE_MYSQL_USERNAME?.trim() || config.username
-    const adminPassword = process.env.SKYLINE_MYSQL_PASSWORD ?? config.password
-    const adminConnection = await mysql.createConnection({
-        host,
-        port,
-        user: adminUsername,
-        password: adminPassword,
-        charset: process.env.SKYLINE_MYSQL_CHARSET || config.charset || 'utf8mb4'
-    })
+    const adminConnectionOptions = createAdminConnectionOptions(config, database)
+    const adminConnection = await mysql.createConnection(adminConnectionOptions)
     const credentials = createMigrationCredentials()
 
     try {
@@ -82,8 +88,8 @@ async function main(): Promise<void> {
             password: process.env.SKYLINE_MYSQL_PASSWORD,
             database: process.env.SKYLINE_MYSQL_DATABASE
         }
-        process.env.SKYLINE_MYSQL_HOST = host
-        process.env.SKYLINE_MYSQL_PORT = String(port)
+        process.env.SKYLINE_MYSQL_HOST = String(adminConnectionOptions.host)
+        process.env.SKYLINE_MYSQL_PORT = String(adminConnectionOptions.port)
         process.env.SKYLINE_MYSQL_USERNAME = credentials.username
         process.env.SKYLINE_MYSQL_PASSWORD = credentials.password
         process.env.SKYLINE_MYSQL_DATABASE = database
