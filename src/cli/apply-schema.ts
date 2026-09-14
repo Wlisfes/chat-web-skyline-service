@@ -93,6 +93,38 @@ export async function ensureChunkModuleColumn(connection: mysql.Connection): Pro
     return true
 }
 
+/** 使用可在历史 MySQL 环境执行的独立语句完成 Skyline 枚举模块归一化。 */
+async function normalizeChunkModule(connection: mysql.Connection): Promise<boolean> {
+    const [tableRows] = await connection.query<(RowDataPacket & { count: number })[]>(
+        `SELECT COUNT(*) AS count
+           FROM information_schema.tables
+          WHERE table_schema = DATABASE()
+            AND table_name = 'tb_skyline_chunk'`
+    )
+    if (Number(tableRows[0]?.count) === 0) return false
+
+    await ensureChunkModuleColumn(connection)
+    await connection.query(
+        `UPDATE \`tb_skyline_chunk\`
+            SET \`module\` = CASE \`module\`
+                WHEN 'system' THEN 'CHUNK_SYSTEM'
+                WHEN 'sales' THEN 'CHUNK_CRM'
+                WHEN 'purchase' THEN 'CHUNK_SRM'
+                ELSE \`module\`
+            END`
+    )
+    await connection.query(
+        `ALTER TABLE \`tb_skyline_chunk\`
+            ALTER COLUMN \`module\` SET DEFAULT 'CHUNK_SYSTEM'`
+    )
+    await connection.query(
+        `ALTER TABLE \`tb_skyline_chunk\`
+            MODIFY COLUMN \`module\` varchar(32) NOT NULL
+            COMMENT '枚举所属模块：CHUNK_SYSTEM=系统；CHUNK_CRM=CRM；CHUNK_SRM=SRM'`
+    )
+    return true
+}
+
 /** 按文件名顺序幂等执行 Skyline 数据库增量 SQL。 */
 export async function applySchema(): Promise<void> {
     loadLocalEnvironment()
@@ -126,7 +158,7 @@ export async function applySchema(): Promise<void> {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Skyline Schema增量记录表'`
         )
 
-        await ensureChunkModuleColumn(connection)
+        await normalizeChunkModule(connection)
         const directory = changesDirectory()
         const filenames = (await readdir(directory)).filter(name => name.endsWith('.sql')).sort()
         for (const filename of filenames) {
@@ -142,8 +174,8 @@ export async function applySchema(): Promise<void> {
             }
             let applied = true
             if (filename === TASK_ID_UNIQUE_MIGRATION) applied = await ensureTaskIdUniqueIndex(connection)
+            else if (filename === CHUNK_MODULE_NORMALIZE_MIGRATION) applied = await normalizeChunkModule(connection)
             else {
-                if (filename === CHUNK_MODULE_NORMALIZE_MIGRATION) await ensureChunkModuleColumn(connection)
                 await connection.query(sql)
             }
             await connection.execute(`INSERT INTO \`${MIGRATION_TABLE}\` (filename, checksum) VALUES (?, ?)`, [filename, checksum])
