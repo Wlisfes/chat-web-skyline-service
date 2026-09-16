@@ -122,6 +122,20 @@ if ! docker exec "$CONTAINER" node -e "require('http').get('http://127.0.0.1:504
     exit 1
 fi
 
+register_ip=$(sed -n 's/^NACOS_REGISTER_IP=//p' .env | tail -n 1 | tr -d '\r')
+if [ -n "$register_ip" ]; then
+    if ! printf '%s' "$register_ip" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+        echo "NACOS_REGISTER_IP must be a valid IPv4 address: $register_ip" >&2
+        rollback
+        exit 1
+    fi
+    if ! docker exec -e CHECK_IP="$register_ip" chat-web-gateway-service node -e 'fetch("http://" + process.env.CHECK_IP + ":5040/health/live").then(async response => { const body = await response.text(); console.log("Nacos register IP probe status=" + response.status + " body=" + body); if (response.status !== 200 || body !== "{\"status\":\"UP\"}") process.exit(1); }).catch(error => { console.error(String(error)); process.exit(1); })'; then
+        echo "NACOS_REGISTER_IP=${register_ip}:5040 is not reachable from Gateway. On Windows, port 5040 may be occupied by CDPSvc, and Docker port publishing to the WireGuard address may not work. Unset NACOS_REGISTER_IP so the service registers the container network IP." >&2
+        rollback
+        exit 1
+    fi
+fi
+
 actual_image=$(docker inspect --format '{{.Config.Image}}' "$CONTAINER")
 if [ "$actual_image" != "$IMAGE" ]; then
     echo "Running image mismatch: expected $IMAGE, got $actual_image" >&2

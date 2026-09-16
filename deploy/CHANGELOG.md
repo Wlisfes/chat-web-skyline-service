@@ -1,5 +1,13 @@
 # Skyline 部署变更记录
 
+## 2026-09-17：停止强制注册不可达的跨主机地址
+
+- 影响机器：`chat-home-server`。
+- 变更内容：部署不再默认写入 `NACOS_REGISTER_IP=10.66.0.2`。未显式配置 GitHub variable 时从 `.env` 删除该项，服务自动探测容器网卡 IP，供同机 Gateway 访问。Gateway 健康检查会打印 HTTP status/body，并把 HTTP 200 + 业务 503 视为失败；若设置了 `NACOS_REGISTER_IP`，`deploy.sh` 会从 Gateway 探测该地址:5040。
+- 机器侧操作：生产 `.env` 已删除 `NACOS_REGISTER_IP` 并重建容器。跨主机 `10.66.0.2:5040` 仍受 Windows `CDPSvc` 占用 5040 与 Docker Desktop 端口映射限制。
+- 验证命令：Gateway `GET /api/skyline/health/live` 返回 `{"status":"UP"}`。
+- 回滚方法：若必须跨主机访问，需先解决宿主机 5040 占用后再配置可达的 `NACOS_REGISTER_IP`。
+
 ## 2026-09-16：统一跨主机 Nacos 注册地址和服务端口
 
 - 影响机器：`chat-home-server`、本地 WireGuard Gateway。
