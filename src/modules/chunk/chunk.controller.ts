@@ -14,7 +14,7 @@ export class ChunkController {
         response: { type: ChunkDto.ChunkPageResponseDto, description: '枚举字典分页数据' },
         bearerAuth: true
     })
-    public async httpBaseSkylineColumnChunk(@Body() input: ChunkDto.ListChunkDto): Promise<ChunkDto.ChunkPageResponseDto> {
+    public async httpBaseSkylineColumnChunk(@Body() input: ChunkDto.ListChunkDto) {
         return this.chunkService.httpBaseSkylineColumnChunk(input)
     }
 

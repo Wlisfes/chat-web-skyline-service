@@ -14,7 +14,7 @@ export class DatetaskController {
         response: { type: DatetaskDto.DatetaskPageResponseDto, description: '系统任务分页数据' },
         bearerAuth: true
     })
-    public async httpBaseSkylineColumnDatetask(@Body() input: DatetaskDto.ListDatetaskDto): Promise<DatetaskDto.DatetaskPageResponseDto> {
+    public async httpBaseSkylineColumnDatetask(@Body() input: DatetaskDto.ListDatetaskDto) {
         return this.datetaskService.httpBaseSkylineColumnDatetask(input)
     }
 
@@ -70,9 +70,7 @@ export class DatetaskController {
         response: { type: DatetaskDto.DatetaskLogPageResponseDto, description: '任务执行日志分页数据' },
         bearerAuth: true
     })
-    public async httpBaseSkylineColumnDatetaskLog(
-        @Body() input: DatetaskDto.ListDatetaskLogDto
-    ): Promise<DatetaskDto.DatetaskLogPageResponseDto> {
+    public async httpBaseSkylineColumnDatetaskLog(@Body() input: DatetaskDto.ListDatetaskLogDto) {
         return this.datetaskService.httpBaseSkylineColumnDatetaskLog(input)
     }
 }
