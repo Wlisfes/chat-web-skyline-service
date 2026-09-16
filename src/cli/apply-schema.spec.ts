@@ -4,7 +4,8 @@ import {
     ensureChunkModuleColumn,
     ensureTaskIdUniqueIndex,
     releaseSchemaMigrationLock,
-    SCHEMA_MIGRATION_LOCK_NAME
+    SCHEMA_MIGRATION_LOCK_NAME,
+    shouldRepairSkylineMigrationChecksum
 } from './apply-schema'
 
 describe('Skyline 枚举表兼容修复', () => {
@@ -96,5 +97,12 @@ describe('Schema 迁移锁', () => {
         await expect(acquireSchemaMigrationLock(connection)).resolves.toBeUndefined()
         await expect(releaseSchemaMigrationLock(connection)).resolves.toBeUndefined()
         expect(query.mock.calls[1]).toEqual(['SELECT RELEASE_LOCK(?)', [SCHEMA_MIGRATION_LOCK_NAME]])
+    })
+})
+
+describe('Skyline 迁移校验和修复', () => {
+    it('仅允许修复枚举模块归一化迁移的历史校验和', () => {
+        expect(shouldRepairSkylineMigrationChecksum('20260912130000__tb_skyline_chunk__normalize_module.sql')).toBe(true)
+        expect(shouldRepairSkylineMigrationChecksum('20260912120000__tb_skyline_chunk__add_module.sql')).toBe(false)
     })
 })

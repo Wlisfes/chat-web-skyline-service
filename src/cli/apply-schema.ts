@@ -19,6 +19,11 @@ export const SCHEMA_MIGRATION_LOCK_NAME = 'chat-web-skyline:schema-migration'
 const TASK_ID_UNIQUE_MIGRATION = '20260902230000__tb_skyline_datetask_system__task_id_unique.sql'
 const CHUNK_MODULE_NORMALIZE_MIGRATION = '20260912130000__tb_skyline_chunk__normalize_module.sql'
 
+/** 仅允许对已改为幂等 JS 实现的枚举模块迁移修复历史校验和。 */
+export function shouldRepairSkylineMigrationChecksum(filename: string): boolean {
+    return filename === CHUNK_MODULE_NORMALIZE_MIGRATION
+}
+
 /** 找到公共包中随版本发布的 Skyline 增量 SQL。 */
 function changesDirectory(): string {
     const schemaEntry = createRequire(__filename).resolve('@wlisfes/chat-web-base-schema/chat-web-skyline-mysql')
@@ -168,7 +173,15 @@ export async function applySchema(): Promise<void> {
                 filename
             ])
             if (rows.length) {
-                if (rows[0].checksum !== checksum) throw new Error(`已应用增量 SQL 校验和变化：${filename}`)
+                if (rows[0].checksum !== checksum) {
+                    if (!shouldRepairSkylineMigrationChecksum(filename)) {
+                        throw new Error(`已应用增量 SQL 校验和变化：${filename}`)
+                    }
+                    await normalizeChunkModule(connection)
+                    await connection.execute(`UPDATE \`${MIGRATION_TABLE}\` SET checksum = ? WHERE filename = ?`, [checksum, filename])
+                    process.stdout.write(`Schema migration checksum repaired: ${filename}\n`)
+                    continue
+                }
                 process.stdout.write(`Schema migration skipped: ${filename}\n`)
                 continue
             }
