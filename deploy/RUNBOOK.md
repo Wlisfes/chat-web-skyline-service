@@ -31,7 +31,7 @@ Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 
 - Compose 项目：`chat-web-service`
 - Compose 服务：`skyline-service`
 - 容器：`chat-web-skyline-service`
-- 容器端口：`5040`，不发布宿主机端口
+- 容器端口：`5040`；当前发布 `0.0.0.0:5040` 仅供本机 `127.0.0.1` 探活，Nacos 不得注册 `10.66.0.2`
 - 外部网络：`chat-web-infrastructure`
 - 健康接口：`GET /health/live`
 - 公开入口：Gateway `/api/skyline/**`
@@ -46,6 +46,15 @@ Skyline 的业务数据库配置位于 Nacos `database.chat-web-skyline`，对�
 流水线会先把 `deploy/bootstrap-nacos-config.cjs` 安装到 `/opt/chat-web-skyline-service`，再使用 `node:22-alpine`（加入 `chat-web-infrastructure` 网络）执行只读校验。脚本不会回写 Nacos，不会补齐或覆盖任何业务配置；它校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `gateway.feign.service_token/url/timeout`。脚本不会把 Nacos 配置正文或凭据写入 Runner 日志；缺少节点/凭据时应先人工配置后重跑流水线。
 
 每日汇率任务通过 Gateway 调用 `/feign/finance/currency/exchange/sync`，Skyline 只触发一次并原样返回 Finance 结果。自动调度和手动触发都使用 Nacos `gateway.feign.service_token` 服务凭据，不转发用户 Bearer 令牌。令牌不得写入仓库或日志。
+
+## 同机 Nacos 注册地址
+
+`chat-home-server` 上的 Skyline 与 Gateway 在同一台机器、同一 Docker 网络。生产 **禁止** 设置 `NACOS_REGISTER_IP=10.66.0.2`。
+
+2026-09-17 P0：强制注册 WireGuard 地址后，同机 Gateway 访问 `10.66.0.2:5040` 超时，`/api/skyline/health/live` 业务 503。Docker Desktop 不会把 `0.0.0.0:5040` 映射到 WG 网卡；Windows `CDPSvc` 还曾占用 `0.0.0.0:5040` 导致端口发布失败。正确做法是不设 `NACOS_REGISTER_IP`，注册容器网卡 IP。公网走 Nginx `80/443` → Gateway。跨服务事故主记录见 Gateway `deploy/RUNBOOK.md`。
+
+`CDPSvc` 保持 `Stopped` / `Manual` 即可，不要禁用该服务。不要用 `10.66.0.2:5040` 是否通来判断 Skyline 是否健康。
+
 
 ## 验证
 
