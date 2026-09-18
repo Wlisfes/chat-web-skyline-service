@@ -1,11 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { TbSkylineDatetaskSystem } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
-import { In, Repository } from 'typeorm'
 import { DATETASK_MAX_TIMER_DELAY_MS, DATETASK_SCHEDULER_RETRY_DELAY_MS, DatetaskStatus } from '@/modules/datetask/datetask.constants'
 import { DatetaskExecutorService } from '@/modules/datetask/datetask.executor.service'
 import { DatetaskUtilsService } from '@/modules/datetask/datetask.utils.service'
+import * as Schema from '@wlisfes/chat-web-base-schema'
 
+import { InjectRepository, In, Repository } from '@wlisfes/chat-web-base-schema/database'
 /** 基于任务表 Cron 配置的轻量调度器；无需引入第二套队列服务。 */
 @Injectable()
 export class DatetaskSchedulerService implements OnModuleDestroy {
@@ -17,7 +16,7 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
     private refreshVersion = 0
 
     constructor(
-        @InjectRepository(TbSkylineDatetaskSystem) private readonly repository: Repository<TbSkylineDatetaskSystem>,
+        @InjectRepository(Schema.TbSkylineDatetaskSystem) private readonly repository: Repository<Schema.TbSkylineDatetaskSystem>,
         private readonly datetaskUtilsService: DatetaskUtilsService,
         private readonly datetaskExecutorService: DatetaskExecutorService,
         private readonly logger: Logger
@@ -41,7 +40,7 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
      */
     public async refresh(strict = false): Promise<void> {
         const version = ++this.refreshVersion
-        let tasks: TbSkylineDatetaskSystem[]
+        let tasks: Schema.TbSkylineDatetaskSystem[]
         try {
             tasks = await this.repository.find({ where: { status: In([DatetaskStatus.RUNNING, DatetaskStatus.WAIT]) } })
         } catch (error) {
@@ -88,7 +87,7 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
 
     private async scheduleNext(taskId: string, generation: number): Promise<void> {
         if (!this.isCurrentGeneration(taskId, generation)) return
-        let task: TbSkylineDatetaskSystem
+        let task: Schema.TbSkylineDatetaskSystem
         try {
             task = await this.repository.findOne({ where: { taskId } })
         } catch (error) {

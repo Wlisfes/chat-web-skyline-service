@@ -1,15 +1,14 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { TbSkylineDatetaskSystem } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
-import { Repository } from 'typeorm'
 import { SYSTEM_TASK_DEFINITIONS } from '@/modules/datetask/datetask.constants'
 import { DatetaskSchedulerService } from '@/modules/datetask/datetask.scheduler.service'
+import * as Schema from '@wlisfes/chat-web-base-schema'
 
+import { InjectRepository, Repository } from '@wlisfes/chat-web-base-schema/database'
 /** 幂等写入系统内置任务定义；页面不提供新增和删除入口。 */
 @Injectable()
 export class DatetaskInitializerService implements OnModuleInit {
     constructor(
-        @InjectRepository(TbSkylineDatetaskSystem) private readonly repository: Repository<TbSkylineDatetaskSystem>,
+        @InjectRepository(Schema.TbSkylineDatetaskSystem) private readonly repository: Repository<Schema.TbSkylineDatetaskSystem>,
         private readonly datetaskSchedulerService: DatetaskSchedulerService,
         private readonly logger: Logger
     ) {}
@@ -27,7 +26,7 @@ export class DatetaskInitializerService implements OnModuleInit {
                 const result = await this.repository
                     .createQueryBuilder()
                     .insert()
-                    .into(TbSkylineDatetaskSystem)
+                    .into(Schema.TbSkylineDatetaskSystem)
                     .values(this.repository.create(definition as never))
                     .execute()
                 if (result.identifiers.length > 0) {
@@ -45,7 +44,7 @@ export class DatetaskInitializerService implements OnModuleInit {
 
     /** 同步系统控制的任务元数据，同时保留管理员调整过的 Cron、状态和执行时间。 */
     private async synchronizeDefinition(
-        existing: TbSkylineDatetaskSystem,
+        existing: Schema.TbSkylineDatetaskSystem,
         definition: (typeof SYSTEM_TASK_DEFINITIONS)[number]
     ): Promise<void> {
         const body = { ...definition.body }

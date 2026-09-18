@@ -1,13 +1,12 @@
 import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
-import { InjectDataSource } from '@nestjs/typeorm'
-import { TbSkylineDatetaskSystem } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
-import { DataSource, EntityManager, QueryRunner } from 'typeorm'
 import { CURRENCY_EXCHANGE_TASK_HANDLER, DatetaskLogStatus, DatetaskStatus } from '@/modules/datetask/datetask.constants'
 import { CurrencyExchangeTaskService } from '@/modules/datetask/currency-exchange-task.service'
 import { DatetaskLogService } from '@/modules/datetask/datetask.log.service'
 import { DatetaskRecord, DatetaskUtilsService } from '@/modules/datetask/datetask.utils.service'
-import { DatetaskExecutionResultDto } from '@/modules/datetask/dto/datetask.dto'
+import * as Schema from '@wlisfes/chat-web-base-schema'
+import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
 
+import { InjectDataSource, DataSource, EntityManager, QueryRunner } from '@wlisfes/chat-web-base-schema/database'
 interface DistributedLock {
     queryRunner: QueryRunner
     name: string
@@ -27,7 +26,7 @@ export class DatetaskExecutorService {
     ) {}
 
     /** 执行一次任务；同一进程内同一任务不会并发执行。 */
-    public async execute(taskId: string): Promise<DatetaskExecutionResultDto> {
+    public async execute(taskId: string): Promise<DatetaskDto.DatetaskExecutionResultDto> {
         if (this.running.has(taskId)) {
             this.logger.warn(`任务正在执行，跳过本次触发：${taskId}`, DatetaskExecutorService.name)
             return { skipped: true, reason: '任务正在执行' }
@@ -102,7 +101,7 @@ export class DatetaskExecutorService {
         return this.running.has(taskId)
     }
 
-    private async executeHandler(task: DatetaskRecord): Promise<DatetaskExecutionResultDto> {
+    private async executeHandler(task: DatetaskRecord): Promise<DatetaskDto.DatetaskExecutionResultDto> {
         if (task.handler === CURRENCY_EXCHANGE_TASK_HANDLER) {
             return this.currencyExchangeTaskService.execute()
         }
@@ -155,7 +154,7 @@ export class DatetaskExecutorService {
     }
 
     private async updateLastTime(task: DatetaskRecord, endedAt: Date, manager: EntityManager): Promise<void> {
-        await manager.update(TbSkylineDatetaskSystem, { taskId: task.taskId }, { lastTime: endedAt } as never)
+        await manager.update(Schema.TbSkylineDatetaskSystem, { taskId: task.taskId }, { lastTime: endedAt } as never)
     }
 
     private async updateLastTimeSafely(task: DatetaskRecord, endedAt: Date, manager: EntityManager): Promise<void> {

@@ -1,10 +1,10 @@
 import { Global, Module } from '@nestjs/common'
-import { ConfigModule, ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { createMysqlOptions, DataBaseService } from '@wlisfes/chat-web-base-schema/database'
+import { ConfigModule, ConfigService } from '@nestjs/config'
 import { NacosService } from '@wlisfes/chat-web-base-schema/nacos'
-import { SKYLINE_MYSQL_CONFIG_KEY, SKYLINE_MYSQL_ENTITIES } from '@/modules/database/database.constants'
+import { SKYLINE_MYSQL_CONFIG_KEY, SKYLINE_MYSQL_ENTITIES } from '@/database/database.constants'
 
+import { createMysqlOptions, DataBaseService } from '@wlisfes/chat-web-base-schema/database'
 /** Skyline 数据库连接与实体注册。 */
 @Global()
 @Module({

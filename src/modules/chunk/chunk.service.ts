@@ -1,17 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { DataBaseService } from '@wlisfes/chat-web-base-schema/database'
-import { PageResult } from '@wlisfes/chat-web-base-schema/utils'
-import { isNotEmpty } from 'class-validator'
-import { Repository } from 'typeorm'
-import { TbSkylineChunk, TbSkylineChunkStatus } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
 import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
+import * as Schema from '@wlisfes/chat-web-base-schema'
 
+import { InjectRepository, DataBaseService, Repository } from '@wlisfes/chat-web-base-schema/database'
+import { PageResult, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
 /** Skyline 枚举字典 CRUD 业务服务。 */
 @Injectable()
 export class ChunkService {
     constructor(
-        @InjectRepository(TbSkylineChunk) private readonly repository: Repository<TbSkylineChunk>,
+        @InjectRepository(Schema.TbSkylineChunk) private readonly repository: Repository<Schema.TbSkylineChunk>,
         private readonly database: DataBaseService
     ) {}
 
@@ -44,7 +41,7 @@ export class ChunkService {
     /** 新增枚举字典项。 */
     public async httpBaseSkylineCreateChunk(input: ChunkDto.CreateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
         await this.assertParent(input.pid)
-        const entity = this.repository.create(input as TbSkylineChunk)
+        const entity = this.repository.create(input as Schema.TbSkylineChunk)
         return (await this.repository.save(entity)) as unknown as ChunkDto.ChunkResponseDto
     }
 
@@ -69,7 +66,7 @@ export class ChunkService {
         return { success: true }
     }
 
-    private async findRequired(keyId: number): Promise<TbSkylineChunk> {
+    private async findRequired(keyId: number): Promise<Schema.TbSkylineChunk> {
         const entity = await this.repository.findOne({ where: { keyId } })
         if (!entity) throw new NotFoundException('枚举项不存在')
         return entity

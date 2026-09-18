@@ -1,22 +1,19 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { DataBaseService } from '@wlisfes/chat-web-base-schema/database'
-import { PageResult } from '@wlisfes/chat-web-base-schema/utils'
-import { isNotEmpty } from 'class-validator'
-import { Repository } from 'typeorm'
 import { DatetaskLogService } from '@/modules/datetask/datetask.log.service'
 import { DatetaskExecutorService } from '@/modules/datetask/datetask.executor.service'
 import { DatetaskSchedulerService } from '@/modules/datetask/datetask.scheduler.service'
 import { DatetaskUtilsService, DatetaskRecord } from '@/modules/datetask/datetask.utils.service'
 import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
 import { DatetaskManageStatus, DatetaskStatus } from '@/modules/datetask/datetask.constants'
-import { TbSkylineDatetaskSystem } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
+import * as Schema from '@wlisfes/chat-web-base-schema'
 
+import { InjectRepository, DataBaseService, Repository } from '@wlisfes/chat-web-base-schema/database'
+import { PageResult, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
 /** 系统任务管理业务服务。 */
 @Injectable()
 export class DatetaskService {
     constructor(
-        @InjectRepository(TbSkylineDatetaskSystem) private readonly repository: Repository<TbSkylineDatetaskSystem>,
+        @InjectRepository(Schema.TbSkylineDatetaskSystem) private readonly repository: Repository<Schema.TbSkylineDatetaskSystem>,
         private readonly database: DataBaseService,
         private readonly datetaskUtilsService: DatetaskUtilsService,
         private readonly datetaskSchedulerService: DatetaskSchedulerService,
@@ -61,7 +58,7 @@ export class DatetaskService {
         const task = await this.repository.manager.transaction(async manager => {
             const current = await this.datetaskUtilsService.findRequired(input.taskId, manager, true)
             this.assertTaskMutable(current)
-            await manager.update(TbSkylineDatetaskSystem, { taskId: current.taskId }, { status: input.status } as never)
+            await manager.update(Schema.TbSkylineDatetaskSystem, { taskId: current.taskId }, { status: input.status } as never)
             return current
         })
         if (input.status === DatetaskManageStatus.RUNNING) this.datetaskSchedulerService.schedule(task.taskId)
@@ -75,7 +72,7 @@ export class DatetaskService {
         const task = await this.repository.manager.transaction(async manager => {
             const current = await this.datetaskUtilsService.findRequired(input.taskId, manager, true)
             this.assertTaskMutable(current)
-            await manager.update(TbSkylineDatetaskSystem, { taskId: current.taskId }, { cron } as never)
+            await manager.update(Schema.TbSkylineDatetaskSystem, { taskId: current.taskId }, { cron } as never)
             return { ...current, cron }
         })
         if (this.datetaskUtilsService.isSchedulable({ ...task, cron })) this.datetaskSchedulerService.schedule(task.taskId)

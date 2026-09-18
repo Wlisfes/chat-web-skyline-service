@@ -2,10 +2,10 @@ import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
-import { assertMysqlDatabaseIsolation } from '@wlisfes/chat-web-base-schema/database'
 import mysql, { RowDataPacket } from 'mysql2/promise'
 import { getDatabaseName, loadLocalEnvironment, loadSkylineDatabaseConfig } from '@/cli/database-config'
 
+import { assertMysqlDatabaseIsolation } from '@wlisfes/chat-web-base-schema/database'
 type MigrationRow = RowDataPacket & { checksum: string }
 type IndexRow = RowDataPacket & {
     indexName: string
