@@ -1,13 +1,13 @@
 import { ApiProperty, ApiPropertyOptional, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
 import { IsEnum, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, MaxLength, Min } from 'class-validator'
-import { TbSkylineChunkDto, TbSkylineChunkStatus } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
-import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 import { PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
+import * as Schema from '@wlisfes/chat-web-base-schema'
 
+import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 /** 枚举字典分页查询参数。 */
 export class ListChunkDto extends IntersectionType(
     PageDto,
-    PartialType(PickType(TbSkylineChunkDto, ['module', 'type', 'pid', 'status'] as const))
+    PartialType(PickType(Schema.TbSkylineChunkDto, ['module', 'type', 'pid', 'status'] as const))
 ) {}
 
 /** 枚举字典主键参数。 */
@@ -19,7 +19,7 @@ export class ChunkKeyDto {
 }
 
 /** 新增枚举字典参数。 */
-export class CreateChunkDto extends PickType(TbSkylineChunkDto, [
+export class CreateChunkDto extends PickType(Schema.TbSkylineChunkDto, [
     'pid',
     'module',
     'type',
@@ -36,7 +36,7 @@ export class CreateChunkDto extends PickType(TbSkylineChunkDto, [
 export class UpdateChunkDto extends IntersectionType(ChunkKeyDto, PartialType(CreateChunkDto)) {}
 
 /** 枚举字典详情响应。 */
-export class ChunkResponseDto extends TbSkylineChunkDto {}
+export class ChunkResponseDto extends Schema.TbSkylineChunkDto {}
 
 /** 枚举字典分页响应。 */
 export class ChunkPageResponseDto extends PageResponseDataDto {

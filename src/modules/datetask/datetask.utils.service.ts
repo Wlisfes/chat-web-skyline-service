@@ -1,13 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { DataBaseService } from '@wlisfes/chat-web-base-schema/database'
-import { TbSkylineDatetaskSystem } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
-import { isEmpty, isNotEmpty } from 'class-validator'
-import { EntityManager, Repository } from 'typeorm'
 import { DatetaskStatus } from '@/modules/datetask/datetask.constants'
+import * as Schema from '@wlisfes/chat-web-base-schema'
 
+import { InjectRepository, DataBaseService, EntityManager, Repository } from '@wlisfes/chat-web-base-schema/database'
+import { isEmpty, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
 /** 系统任务的可读字段，避免控制器直接接触实体查询细节。 */
-export type DatetaskRecord = TbSkylineDatetaskSystem & {
+export type DatetaskRecord = Schema.TbSkylineDatetaskSystem & {
     taskId: string
     taskName: string
     handler: string
@@ -23,7 +21,7 @@ export type DatetaskRecord = TbSkylineDatetaskSystem & {
 @Injectable()
 export class DatetaskUtilsService {
     constructor(
-        @InjectRepository(TbSkylineDatetaskSystem) private readonly repository: Repository<TbSkylineDatetaskSystem>,
+        @InjectRepository(Schema.TbSkylineDatetaskSystem) private readonly repository: Repository<Schema.TbSkylineDatetaskSystem>,
         private readonly database: DataBaseService
     ) {}
 
@@ -33,7 +31,7 @@ export class DatetaskUtilsService {
             throw new BadRequestException('任务ID不能为空')
         }
 
-        const repository = manager?.getRepository(TbSkylineDatetaskSystem) ?? this.repository
+        const repository = manager?.getRepository(Schema.TbSkylineDatetaskSystem) ?? this.repository
         const task = await this.database.builder(repository, qb => {
             qb.where('t.taskId = :taskId', { taskId })
             if (lock) qb.setLock('pessimistic_write')
@@ -103,7 +101,7 @@ export class DatetaskUtilsService {
     }
 
     /** 将数据库任务转换为接口响应，保留共享实体字段。 */
-    public toResponse(task: TbSkylineDatetaskSystem): DatetaskRecord {
+    public toResponse(task: Schema.TbSkylineDatetaskSystem): DatetaskRecord {
         return { ...task } as DatetaskRecord
     }
 

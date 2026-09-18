@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import { isNotEmpty } from 'class-validator'
 import { DATETASK_LOG_LIMIT, DatetaskLogStatus } from '@/modules/datetask/datetask.constants'
-import { DatetaskLogResponseDto, ListDatetaskLogDto } from '@/modules/datetask/dto/datetask.dto'
+import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
 
-type DatetaskLogRecord = Omit<DatetaskLogResponseDto, 'keyId'> & {
+import { isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
+type DatetaskLogRecord = Omit<DatetaskDto.DatetaskLogResponseDto, 'keyId'> & {
     taskName?: string
     createdAt: number
     executionId: string
@@ -53,7 +53,12 @@ export class DatetaskLogService {
     }
 
     /** 查询任务执行日志分页数据。 */
-    public list(input: ListDatetaskLogDto): { page: number; size: number; total: number; list: DatetaskLogResponseDto[] } {
+    public list(input: DatetaskDto.ListDatetaskLogDto): {
+        page: number
+        size: number
+        total: number
+        list: DatetaskDto.DatetaskLogResponseDto[]
+    } {
         const page = input.page ?? 1
         const size = input.size ?? 50
         const source = this.records.get(input.taskId) ?? []

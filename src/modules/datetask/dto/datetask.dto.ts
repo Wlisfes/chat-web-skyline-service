@@ -1,15 +1,15 @@
 import { ApiProperty, ApiPropertyOptional, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator'
-import { TbSkylineDatetaskSystemDto } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
-import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 import { PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
 import { DatetaskLogStatus, DatetaskManageStatus, DatetaskStatus } from '@/modules/datetask/datetask.constants'
+import * as Schema from '@wlisfes/chat-web-base-schema'
 
+import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 /** 系统任务分页查询参数。 */
 export class ListDatetaskDto extends IntersectionType(
     PageDto,
-    PartialType(PickType(TbSkylineDatetaskSystemDto, ['taskName', 'status'] as const))
+    PartialType(PickType(Schema.TbSkylineDatetaskSystemDto, ['taskName', 'status'] as const))
 ) {}
 
 /** 系统任务主键参数。 */
@@ -122,7 +122,7 @@ export class DatetaskLogResponseDto {
 }
 
 /** 系统任务详情响应。 */
-export class DatetaskResponseDto extends TbSkylineDatetaskSystemDto {}
+export class DatetaskResponseDto extends Schema.TbSkylineDatetaskSystemDto {}
 
 /** 系统任务分页响应。 */
 export class DatetaskPageResponseDto extends PageResponseDataDto {
