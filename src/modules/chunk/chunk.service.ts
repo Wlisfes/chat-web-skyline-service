@@ -1,9 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
 import * as Schema from '@wlisfes/chat-web-base-schema'
-
-import { InjectRepository, DataBaseService, Repository } from '@wlisfes/chat-web-base-schema/database'
+import { InjectRepository, DataBaseService, In, Repository } from '@wlisfes/chat-web-base-schema/database'
 import { PageResult, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
+import {
+    SkylineColumnChunkOptionInput,
+    SkylineChunkOption,
+    SkylineChunkOptionGroup,
+    SkylineChunkOptionResolverInput
+} from '@wlisfes/chat-web-base-schema/feign'
+
 /** Skyline 枚举字典 CRUD 业务服务。 */
 @Injectable()
 export class ChunkService {
@@ -64,6 +70,76 @@ export class ChunkService {
         if (children > 0) throw new BadRequestException('存在子枚举项时不能删除父枚举项')
         await this.repository.delete(input.keyId)
         return { success: true }
+    }
+
+    /** 供内部服务按枚举类型编码批量获取启用状态的枚举字典选项，结果按类型分组并组装成选项树。 */
+    public async httpBaseSkylineColumnChunkOption(input: SkylineColumnChunkOptionInput): Promise<SkylineChunkOptionGroup[]> {
+        const types = Array.from(new Set(input.types))
+        const where: Record<string, unknown> = { type: In(types), status: Schema.TbSkylineChunkStatus.CHUNK_ENABLE }
+        if (isNotEmpty(input.module)) where.module = input.module
+        const entities = await this.repository.find({ where, order: { type: 'ASC', sort: 'ASC', keyId: 'ASC' } })
+
+        // 按请求顺序返回分组，缺失的类型返回空选项，调用方无需再做存在性判断。
+        return types.map(type => {
+            const options = this.buildOptionTree(entities.filter(entity => entity.type === type))
+            return { type, count: options.length, options }
+        })
+    }
+
+    /** 供内部服务按枚举业务值解析单个启用状态的枚举字典选项。 */
+    public async httpBaseSkylineChunkOptionResolver(input: SkylineChunkOptionResolverInput): Promise<SkylineChunkOption> {
+        const where: Record<string, unknown> = {
+            type: input.type,
+            value: input.value,
+            status: Schema.TbSkylineChunkStatus.CHUNK_ENABLE
+        }
+        if (isNotEmpty(input.module)) where.module = input.module
+        const entity = await this.repository.findOne({ where })
+        if (!entity) throw new NotFoundException('枚举项不存在或已禁用')
+
+        const children = await this.repository.find({
+            where: { pid: entity.keyId, status: Schema.TbSkylineChunkStatus.CHUNK_ENABLE },
+            order: { sort: 'ASC', keyId: 'ASC' }
+        })
+        return { ...this.toOption(entity), children: this.buildOptionTree(children, entity.keyId) }
+    }
+
+    /**
+     * 把扁平枚举项按 pid 组装成选项树。
+     *
+     * rootPid 表示本次组装的根节点父级，pid 等于它、为空或指向集合外节点的枚举项都作为根节点返回，
+     * 避免单个枚举项父级被禁用时整组选项丢失。
+     */
+    private buildOptionTree(entities: Schema.TbSkylineChunk[], rootPid?: number): SkylineChunkOption[] {
+        const options = new Map<number, SkylineChunkOption>()
+        for (const entity of entities) {
+            options.set(entity.keyId, this.toOption(entity))
+        }
+
+        const roots: SkylineChunkOption[] = []
+        for (const entity of entities) {
+            const option = options.get(entity.keyId) as SkylineChunkOption
+            const parent = isNotEmpty(entity.pid) && entity.pid !== rootPid ? options.get(entity.pid) : undefined
+            if (parent) parent.children.push(option)
+            else roots.push(option)
+        }
+
+        return roots
+    }
+
+    /** 把枚举实体转换为统一的下拉选项结构；description 取自扩展配置，缺省时回落为显示名称。 */
+    private toOption(entity: Schema.TbSkylineChunk): SkylineChunkOption {
+        const description = entity.json?.description
+        return {
+            value: entity.value,
+            label: entity.name,
+            description: typeof description === 'string' ? description : entity.name,
+            keyId: entity.keyId,
+            pid: entity.pid,
+            sort: entity.sort,
+            json: entity.json,
+            children: []
+        }
     }
 
     private async findRequired(keyId: number): Promise<Schema.TbSkylineChunk> {

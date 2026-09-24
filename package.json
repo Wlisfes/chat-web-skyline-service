@@ -1,6 +1,6 @@
 {
     "name": "chat-web-skyline-service",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "",
     "author": "Wlisfes",
     "private": true,
@@ -24,7 +24,8 @@
         "typecheck": "yarn tsc -p tsconfig.json --noEmit",
         "test": "yarn test:unit",
         "test:unit": "node --test test/*.test.cjs",
-        "test:full": "yarn build && yarn test:unit"
+        "test:full": "yarn build && yarn test:unit",
+        "deploy": "node scripts/deploy-branch.cjs"
     },
     "dependencies": {
         "@nestjs/common": "11.2.3",
@@ -33,7 +34,7 @@
         "@nestjs/platform-express": "11.2.3",
         "@nestjs/swagger": "11.4.6",
         "@nestjs/typeorm": "11.0.3",
-        "@wlisfes/chat-web-base-schema": "1.6.36",
+        "@wlisfes/chat-web-base-schema": "1.6.38",
         "class-transformer": "0.5.1",
         "class-validator": "0.15.1",
         "dotenv": "^16.6.1",
