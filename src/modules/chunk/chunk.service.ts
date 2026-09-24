@@ -7,7 +7,7 @@ import {
     SkylineColumnChunkOptionInput,
     SkylineChunkOption,
     SkylineChunkOptionGroup,
-    SkylineResolveChunkOptionInput
+    SkylineChunkOptionResolverInput
 } from '@wlisfes/chat-web-base-schema/feign'
 
 /** Skyline 枚举字典 CRUD 业务服务。 */
@@ -87,7 +87,7 @@ export class ChunkService {
     }
 
     /** 供内部服务按枚举业务值解析单个启用状态的枚举字典选项。 */
-    public async httpBaseSkylineResolverChunkOption(input: SkylineResolveChunkOptionInput): Promise<SkylineChunkOption> {
+    public async httpBaseSkylineChunkOptionResolver(input: SkylineChunkOptionResolverInput): Promise<SkylineChunkOption> {
         const where: Record<string, unknown> = {
             type: input.type,
             value: input.value,
