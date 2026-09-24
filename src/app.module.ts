@@ -9,6 +9,7 @@ import { AppService } from './app.service'
 import { DatabaseModule } from '@/database/database.module'
 import { DatetaskModule } from '@/modules/datetask/datetask.module'
 import { ChunkModule } from '@/modules/chunk/chunk.module'
+import { FeignModule } from '@/feign/feign.module'
 
 @Module({
     imports: [
@@ -19,7 +20,8 @@ import { ChunkModule } from '@/modules/chunk/chunk.module'
         GatewayPrincipalModule,
         DatabaseModule,
         DatetaskModule,
-        ChunkModule
+        ChunkModule,
+        FeignModule
     ],
     controllers: [AppController],
     providers: [Logger, AppService, { provide: APP_GUARD, useExisting: GatewayPrincipalGuard }]
