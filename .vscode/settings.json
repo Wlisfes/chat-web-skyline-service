@@ -1,4 +1,6 @@
 {
+    // package.json 等文件不再联网下载 schemastore 架构，避免 ECONNRESET 导致的误报诊断。
+    "json.schemaDownload.enable": false,
     //格式化设置
     "scm.autoReveal": false,
     "editor.formatOnSave": true, //保存时格式化

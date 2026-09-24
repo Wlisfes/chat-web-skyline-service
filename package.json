@@ -24,7 +24,8 @@
         "typecheck": "yarn tsc -p tsconfig.json --noEmit",
         "test": "yarn test:unit",
         "test:unit": "node --test test/*.test.cjs",
-        "test:full": "yarn build && yarn test:unit"
+        "test:full": "yarn build && yarn test:unit",
+        "deploy": "node scripts/deploy-branch.cjs"
     },
     "dependencies": {
         "@nestjs/common": "11.2.3",
