@@ -8,6 +8,15 @@ import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
 export class DatetaskController {
     constructor(private readonly datetaskService: DatetaskService) {}
 
+    @ApiServiceDecorator(Get('enums'), {
+        operation: { summary: '系统任务静态枚举' },
+        response: { type: DatetaskDto.DatetaskEnumsResponseDto, description: '系统任务静态枚举' },
+        bearerAuth: true
+    })
+    public async httpBaseSkylineDatetaskEnums(): Promise<DatetaskDto.DatetaskEnumsResponseDto> {
+        return this.datetaskService.httpBaseSkylineDatetaskEnums()
+    }
+
     @ApiServiceDecorator(Post('column'), {
         operation: { summary: '系统任务分页列表' },
         request: { source: 'body', type: DatetaskDto.ListDatetaskDto },

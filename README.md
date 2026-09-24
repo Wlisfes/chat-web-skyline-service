@@ -41,7 +41,7 @@ yarn dev
 - `class-transformer`、`express`
 - `redis`、`typeorm`
 
-这些依赖用于保证 Base Schema 的全部导出入口可以正常解析。Skyline 业务数据库由 Nacos 的 `database.chat-web-skyline` 节点提供，镜像内置 `yarn schema:apply` 增量迁移命令，部署脚本会在启动新容器前通过 `dist/cli/apply-schema-bootstrap.js` 临时创建仅限 Skyline 数据库的迁移账号，完成后立即回收，再应用共享 Schema SQL，并通过 `tb_skyline_schema_migration` 保存文件校验和；TypeORM 保持 `synchronize: false`，服务启动时不会自动改表。`@wlisfes` 私有包通过仓库 `.npmrc` 指向 GitHub Packages，`yarn run install` 和 `yarn run schema:update` 会依次复用 `NODE_AUTH_TOKEN`、`gh auth token` 或用户级 `~/.npmrc` 中的 GitHub Packages Token。CI 和 Docker 构建继续使用 `NODE_AUTH_TOKEN`/BuildKit Secret，不在仓库保存 Token。
+这些依赖用于保证 Base Schema 的全部导出入口可以正常解析。Skyline 业务数据库由 Nacos 的 `database.chat-web-skyline` 节点提供，镜像内置 `node dist/cli/apply-schema.js` 增量迁移命令，部署脚本会在启动新容器前通过 `dist/cli/apply-schema-bootstrap.js` 临时创建仅限 Skyline 数据库的迁移账号，完成后立即回收，再应用共享 Schema SQL，并通过 `tb_skyline_schema_migration` 保存文件校验和；TypeORM 保持 `synchronize: false`，服务启动时不会自动改表。`@wlisfes` 私有包通过仓库 `.npmrc` 指向 GitHub Packages，`yarn run install` 和 `yarn run base:update` 会依次复用 `NODE_AUTH_TOKEN`、`gh auth token` 或用户级 `~/.npmrc` 中的 GitHub Packages Token。CI 和 Docker 构建继续使用 `NODE_AUTH_TOKEN`/BuildKit Secret，不在仓库保存 Token。
 
 ## 系统任务
 
@@ -53,10 +53,7 @@ yarn dev
 
 ```bash
 yarn format:check
-yarn typecheck
 yarn test
-yarn test:e2e
-yarn build
 ```
 
 ## 部署

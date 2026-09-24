@@ -1,14 +1,21 @@
 import { ApiProperty, ApiPropertyOptional, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator'
-import { PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
-import { DatetaskLogStatus, DatetaskManageStatus, DatetaskStatus } from '@/modules/datetask/datetask.constants'
+import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
+import {
+    DATETASK_MANAGE_STATUS_OPTIONS,
+    DatetaskLogStatus,
+    DatetaskLogStatusDefinition,
+    DatetaskManageStatus,
+    DatetaskStatus
+} from '@/modules/datetask/datetask.constants'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 
 import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
-/** 系统任务分页查询参数。 */
+/** 系统任务分页查询参数；任务类型必填，用于区分系统、周期和手动任务列表。 */
 export class ListDatetaskDto extends IntersectionType(
     PageDto,
+    PickType(Schema.TbSkylineDatetaskSystemDto, ['type'] as const),
     PartialType(PickType(Schema.TbSkylineDatetaskSystemDto, ['taskName', 'status'] as const))
 ) {}
 
@@ -144,3 +151,11 @@ export class TriggerDatetaskResponseDto {
     @ApiPropertyOptional({ description: '执行结果', type: DatetaskExecutionResultDto })
     result?: DatetaskExecutionResultDto
 }
+
+/** 系统任务静态枚举响应。 */
+export class DatetaskEnumsResponseDto extends EnumsResponseDto({
+    typeOptions: { description: '任务类型选项', example: Schema.TbSkylineDatetaskSystemTypeDefinition.options },
+    statusOptions: { description: '任务状态选项', example: Schema.TbSkylineDatetaskSystemStatusDefinition.options },
+    manageStatusOptions: { description: '管理端可切换的任务状态选项', example: DATETASK_MANAGE_STATUS_OPTIONS },
+    logStatusOptions: { description: '任务执行日志状态选项', example: DatetaskLogStatusDefinition.options }
+}) {}

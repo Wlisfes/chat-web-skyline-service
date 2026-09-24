@@ -205,7 +205,7 @@
 ### 当前工程边界
 
 - Skyline 服务包含系统任务管理（`src/modules/datetask/`）和 Skyline 专属 MySQL 数据库连接（`src/database/`），同时保留默认首页、`/health/live` 以及 `chat-web-base-schema` 提供的 Nacos 配置与服务注册能力。
-- `TbSkylineDatetaskSystem` Entity、完整 DTO、建表 SQL 和增量 SQL 必须来自 `@wlisfes/chat-web-base-schema/chat-web-skyline-mysql`；业务服务只注册实体和编排用例，不得复制或自行维护另一套表结构。TypeORM 必须使用 `synchronize: false`，数据库变更由版本化 Schema SQL 和部署前的 `yarn schema:apply` 完成。
+- `TbSkylineDatetaskSystem` Entity、完整 DTO、建表 SQL 和增量 SQL 必须来自 `@wlisfes/chat-web-base-schema/chat-web-skyline-mysql`；业务服务只注册实体和编排用例，不得复制或自行维护另一套表结构。TypeORM 必须使用 `synchronize: false`，数据库变更由版本化 Schema SQL 和部署前的 `node dist/cli/apply-schema.js` 完成。
 - 系统任务定义由服务启动时幂等初始化，管理页面只允许查询、启停、修改 Cron、手动触发和查看执行日志，不提供新增或删除接口。新增内置任务必须同时补充 Schema/初始化定义、处理器映射、DTO、接口文档和测试。
 - 任务调度器必须以数据库中的任务状态和 Cron 为准；多 Pod 场景使用 MySQL 会话级分布式锁，确保同一任务不会重复执行。调度失败要记录中文日志并保留可恢复的重试行为，不能因为单个任务异常产生未处理 Promise 拒绝。
 - 汇率同步任务只通过 `FeignClientFinanceManager` 调用 Gateway 的 `/feign/finance/currency/exchange/sync`，不得在 Skyline 拉取、解析、过滤或持久化外部汇率。Feign 客户端统一复用 `chat-web-base-schema`，地址和超时读取 Nacos `gateway.feign.url/timeout`，凭据读取 `gateway.feign.service_token`，不得把用户 JWT 传给 Finance。

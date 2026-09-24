@@ -4,7 +4,12 @@ import { DatetaskExecutorService } from '@/modules/datetask/datetask.executor.se
 import { DatetaskSchedulerService } from '@/modules/datetask/datetask.scheduler.service'
 import { DatetaskUtilsService, DatetaskRecord } from '@/modules/datetask/datetask.utils.service'
 import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
-import { DatetaskManageStatus, DatetaskStatus } from '@/modules/datetask/datetask.constants'
+import {
+    DATETASK_MANAGE_STATUS_OPTIONS,
+    DatetaskLogStatusDefinition,
+    DatetaskManageStatus,
+    DatetaskStatus
+} from '@/modules/datetask/datetask.constants'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 
 import { InjectRepository, DataBaseService, Repository } from '@wlisfes/chat-web-base-schema/database'
@@ -21,11 +26,22 @@ export class DatetaskService {
         private readonly datetaskLogService: DatetaskLogService
     ) {}
 
+    /** 系统任务静态枚举。 */
+    public async httpBaseSkylineDatetaskEnums(): Promise<DatetaskDto.DatetaskEnumsResponseDto> {
+        return {
+            typeOptions: Schema.TbSkylineDatetaskSystemTypeDefinition.options,
+            statusOptions: Schema.TbSkylineDatetaskSystemStatusDefinition.options,
+            manageStatusOptions: DATETASK_MANAGE_STATUS_OPTIONS,
+            logStatusOptions: DatetaskLogStatusDefinition.options
+        }
+    }
+
     /** 系统任务分页列表。 */
     public async httpBaseSkylineColumnDatetask(input: DatetaskDto.ListDatetaskDto): Promise<PageResult<DatetaskDto.DatetaskResponseDto>> {
         const page = input.page ?? 1
         const size = input.size ?? 50
         return this.database.builder(this.repository, async qb => {
+            qb.andWhere('t.type = :type', { type: input.type })
             const taskName = input.taskName?.trim()
             if (isNotEmpty(taskName)) qb.andWhere('t.taskName LIKE :taskName', { taskName: `%${taskName}%` })
             if (isNotEmpty(input.status)) qb.andWhere('t.status = :status', { status: input.status })

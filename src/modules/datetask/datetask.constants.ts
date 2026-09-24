@@ -1,7 +1,9 @@
 import {
     TbSkylineDatetaskSystemStatus as DatetaskStatus,
-    TbSkylineDatetaskSystemType as DatetaskType
+    TbSkylineDatetaskSystemType as DatetaskType,
+    TbSkylineDatetaskSystemStatusDefinition
 } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
+import { defineEnumMetadata } from '@wlisfes/chat-web-base-schema/utils'
 
 /** 系统任务的稳定标识。使用 19 位数字字符串兼容历史任务表约定。 */
 export const CURRENCY_EXCHANGE_TASK_ID = '2149446185344106496'
@@ -21,12 +23,24 @@ export enum DatetaskManageStatus {
     RUNNING = DatetaskStatus.RUNNING
 }
 
+/** 管理端可切换的任务状态选项，复用共享 Schema 中的显示名称和说明。 */
+export const DATETASK_MANAGE_STATUS_OPTIONS = TbSkylineDatetaskSystemStatusDefinition.options.filter(item =>
+    [DatetaskStatus.STOP, DatetaskStatus.RUNNING].includes(item.value)
+)
+
 /** 任务执行日志状态。 */
 export enum DatetaskLogStatus {
     RUNNING = 'running',
     SUCCESS = 'success',
     FAILED = 'failed'
 }
+
+/** 任务执行日志状态枚举元数据，供管理端日志筛选和状态标签使用。 */
+export const DatetaskLogStatusDefinition = defineEnumMetadata(DatetaskLogStatus, '执行状态', {
+    [DatetaskLogStatus.RUNNING]: { label: '执行中', description: '任务正在执行', type: 'info' },
+    [DatetaskLogStatus.SUCCESS]: { label: '执行成功', description: '任务执行成功', type: 'success' },
+    [DatetaskLogStatus.FAILED]: { label: '执行失败', description: '任务执行失败', type: 'error' }
+})
 
 /** 任务日志保留条数，避免单进程长期运行导致内存无界增长。 */
 export const DATETASK_LOG_LIMIT = 200

@@ -2,7 +2,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { BadRequestException, NotFoundException, ServiceUnavailableException } = require('@nestjs/common')
 const { validate } = require('class-validator')
-const { DatetaskKeyDto } = require('../dist/modules/datetask/dto/datetask.dto')
+const { DatetaskKeyDto, ListDatetaskDto } = require('../dist/modules/datetask/dto/datetask.dto')
 const { CurrencyExchangeTaskService } = require('../dist/modules/datetask/currency-exchange-task.service')
 const { DatetaskUtilsService } = require('../dist/modules/datetask/datetask.utils.service')
 const { DatetaskLogService } = require('../dist/modules/datetask/datetask.log.service')
@@ -405,15 +405,55 @@ function createDatetaskService() {
     const service = new DatetaskService(repository, database, utils, scheduler, executor, logs)
     return { service, queryBuilder, repository, manager, utils, scheduler, executor, logs, baseTask }
 }
+test('应返回系统任务静态枚举', async () => {
+    const { service } = createDatetaskService()
+    const result = await service.httpBaseSkylineDatetaskEnums()
+    assert.deepEqual(
+        result.typeOptions.map(item => item.value),
+        ['cron', 'manual', 'system']
+    )
+    assert.deepEqual(
+        result.statusOptions.map(item => item.value),
+        ['stop', 'wait', 'running', 'finish']
+    )
+    assert.deepEqual(
+        result.manageStatusOptions.map(item => item.value),
+        ['stop', 'running']
+    )
+    assert.deepEqual(
+        result.logStatusOptions.map(item => item.value),
+        ['running', 'success', 'failed']
+    )
+})
+
+test('任务分页查询必须传入合法任务类型', async () => {
+    const missing = await validate(Object.assign(new ListDatetaskDto(), { page: 1, size: 10 }))
+    assert.equal(
+        missing.some(error => error.property === 'type'),
+        true
+    )
+    const invalid = await validate(Object.assign(new ListDatetaskDto(), { page: 1, size: 10, type: 'unknown' }))
+    assert.equal(
+        invalid.some(error => error.property === 'type'),
+        true
+    )
+    const valid = await validate(Object.assign(new ListDatetaskDto(), { page: 1, size: 10, type: 'system' }))
+    assert.equal(
+        valid.some(error => error.property === 'type'),
+        false
+    )
+})
+
 test('应使用统一 QueryBuilder 返回任务分页数据', async () => {
     const { service, queryBuilder, baseTask } = createDatetaskService()
-    assert.deepEqual(await service.httpBaseSkylineColumnDatetask({ page: 2, size: 10, taskName: '汇率' }), {
+    assert.deepEqual(await service.httpBaseSkylineColumnDatetask({ page: 2, size: 10, type: 'system', taskName: '汇率' }), {
         page: 2,
         size: 10,
         total: 1,
         list: [{ ...baseTask, response: true }]
     })
-    assert.deepEqual(queryBuilder.andWheres[0], { sql: 't.taskName LIKE :taskName', parameters: { taskName: '%汇率%' } })
+    assert.deepEqual(queryBuilder.andWheres[0], { sql: 't.type = :type', parameters: { type: 'system' } })
+    assert.deepEqual(queryBuilder.andWheres[1], { sql: 't.taskName LIKE :taskName', parameters: { taskName: '%汇率%' } })
     assert.deepEqual(queryBuilder.skips, [10])
     assert.deepEqual(queryBuilder.takes, [10])
 })
