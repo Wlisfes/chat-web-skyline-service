@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 import {
     FeignClientSkylineImplementation,
     FeignClientSkylineManager,
-    SkylineBatchChunkOptionInput,
+    SkylineColumnChunkOptionInput,
     SkylineChunkOption,
     SkylineChunkOptionGroup,
     SkylineResolveChunkOptionInput
@@ -16,11 +16,11 @@ export class FeignService extends FeignClientSkylineManager implements FeignClie
         super()
     }
 
-    public override async batchChunkOptions(
+    public override async columnChunkOptions(
         _authorization: string,
-        input: SkylineBatchChunkOptionInput
+        input: SkylineColumnChunkOptionInput
     ): Promise<SkylineChunkOptionGroup[]> {
-        return this.chunkService.httpBaseSkylineBatchChunkOption(input)
+        return this.chunkService.httpBaseSkylineColumnChunkOption(input)
     }
 
     public override async resolveChunkOption(_authorization: string, input: SkylineResolveChunkOptionInput): Promise<SkylineChunkOption> {

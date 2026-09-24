@@ -4,7 +4,7 @@ import * as Schema from '@wlisfes/chat-web-base-schema'
 import { InjectRepository, DataBaseService, In, Repository } from '@wlisfes/chat-web-base-schema/database'
 import { PageResult, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
 import {
-    SkylineBatchChunkOptionInput,
+    SkylineColumnChunkOptionInput,
     SkylineChunkOption,
     SkylineChunkOptionGroup,
     SkylineResolveChunkOptionInput
@@ -73,7 +73,7 @@ export class ChunkService {
     }
 
     /** 供内部服务按枚举类型编码批量获取启用状态的枚举字典选项，结果按类型分组并组装成选项树。 */
-    public async httpBaseSkylineBatchChunkOption(input: SkylineBatchChunkOptionInput): Promise<SkylineChunkOptionGroup[]> {
+    public async httpBaseSkylineColumnChunkOption(input: SkylineColumnChunkOptionInput): Promise<SkylineChunkOptionGroup[]> {
         const types = Array.from(new Set(input.types))
         const where: Record<string, unknown> = { type: In(types), status: Schema.TbSkylineChunkStatus.CHUNK_ENABLE }
         if (isNotEmpty(input.module)) where.module = input.module
