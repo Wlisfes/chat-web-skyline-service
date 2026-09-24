@@ -141,7 +141,7 @@ function createCurrencyTaskService(config = {}) {
         }
     }
     const financeFeignClient = {
-        async syncCurrencyExchange(authorization) {
+        async httpBaseFinanceSyncCurrencyExchange(authorization) {
             calls.push(authorization)
             return { date: '2026-09-05', count: 28, list: [{ currency: 'USD', rate: 1, date: '2026-09-05' }] }
         }
