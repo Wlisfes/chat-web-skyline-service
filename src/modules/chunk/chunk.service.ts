@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
 import * as Schema from '@wlisfes/chat-web-base-schema'
-import { InjectRepository, DataBaseService, In, Repository } from '@wlisfes/chat-web-base-schema/database'
+import { InjectRepository, DataBaseService, In, Not, Repository } from '@wlisfes/chat-web-base-schema/database'
 import { PageResult, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
 import {
     SkylineColumnChunkOptionInput,
@@ -18,6 +18,14 @@ export class ChunkService {
         private readonly database: DataBaseService
     ) {}
 
+    /** 枚举字典静态枚举。 */
+    public async httpBaseSkylineChunkEnums(): Promise<ChunkDto.ChunkEnumsResponseDto> {
+        return {
+            moduleOptions: Schema.TbSkylineChunkModuleDefinition.options,
+            statusOptions: Schema.TbSkylineChunkStatusDefinition.options
+        }
+    }
+
     /** 分页查询枚举字典；结果保持扁平结构，通过 pid 表示父子关系。 */
     public async httpBaseSkylineColumnChunk(input: ChunkDto.ListChunkDto): Promise<PageResult<ChunkDto.ChunkResponseDto>> {
         const page = input.page ?? 1
@@ -25,6 +33,8 @@ export class ChunkService {
         return this.database.builder(this.repository, async qb => {
             if (isNotEmpty(input.module)) qb.andWhere('t.module = :module', { module: input.module })
             if (isNotEmpty(input.type)) qb.andWhere('t.type = :type', { type: input.type })
+            const name = input.name?.trim()
+            if (isNotEmpty(name)) qb.andWhere('t.name LIKE :name', { name: `%${name}%` })
             if (isNotEmpty(input.status)) qb.andWhere('t.status = :status', { status: input.status })
             if (input.pid !== undefined) qb.andWhere('t.pid = :pid', { pid: input.pid })
             qb.orderBy('t.module', 'ASC')
@@ -35,31 +45,39 @@ export class ChunkService {
                 .skip((page - 1) * size)
                 .take(size)
             const [list, total] = await qb.getManyAndCount()
-            return { page, size, total, list: list as unknown as ChunkDto.ChunkResponseDto[] }
+            return { page, size, total, list: list.map(entity => this.toResponse(entity)) }
         })
     }
 
     /** 查询枚举字典详情。 */
     public async httpBaseSkylineResolverChunk(query: ChunkDto.ChunkKeyDto): Promise<ChunkDto.ChunkResponseDto> {
-        return (await this.findRequired(query.keyId)) as unknown as ChunkDto.ChunkResponseDto
+        return this.toResponse(await this.findRequired(query.keyId))
     }
 
     /** 新增枚举字典项。 */
     public async httpBaseSkylineCreateChunk(input: ChunkDto.CreateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
-        await this.assertParent(input.pid)
-        const entity = this.repository.create(input as Schema.TbSkylineChunk)
-        return (await this.repository.save(entity)) as unknown as ChunkDto.ChunkResponseDto
+        await this.assertParent(input.pid, input.module)
+        await this.assertUnique(input.module, input.type, input.value)
+        const entity = this.repository.create({
+            ...input,
+            json: this.normalizeJson(input.json)
+        } as Schema.TbSkylineChunk)
+        return this.toResponse(await this.repository.save(entity))
     }
 
     /** 更新枚举字典项。 */
     public async httpBaseSkylineUpdateChunk(input: ChunkDto.UpdateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
         const current = await this.findRequired(input.keyId)
         if (!current.allowUpdate) throw new BadRequestException('当前枚举项不允许更新')
-        if (input.pid === input.keyId) throw new BadRequestException('枚举项不能将自身设置为父节点')
-        await this.assertParent(input.pid)
+        const module = input.module ?? current.module
+        const type = input.type ?? current.type
+        const value = input.value ?? current.value
+        await this.assertParent(input.pid, module, input.keyId)
+        await this.assertUnique(module, type, value, input.keyId)
         const { keyId, ...changes } = input
+        if ('json' in changes) changes.json = this.normalizeJson(changes.json)
         await this.repository.update(keyId, changes as never)
-        return (await this.findRequired(keyId)) as unknown as ChunkDto.ChunkResponseDto
+        return this.toResponse(await this.findRequired(keyId))
     }
 
     /** 硬删除枚举字典项；存在子项时必须先处理子项。 */
@@ -129,7 +147,8 @@ export class ChunkService {
 
     /** 把枚举实体转换为统一的下拉选项结构；description 取自扩展配置，缺省时回落为显示名称。 */
     private toOption(entity: Schema.TbSkylineChunk): SkylineChunkOption {
-        const description = entity.json?.description
+        const json = this.normalizeJson(entity.json)
+        const description = json.description
         return {
             value: entity.value,
             label: entity.name,
@@ -137,8 +156,23 @@ export class ChunkService {
             keyId: entity.keyId,
             pid: entity.pid,
             sort: entity.sort,
-            json: entity.json,
+            json,
             children: []
+        }
+    }
+
+    /** 扩展配置缺省为空对象，并去掉职位迁移残留的 legacyKeyId。 */
+    private normalizeJson(json?: Record<string, unknown> | null): Record<string, unknown> {
+        const next = { ...(json ?? {}) }
+        delete next.legacyKeyId
+        return next
+    }
+
+    /** 对外返回时统一规范化 json，避免接口带出空值或迁移残留字段。 */
+    private toResponse(entity: Schema.TbSkylineChunk): ChunkDto.ChunkResponseDto {
+        return {
+            ...(entity as unknown as ChunkDto.ChunkResponseDto),
+            json: this.normalizeJson(entity.json)
         }
     }
 
@@ -148,8 +182,20 @@ export class ChunkService {
         return entity
     }
 
-    private async assertParent(pid: number | undefined): Promise<void> {
+    /** 校验父枚举项存在、不能指向自身，且必须属于同一模块。 */
+    private async assertParent(pid?: number | null, module?: Schema.TbSkylineChunkModule, keyId?: number): Promise<void> {
         if (pid === undefined || pid === null) return
-        await this.findRequired(pid)
+        if (keyId !== undefined && pid === keyId) throw new BadRequestException('枚举项不能将自身设置为父节点')
+        const parent = await this.repository.findOne({ where: { keyId: pid } })
+        if (!parent) throw new NotFoundException('父枚举项不存在')
+        if (module && parent.module !== module) throw new BadRequestException('父枚举项必须属于同一模块')
+    }
+
+    /** 同一模块、同一类型下的业务值必须唯一。 */
+    private async assertUnique(module: Schema.TbSkylineChunkModule, type: string, value: string, excludeKeyId?: number): Promise<void> {
+        const where: Record<string, unknown> = { module, type, value }
+        if (excludeKeyId) where.keyId = Not(excludeKeyId)
+        const existing = await this.repository.findOne({ where })
+        if (existing) throw new BadRequestException('同一模块下该类型的业务值已存在')
     }
 }

@@ -8,6 +8,15 @@ import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
 export class ChunkController {
     constructor(private readonly chunkService: ChunkService) {}
 
+    @ApiServiceDecorator(Get('enums'), {
+        operation: { summary: '枚举字典静态枚举' },
+        response: { type: ChunkDto.ChunkEnumsResponseDto, description: '枚举字典静态枚举' },
+        bearerAuth: true
+    })
+    public async httpBaseSkylineChunkEnums(): Promise<ChunkDto.ChunkEnumsResponseDto> {
+        return this.chunkService.httpBaseSkylineChunkEnums()
+    }
+
     @ApiServiceDecorator(Post('column'), {
         operation: { summary: '枚举字典分页列表' },
         request: { source: 'body', type: ChunkDto.ListChunkDto },

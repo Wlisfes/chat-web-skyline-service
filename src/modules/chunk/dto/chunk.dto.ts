@@ -1,13 +1,13 @@
-import { ApiProperty, ApiPropertyOptional, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
-import { IsEnum, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, MaxLength, Min } from 'class-validator'
-import { PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
+import { ApiProperty, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
+import { IsInt, Min } from 'class-validator'
+import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 
 import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 /** 枚举字典分页查询参数。 */
 export class ListChunkDto extends IntersectionType(
     PageDto,
-    PartialType(PickType(Schema.TbSkylineChunkDto, ['module', 'type', 'pid', 'status'] as const))
+    PartialType(PickType(Schema.TbSkylineChunkDto, ['module', 'type', 'name', 'pid', 'status'] as const))
 ) {}
 
 /** 枚举字典主键参数。 */
@@ -49,3 +49,9 @@ export class DeleteChunkResponseDto {
     @ApiProperty({ description: '是否删除成功', example: true })
     success: true
 }
+
+/** 枚举字典静态枚举响应。 */
+export class ChunkEnumsResponseDto extends EnumsResponseDto({
+    moduleOptions: { description: '枚举所属模块选项', example: Schema.TbSkylineChunkModuleDefinition.options },
+    statusOptions: { description: '枚举项状态选项', example: Schema.TbSkylineChunkStatusDefinition.options }
+}) {}
