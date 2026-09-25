@@ -67,8 +67,24 @@ export class ChunkService {
                 .skip((page - 1) * size)
                 .take(size)
             const [list, total] = await qb.getManyAndCount()
-            return { page, size, total, list }
+            return { page, size, total, list: await this.appendChunkCount(list) }
         })
+    }
+
+    /** 按 module + type 联查子表 tb_skyline_chunk，为当前页枚举分类补充枚举项数量。 */
+    private async appendChunkCount(list: Array<Schema.TbSkylineChunkModuleEntity>): Promise<Array<ChunkDto.ChunkModuleResponseDto>> {
+        if (list.length === 0) return []
+        const rows = await this.repository
+            .createQueryBuilder('t')
+            .select('t.module', 'module')
+            .addSelect('t.type', 'type')
+            .addSelect('COUNT(t.keyId)', 'count')
+            .where('t.type IN (:...types)', { types: [...new Set(list.map(item => item.type))] })
+            .groupBy('t.module')
+            .addGroupBy('t.type')
+            .getRawMany<{ module: Schema.TbSkylineChunkModule; type: string; count: string | number }>()
+        const counts = new Map(rows.map(row => [`${row.module}:${row.type}`, Number(row.count)]))
+        return list.map(item => ({ ...item, chunkCount: counts.get(`${item.module}:${item.type}`) ?? 0 }))
     }
 
     /** 查询枚举字典详情。 */

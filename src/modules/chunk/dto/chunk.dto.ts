@@ -51,7 +51,10 @@ export class ChunkPageResponseDto extends PageResponseDataDto {
 }
 
 /** 枚举分类详情响应。 */
-export class ChunkModuleResponseDto extends Schema.TbSkylineChunkModuleDto {}
+export class ChunkModuleResponseDto extends Schema.TbSkylineChunkModuleDto {
+    @ApiProperty({ description: '子表枚举项数量，按 module + type 联查 tb_skyline_chunk', example: 65, readOnly: true })
+    chunkCount: number
+}
 
 /** 枚举分类分页响应。 */
 export class ChunkModulePageResponseDto extends PageResponseDataDto {
