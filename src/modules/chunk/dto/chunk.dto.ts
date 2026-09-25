@@ -10,6 +10,12 @@ export class ListChunkDto extends IntersectionType(
     PartialType(PickType(Schema.TbSkylineChunkDto, ['module', 'type', 'name', 'pid', 'status'] as const))
 ) {}
 
+/** 枚举分类分页查询参数；分类数据由 SQL 种子维护，接口只提供列表。 */
+export class ListChunkModuleDto extends IntersectionType(
+    PageDto,
+    PartialType(PickType(Schema.TbSkylineChunkModuleDto, ['module', 'name', 'kind'] as const))
+) {}
+
 /** 枚举字典主键参数。 */
 export class ChunkKeyDto {
     @ApiProperty({ description: '枚举项主键', example: 10000 })
@@ -44,6 +50,15 @@ export class ChunkPageResponseDto extends PageResponseDataDto {
     list: ChunkResponseDto[]
 }
 
+/** 枚举分类详情响应。 */
+export class ChunkModuleResponseDto extends Schema.TbSkylineChunkModuleDto {}
+
+/** 枚举分类分页响应。 */
+export class ChunkModulePageResponseDto extends PageResponseDataDto {
+    @ApiProperty({ description: '枚举分类列表', type: [ChunkModuleResponseDto] })
+    list: ChunkModuleResponseDto[]
+}
+
 /** 枚举字典删除响应。 */
 export class DeleteChunkResponseDto {
     @ApiProperty({ description: '是否删除成功', example: true })
@@ -53,5 +68,6 @@ export class DeleteChunkResponseDto {
 /** 枚举字典静态枚举响应。 */
 export class ChunkEnumsResponseDto extends EnumsResponseDto({
     moduleOptions: { description: '枚举所属模块选项', example: Schema.TbSkylineChunkModuleDefinition.options },
+    kindOptions: { description: '枚举字段类型选项', example: Schema.TbSkylineChunkModuleKindDefinition.options },
     statusOptions: { description: '枚举项状态选项', example: Schema.TbSkylineChunkStatusDefinition.options }
 }) {}

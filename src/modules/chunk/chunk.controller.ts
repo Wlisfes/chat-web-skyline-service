@@ -27,6 +27,16 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineColumnChunk(input)
     }
 
+    @ApiServiceDecorator(Post('column/module'), {
+        operation: { summary: '枚举分类分页列表' },
+        request: { source: 'body', type: ChunkDto.ListChunkModuleDto },
+        response: { type: ChunkDto.ChunkModulePageResponseDto, description: '枚举分类分页数据' },
+        bearerAuth: true
+    })
+    public async httpBaseSkylineColumnChunkModule(@Body() input: ChunkDto.ListChunkModuleDto) {
+        return this.chunkService.httpBaseSkylineColumnChunkModule(input)
+    }
+
     @ApiServiceDecorator(Get('resolve'), {
         operation: { summary: '枚举字典详情' },
         request: { source: 'query', type: ChunkDto.ChunkKeyDto },

@@ -15,6 +15,8 @@ import {
 export class ChunkService {
     constructor(
         @InjectRepository(Schema.TbSkylineChunk) private readonly repository: Repository<Schema.TbSkylineChunk>,
+        @InjectRepository(Schema.TbSkylineChunkModuleEntity)
+        private readonly moduleRepository: Repository<Schema.TbSkylineChunkModuleEntity>,
         private readonly database: DataBaseService
     ) {}
 
@@ -22,6 +24,7 @@ export class ChunkService {
     public async httpBaseSkylineChunkEnums(): Promise<ChunkDto.ChunkEnumsResponseDto> {
         return {
             moduleOptions: Schema.TbSkylineChunkModuleDefinition.options,
+            kindOptions: Schema.TbSkylineChunkModuleKindDefinition.options,
             statusOptions: Schema.TbSkylineChunkStatusDefinition.options
         }
     }
@@ -49,6 +52,25 @@ export class ChunkService {
         })
     }
 
+    /** 分页查询枚举分类；分类数据由 SQL 维护，接口不提供增删改。 */
+    public async httpBaseSkylineColumnChunkModule(
+        input: ChunkDto.ListChunkModuleDto
+    ): Promise<PageResult<ChunkDto.ChunkModuleResponseDto>> {
+        const page = input.page ?? 1
+        const size = input.size ?? 50
+        return this.database.builder(this.moduleRepository, async qb => {
+            if (isNotEmpty(input.module)) qb.andWhere('t.module = :module', { module: input.module })
+            if (isNotEmpty(input.kind)) qb.andWhere('t.kind = :kind', { kind: input.kind })
+            const name = input.name && input.name.trim()
+            if (isNotEmpty(name)) qb.andWhere('t.name LIKE :name', { name: '%' + name + '%' })
+            qb.orderBy('t.keyId', 'ASC')
+                .skip((page - 1) * size)
+                .take(size)
+            const [list, total] = await qb.getManyAndCount()
+            return { page, size, total, list }
+        })
+    }
+
     /** 查询枚举字典详情。 */
     public async httpBaseSkylineResolverChunk(query: ChunkDto.ChunkKeyDto): Promise<ChunkDto.ChunkResponseDto> {
         return this.toResponse(await this.findRequired(query.keyId))
@@ -56,6 +78,7 @@ export class ChunkService {
 
     /** 新增枚举字典项。 */
     public async httpBaseSkylineCreateChunk(input: ChunkDto.CreateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
+        await this.assertModuleType(input.module, input.type)
         await this.assertParent(input.pid, input.module)
         await this.assertUnique(input.module, input.type, input.value)
         const entity = this.repository.create({
@@ -72,6 +95,7 @@ export class ChunkService {
         const module = input.module ?? current.module
         const type = input.type ?? current.type
         const value = input.value ?? current.value
+        await this.assertModuleType(module, type)
         await this.assertParent(input.pid, module, input.keyId)
         await this.assertUnique(module, type, value, input.keyId)
         const { keyId, ...changes } = input
@@ -174,6 +198,11 @@ export class ChunkService {
             ...(entity as unknown as ChunkDto.ChunkResponseDto),
             json: this.normalizeJson(entity.json)
         }
+    }
+
+    private async assertModuleType(module: Schema.TbSkylineChunkModule, type: string): Promise<void> {
+        const found = await this.moduleRepository.findOne({ where: { module, type } })
+        if (!found) throw new BadRequestException('枚举分类不存在')
     }
 
     private async findRequired(keyId: number): Promise<Schema.TbSkylineChunk> {
