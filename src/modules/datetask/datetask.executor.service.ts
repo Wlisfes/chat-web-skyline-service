@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { CURRENCY_EXCHANGE_TASK_HANDLER, DatetaskLogStatus, DatetaskStatus } from '@/modules/datetask/datetask.constants'
 import { CurrencyExchangeTaskService } from '@/modules/datetask/currency-exchange-task.service'
-import { DatetaskLogService } from '@/modules/datetask/datetask.log.service'
+import { DatetaskLogCompleteInput, DatetaskLogService } from '@/modules/datetask/datetask.log.service'
 import { DatetaskRecord, DatetaskUtilsService } from '@/modules/datetask/datetask.utils.service'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
@@ -35,7 +35,6 @@ export class DatetaskExecutorService {
         this.running.add(taskId)
         let distributedLock: DistributedLock | undefined
         let task: DatetaskRecord | undefined
-        let executionId: string | undefined
         try {
             distributedLock = await this.acquireDistributedLock(taskId)
             if (!distributedLock) return { skipped: true, reason: '任务正在其他实例执行' }
@@ -53,36 +52,37 @@ export class DatetaskExecutorService {
             }
 
             const startedAt = new Date()
-            executionId = this.datetaskLogService.appendRunning(taskId, startedAt, task.taskName)
+            const executionId = this.datetaskLogService.createExecutionId(taskId)
+            await this.appendRunningLogSafely(executionId, taskId, startedAt, task.taskName)
             try {
                 const result = await this.executeHandler(task)
                 const endedAt = new Date()
                 await this.updateLastTime(task, endedAt, distributedLock.queryRunner.manager)
-                const record = {
+                const record: DatetaskLogCompleteInput = {
                     taskId,
                     status: DatetaskLogStatus.SUCCESS,
                     duration: endedAt.getTime() - startedAt.getTime(),
-                    startTime: this.formatDate(startedAt),
-                    endTime: this.formatDate(endedAt),
+                    startTime: startedAt,
+                    endTime: endedAt,
                     result,
                     taskName: task.taskName
                 }
-                this.datetaskLogService.complete(executionId, record)
+                await this.completeLogSafely(executionId, record)
                 return result
             } catch (error) {
                 const endedAt = new Date()
                 await this.updateLastTimeSafely(task, endedAt, distributedLock.queryRunner.manager)
                 const message = this.errorMessage(error)
-                const record = {
+                const record: DatetaskLogCompleteInput = {
                     taskId,
                     status: DatetaskLogStatus.FAILED,
                     duration: endedAt.getTime() - startedAt.getTime(),
-                    startTime: this.formatDate(startedAt),
-                    endTime: this.formatDate(endedAt),
+                    startTime: startedAt,
+                    endTime: endedAt,
                     result: { message },
                     taskName: task.taskName
                 }
-                this.datetaskLogService.complete(executionId, record)
+                await this.completeLogSafely(executionId, record)
                 this.logger.error(
                     `系统任务执行失败：任务ID=${taskId}，处理器=${task.handler}，原因=${message}`,
                     undefined,
@@ -165,8 +165,25 @@ export class DatetaskExecutorService {
         }
     }
 
-    private formatDate(value: Date): string {
-        return value.toISOString().replace('T', ' ').replace('Z', '')
+    /** 写入执行中日志；日志表异常不影响任务本身执行。 */
+    private async appendRunningLogSafely(executionId: string, taskId: string, startedAt: Date, taskName?: string): Promise<void> {
+        try {
+            await this.datetaskLogService.appendRunning(executionId, taskId, startedAt, taskName)
+        } catch (error) {
+            this.logger.warn(`写入系统任务执行中日志失败：任务ID=${taskId}，原因=${this.errorMessage(error)}`, DatetaskExecutorService.name)
+        }
+    }
+
+    /** 写入执行结果日志；日志表异常不影响任务结果返回。 */
+    private async completeLogSafely(executionId: string, record: DatetaskLogCompleteInput): Promise<void> {
+        try {
+            await this.datetaskLogService.complete(executionId, record)
+        } catch (error) {
+            this.logger.warn(
+                `写入系统任务执行结果日志失败：任务ID=${record.taskId}，原因=${this.errorMessage(error)}`,
+                DatetaskExecutorService.name
+            )
+        }
     }
 
     private errorMessage(error: unknown): string {

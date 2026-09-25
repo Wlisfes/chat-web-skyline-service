@@ -1,100 +1,89 @@
 import { Injectable } from '@nestjs/common'
-import { DATETASK_LOG_LIMIT, DatetaskLogStatus } from '@/modules/datetask/datetask.constants'
+import { DatetaskLogStatus } from '@/modules/datetask/datetask.constants'
 import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
+import * as Schema from '@wlisfes/chat-web-base-schema'
 
-import { isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
-type DatetaskLogRecord = Omit<DatetaskDto.DatetaskLogResponseDto, 'keyId'> & {
+import { InjectRepository, Repository } from '@wlisfes/chat-web-base-schema/database'
+import { PageResult, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
+/** 完成一次执行时需要写入的日志内容。 */
+export interface DatetaskLogCompleteInput {
+    taskId: string
     taskName?: string
-    createdAt: number
-    executionId: string
-}
-
-type DatetaskLogInput = Omit<DatetaskLogRecord, 'createdAt' | 'executionId'> & {
-    executionId?: string
+    status: DatetaskLogStatus
+    duration: number
+    startTime: Date
+    endTime: Date
+    result?: DatetaskDto.DatetaskExecutionResultDto
 }
 
 /**
  * 任务执行日志存储。
  *
- * 当前 Skyline Schema 只包含任务定义表，执行日志先在进程内保留最近记录；
- * 通过独立服务封装，后续增加日志表时不会改变 Controller 与任务执行器契约。
+ * 日志持久化到 tb_skyline_datetask_log，服务重启后不丢失且多实例共享；
+ * 每次执行以 executionId 唯一标识，开始时写入执行中记录，结束时原地更新为最终结果。
  */
 @Injectable()
 export class DatetaskLogService {
-    private readonly records = new Map<string, DatetaskLogRecord[]>()
     private executionSequence = 0
 
-    /** 写入一次任务执行结果。 */
-    public append(record: DatetaskLogInput): void {
-        this.appendRecord(record)
+    constructor(@InjectRepository(Schema.TbSkylineDatetaskLog) private readonly repository: Repository<Schema.TbSkylineDatetaskLog>) {}
+
+    /** 生成单次执行的唯一标识。 */
+    public createExecutionId(taskId: string): string {
+        this.executionSequence = (this.executionSequence + 1) % 1_000_000
+        return `${taskId}:${Date.now()}:${this.executionSequence}`
     }
 
-    /** 更新同一次执行的占位日志，避免运行中记录永久残留。 */
-    public complete(executionId: string, record: Omit<DatetaskLogRecord, 'createdAt' | 'executionId'>): void {
-        const list = this.records.get(record.taskId) ?? []
-        const index = list.findIndex(item => item.executionId === executionId)
-        if (index < 0) {
-            // 占位记录可能已因保留上限被淘汰；即使重新追加，也必须保留原执行 ID，
-            // 这样前端行键和一次执行的关联不会在完成阶段发生变化。
-            this.appendRecord({ ...record, executionId })
-            return
+    /** 写入执行中的占位日志。 */
+    public async appendRunning(executionId: string, taskId: string, startTime: Date, taskName?: string): Promise<void> {
+        await this.repository.insert({
+            executionId,
+            taskId,
+            taskName,
+            status: DatetaskLogStatus.RUNNING,
+            duration: 0,
+            startTime
+        } as never)
+    }
+
+    /** 将执行中的占位日志更新为最终结果；占位记录写入失败时补写一条完整记录。 */
+    public async complete(executionId: string, record: DatetaskLogCompleteInput): Promise<void> {
+        const values = {
+            taskName: record.taskName,
+            status: record.status,
+            duration: record.duration,
+            endTime: record.endTime,
+            result: record.result ?? null
         }
-
-        list[index] = { ...record, createdAt: list[index].createdAt, executionId }
-        this.records.set(record.taskId, list)
+        const updated = await this.repository.update({ executionId }, values as never)
+        if (updated.affected) return
+        await this.repository.insert({ ...values, executionId, taskId: record.taskId, startTime: record.startTime } as never)
     }
 
-    private appendRecord(record: DatetaskLogInput): string {
-        const list = this.records.get(record.taskId) ?? []
-        const executionId = record.executionId ?? this.createExecutionId(record.taskId)
-        list.unshift({ ...record, createdAt: Date.now(), executionId })
-        this.records.set(record.taskId, list.slice(0, DATETASK_LOG_LIMIT))
-        return executionId
-    }
-
-    /** 查询任务执行日志分页数据。 */
-    public list(input: DatetaskDto.ListDatetaskLogDto): {
-        page: number
-        size: number
-        total: number
-        list: DatetaskDto.DatetaskLogResponseDto[]
-    } {
+    /** 查询任务执行日志分页数据，按开始时间倒序。 */
+    public async list(input: DatetaskDto.ListDatetaskLogDto): Promise<PageResult<DatetaskDto.DatetaskLogResponseDto>> {
         const page = input.page ?? 1
         const size = input.size ?? 50
-        const source = this.records.get(input.taskId) ?? []
-        const filtered = isNotEmpty(input.status) ? source.filter(item => item.status === input.status) : source
-        const start = (page - 1) * size
+        const where = isNotEmpty(input.status) ? { taskId: input.taskId, status: input.status } : { taskId: input.taskId }
+        const [rows, total] = await this.repository.findAndCount({
+            where: where as never,
+            order: { startTime: 'DESC', keyId: 'DESC' } as never,
+            skip: (page - 1) * size,
+            take: size
+        })
         return {
             page,
             size,
-            total: filtered.length,
-            list: filtered
-                .slice(start, start + size)
-                .map(({ createdAt, taskName, executionId, ...item }) => ({ ...item, keyId: executionId }))
+            total,
+            list: rows.map(row => ({
+                keyId: row.executionId,
+                taskId: row.taskId,
+                status: row.status as unknown as DatetaskLogStatus,
+                duration: row.duration,
+                startTime: row.startTime as unknown as string,
+                endTime: (row.endTime as unknown as string) ?? undefined,
+                result: (row.result as DatetaskDto.DatetaskExecutionResultDto) ?? undefined
+            }))
         }
-    }
-
-    /** 清理某个任务的日志，主要用于测试和任务删除兼容。 */
-    public clear(taskId: string): void {
-        this.records.delete(taskId)
-    }
-
-    /** 生成执行中的占位日志。 */
-    public appendRunning(taskId: string, startTime: Date, taskName?: string): string {
-        return this.appendRecord({
-            taskId,
-            status: DatetaskLogStatus.RUNNING,
-            duration: 0,
-            startTime: this.formatDate(startTime),
-            taskName
-        })
-    }
-
-    private createExecutionId(taskId: string): string {
-        return `${taskId}:${Date.now()}:${++this.executionSequence}`
-    }
-
-    private formatDate(value: Date): string {
-        return value.toISOString().replace('T', ' ').replace('Z', '')
     }
 }
