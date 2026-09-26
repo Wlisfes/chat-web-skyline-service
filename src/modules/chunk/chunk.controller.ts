@@ -4,6 +4,7 @@ import type { AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
 import { ApiServiceDecorator, ApifoxController } from '@wlisfes/chat-web-base-schema/decorator'
 import { ChunkService } from '@/modules/chunk/chunk.service'
 import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
+import * as feign from '@wlisfes/chat-web-base-schema/feign'
 
 /** Skyline 枚举字典管理接口。 */
 @ApifoxController('Skyline 枚举字典管理', 'deploy/chunk', { bearerAuth: true })
@@ -37,6 +38,18 @@ export class ChunkController {
     })
     public async httpBaseSkylineColumnChunk(@Body() input: ChunkDto.ListChunkDto) {
         return this.chunkService.httpBaseSkylineColumnChunk(input)
+    }
+
+    @ApiServiceDecorator(Post('column/option'), {
+        operation: { summary: '按枚举类型编码批量获取启用状态的枚举字典选项' },
+        request: { source: 'body', type: feign.SkylineColumnChunkOptionRequestDto },
+        response: { type: feign.SkylineChunkOptionGroupDto, isArray: true, description: '按枚举类型编码分组的枚举字典选项' },
+        bearerAuth: true
+    })
+    public async httpBaseSkylineColumnChunkOption(
+        @Body() input: feign.SkylineColumnChunkOptionRequestDto
+    ): Promise<feign.SkylineChunkOptionGroup[]> {
+        return this.chunkService.httpBaseSkylineColumnChunkOption(input)
     }
 
     @ApiServiceDecorator(Get('resolve'), {
