@@ -2,7 +2,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { BadRequestException, NotFoundException, ServiceUnavailableException } = require('@nestjs/common')
 const { validate } = require('class-validator')
-const { DatetaskKeyDto } = require('../dist/modules/datetask/dto/datetask.dto')
+const { DatetaskKeyDto, ListDatetaskDto } = require('../dist/modules/datetask/dto/datetask.dto')
 const { CurrencyExchangeTaskService } = require('../dist/modules/datetask/currency-exchange-task.service')
 const { DatetaskUtilsService } = require('../dist/modules/datetask/datetask.utils.service')
 const { DatetaskLogService } = require('../dist/modules/datetask/datetask.log.service')
@@ -84,19 +84,47 @@ test('只允许运行中或等待中的任务进入调度器', () => {
     assert.equal(service.isSchedulable({ cron: '0 0 8 * * *', status: TbSkylineDatetaskSystemStatus.STOP }), false)
     assert.equal(service.isSchedulable({ cron: '', status: TbSkylineDatetaskSystemStatus.RUNNING }), false)
 })
-test('应按最新优先保存并分页过滤执行日志', () => {
-    const service = new DatetaskLogService()
+function createLogRepository() {
+    const rows = []
+    let keyId = 0
+    const matches = (row, where) => Object.entries(where).every(([key, value]) => row[key] === value)
+    return {
+        rows,
+        async insert(values) {
+            rows.push({ ...values, keyId: ++keyId })
+        },
+        async update(where, values) {
+            const targets = rows.filter(row => matches(row, where))
+            targets.forEach(row => Object.assign(row, values))
+            return { affected: targets.length }
+        },
+        async findAndCount({ where, skip, take }) {
+            const filtered = rows.filter(row => matches(row, where)).sort((a, b) => b.startTime - a.startTime || b.keyId - a.keyId)
+            return [filtered.slice(skip, skip + take), filtered.length]
+        }
+    }
+}
+function createLogService() {
+    const repository = createLogRepository()
+    return { service: new DatetaskLogService(repository), repository }
+}
+test('应按开始时间倒序分页并按状态过滤执行日志', async () => {
+    const { service } = createLogService()
     for (let index = 0; index < 205; index += 1) {
-        service.append({
+        const executionId = service.createExecutionId('task-1')
+        const startTime = new Date(Date.UTC(2026, 8, 2, 0, 0, index))
+        await service.appendRunning(executionId, 'task-1', startTime, '任务一')
+        await service.complete(executionId, {
             taskId: 'task-1',
             status: index % 2 ? DatetaskLogStatus.FAILED : DatetaskLogStatus.SUCCESS,
             duration: index,
-            startTime: '2026-09-02 08:00:' + String(index).padStart(2, '0'),
+            startTime,
+            endTime: startTime,
             result: { message: '执行序号 ' + index }
         })
     }
-    const page = service.list({ taskId: 'task-1', page: 2, size: 10, status: DatetaskLogStatus.SUCCESS })
-    assert.equal(page.total, 100)
+    const page = await service.list({ taskId: 'task-1', page: 2, size: 10, status: DatetaskLogStatus.SUCCESS })
+    assert.equal(page.total, 103)
     assert.equal(page.list.length, 10)
     assert.equal(
         page.list.every(item => item.status === DatetaskLogStatus.SUCCESS),
@@ -107,29 +135,34 @@ test('应按最新优先保存并分页过滤执行日志', () => {
         true
     )
     assert.equal(new Set(page.list.map(item => item.keyId)).size, page.list.length)
-    assert.equal(Object.prototype.hasOwnProperty.call(page.list[0], 'createdAt'), false)
+    assert.equal(page.list[0].duration, 184)
 })
-test('应支持运行中占位记录和按任务清理', () => {
-    const service = new DatetaskLogService()
-    const executionId = service.appendRunning('task-2', new Date('2026-09-02T00:00:00.000Z'), '任务二')
-    assert.equal(service.list({ taskId: 'task-2', page: 1, size: 10 }).list[0].keyId, executionId)
-    assert.equal(service.list({ taskId: 'task-2', page: 1, size: 10 }).list[0].status, DatetaskLogStatus.RUNNING)
-    service.complete(executionId, {
+test('完成日志应更新同一执行记录，占位缺失时补写完整记录', async () => {
+    const { service, repository } = createLogService()
+    const executionId = service.createExecutionId('task-2')
+    const startTime = new Date('2026-09-02T00:00:00.000Z')
+    await service.appendRunning(executionId, 'task-2', startTime, '任务二')
+    const running = await service.list({ taskId: 'task-2', page: 1, size: 10 })
+    assert.equal(running.list[0].keyId, executionId)
+    assert.equal(running.list[0].status, DatetaskLogStatus.RUNNING)
+    const record = {
         taskId: 'task-2',
         status: DatetaskLogStatus.SUCCESS,
         duration: 120,
-        startTime: '2026-09-02 08:00:00.000',
-        endTime: '2026-09-02 08:00:00.120',
+        startTime,
+        endTime: new Date('2026-09-02T00:00:00.120Z'),
         result: { count: 1 },
         taskName: '任务二'
-    })
-    const completed = service.list({ taskId: 'task-2', page: 1, size: 10 })
+    }
+    await service.complete(executionId, record)
+    const completed = await service.list({ taskId: 'task-2', page: 1, size: 10 })
     assert.equal(completed.total, 1)
     assert.equal(completed.list[0].keyId, executionId)
     assert.equal(completed.list[0].status, DatetaskLogStatus.SUCCESS)
     assert.equal(completed.list[0].duration, 120)
-    service.clear('task-2')
-    assert.equal(service.list({ taskId: 'task-2', page: 1, size: 10 }).total, 0)
+    await service.complete('missing-execution', record)
+    assert.equal(repository.rows.length, 2)
+    assert.equal(repository.rows[1].executionId, 'missing-execution')
 })
 
 function createCurrencyTaskService(config = {}) {
@@ -214,7 +247,7 @@ function createExecutor(currentTask) {
             return currentTask
         }
     }
-    const logs = new DatetaskLogService()
+    const logs = new DatetaskLogService(createLogRepository())
     const currency = {
         executeCalls: 0,
         pending: undefined,
@@ -244,7 +277,7 @@ test('应执行汇率处理器、更新时间并记录成功日志', async () =>
     assert.deepEqual(await service.execute('2149446185344106496'), { date: '2026-09-02', count: 30 })
     assert.equal(currency.executeCalls, 1)
     assert.equal(manager.updates[0].where.taskId, '2149446185344106496')
-    assert.equal(logs.list({ taskId: '2149446185344106496', page: 1, size: 10 }).list[0].status, DatetaskLogStatus.SUCCESS)
+    assert.equal((await logs.list({ taskId: '2149446185344106496', page: 1, size: 10 })).list[0].status, DatetaskLogStatus.SUCCESS)
     assert.equal(service.isRunning('2149446185344106496'), false)
     assert.deepEqual(utils.calls[0], { taskId: '2149446185344106496', transactionManager: queryRunner.manager, lock: false })
 })
@@ -254,7 +287,7 @@ test('停用任务应跳过执行且不写入日志', async () => {
     const { service, currency, logs } = createExecutor(stopped)
     assert.deepEqual(await service.execute(stopped.taskId), { skipped: true, reason: '任务已停用' })
     assert.equal(currency.executeCalls, 0)
-    assert.equal(logs.list({ taskId: stopped.taskId, page: 1, size: 10 }).total, 0)
+    assert.equal((await logs.list({ taskId: stopped.taskId, page: 1, size: 10 })).total, 0)
 })
 test('已完成任务应跳过执行且不写入日志', async () => {
     const finished = runningTask()
@@ -262,14 +295,14 @@ test('已完成任务应跳过执行且不写入日志', async () => {
     const { service, currency, logs } = createExecutor(finished)
     assert.deepEqual(await service.execute(finished.taskId), { skipped: true, reason: '任务已完成' })
     assert.equal(currency.executeCalls, 0)
-    assert.equal(logs.list({ taskId: finished.taskId, page: 1, size: 10 }).total, 0)
+    assert.equal((await logs.list({ taskId: finished.taskId, page: 1, size: 10 })).total, 0)
 })
 test('未知处理器应记录失败日志并抛出业务异常', async () => {
     const { service, logs } = createExecutor(runningTask('unknown-handler'))
     await assert.rejects(() => service.execute('2149446185344106496'), BadRequestException)
-    assert.equal(logs.list({ taskId: '2149446185344106496', page: 1, size: 10 }).list[0].status, DatetaskLogStatus.FAILED)
+    assert.equal((await logs.list({ taskId: '2149446185344106496', page: 1, size: 10 })).list[0].status, DatetaskLogStatus.FAILED)
     assert.equal(
-        logs.list({ taskId: '2149446185344106496', page: 1, size: 10 }).list[0].result.message,
+        (await logs.list({ taskId: '2149446185344106496', page: 1, size: 10 })).list[0].result.message,
         '未注册的任务处理器：unknown-handler'
     )
 })
@@ -405,15 +438,55 @@ function createDatetaskService() {
     const service = new DatetaskService(repository, database, utils, scheduler, executor, logs)
     return { service, queryBuilder, repository, manager, utils, scheduler, executor, logs, baseTask }
 }
+test('应返回系统任务静态枚举', async () => {
+    const { service } = createDatetaskService()
+    const result = await service.httpBaseSkylineDatetaskEnums()
+    assert.deepEqual(
+        result.typeOptions.map(item => item.value),
+        ['cron', 'manual', 'system']
+    )
+    assert.deepEqual(
+        result.statusOptions.map(item => item.value),
+        ['stop', 'wait', 'running', 'finish']
+    )
+    assert.deepEqual(
+        result.manageStatusOptions.map(item => item.value),
+        ['stop', 'running']
+    )
+    assert.deepEqual(
+        result.logStatusOptions.map(item => item.value),
+        ['running', 'success', 'failed']
+    )
+})
+
+test('任务分页查询必须传入合法任务类型', async () => {
+    const missing = await validate(Object.assign(new ListDatetaskDto(), { page: 1, size: 10 }))
+    assert.equal(
+        missing.some(error => error.property === 'type'),
+        true
+    )
+    const invalid = await validate(Object.assign(new ListDatetaskDto(), { page: 1, size: 10, type: 'unknown' }))
+    assert.equal(
+        invalid.some(error => error.property === 'type'),
+        true
+    )
+    const valid = await validate(Object.assign(new ListDatetaskDto(), { page: 1, size: 10, type: 'system' }))
+    assert.equal(
+        valid.some(error => error.property === 'type'),
+        false
+    )
+})
+
 test('应使用统一 QueryBuilder 返回任务分页数据', async () => {
     const { service, queryBuilder, baseTask } = createDatetaskService()
-    assert.deepEqual(await service.httpBaseSkylineColumnDatetask({ page: 2, size: 10, taskName: '汇率' }), {
+    assert.deepEqual(await service.httpBaseSkylineColumnDatetask({ page: 2, size: 10, type: 'system', taskName: '汇率' }), {
         page: 2,
         size: 10,
         total: 1,
         list: [{ ...baseTask, response: true }]
     })
-    assert.deepEqual(queryBuilder.andWheres[0], { sql: 't.taskName LIKE :taskName', parameters: { taskName: '%汇率%' } })
+    assert.deepEqual(queryBuilder.andWheres[0], { sql: 't.type = :type', parameters: { type: 'system' } })
+    assert.deepEqual(queryBuilder.andWheres[1], { sql: 't.taskName LIKE :taskName', parameters: { taskName: '%汇率%' } })
     assert.deepEqual(queryBuilder.skips, [10])
     assert.deepEqual(queryBuilder.takes, [10])
 })

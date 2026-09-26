@@ -1,6 +1,9 @@
 import {
     TbSkylineDatetaskSystemStatus as DatetaskStatus,
-    TbSkylineDatetaskSystemType as DatetaskType
+    TbSkylineDatetaskSystemType as DatetaskType,
+    TbSkylineDatetaskSystemStatusDefinition,
+    TbSkylineDatetaskLogStatus as DatetaskLogStatus,
+    TbSkylineDatetaskLogStatusDefinition as DatetaskLogStatusDefinition
 } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
 
 /** 系统任务的稳定标识。使用 19 位数字字符串兼容历史任务表约定。 */
@@ -15,21 +18,19 @@ export const CURRENCY_EXCHANGE_TASK_CRON = '0 0 8,20 * * *'
 /** 任务类型值，与共享 Skyline Schema 和管理端字典保持一致。 */
 export { DatetaskStatus, DatetaskType }
 
+/** 任务执行日志状态，复用共享 Skyline Schema 中的日志表定义。 */
+export { DatetaskLogStatus, DatetaskLogStatusDefinition }
+
 /** 系统任务允许通过管理接口修改的状态。 */
 export enum DatetaskManageStatus {
     STOP = DatetaskStatus.STOP,
     RUNNING = DatetaskStatus.RUNNING
 }
 
-/** 任务执行日志状态。 */
-export enum DatetaskLogStatus {
-    RUNNING = 'running',
-    SUCCESS = 'success',
-    FAILED = 'failed'
-}
-
-/** 任务日志保留条数，避免单进程长期运行导致内存无界增长。 */
-export const DATETASK_LOG_LIMIT = 200
+/** 管理端可切换的任务状态选项，复用共享 Schema 中的显示名称和说明。 */
+export const DATETASK_MANAGE_STATUS_OPTIONS = TbSkylineDatetaskSystemStatusDefinition.options.filter(item =>
+    [DatetaskStatus.STOP, DatetaskStatus.RUNNING].includes(item.value)
+)
 
 /** 调度器读取任务失败后的重试间隔，避免短暂数据库抖动导致任务永久丢失。 */
 export const DATETASK_SCHEDULER_RETRY_DELAY_MS = 30_000
