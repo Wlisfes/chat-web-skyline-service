@@ -84,7 +84,7 @@ export class ChunkService {
     }
 
     /** 查询枚举字典详情。 */
-    public async httpBaseSkylineResolverChunk(query: ChunkDto.ChunkKeyDto): Promise<ChunkDto.ChunkResponseDto> {
+    public async httpBaseSkylineChunkResolver(query: ChunkDto.ChunkKeyDto): Promise<ChunkDto.ChunkResponseDto> {
         return this.chunkUtilsService.findRequired(query.keyId)
     }
 

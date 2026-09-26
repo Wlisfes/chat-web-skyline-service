@@ -45,8 +45,8 @@ export class ChunkController {
         response: { type: ChunkDto.ChunkResponseDto, description: '枚举字典详情' },
         bearerAuth: true
     })
-    public async httpBaseSkylineResolverChunk(@Query() query: ChunkDto.ChunkKeyDto): Promise<ChunkDto.ChunkResponseDto> {
-        return this.chunkService.httpBaseSkylineResolverChunk(query)
+    public async httpBaseSkylineChunkResolver(@Query() query: ChunkDto.ChunkKeyDto): Promise<ChunkDto.ChunkResponseDto> {
+        return this.chunkService.httpBaseSkylineChunkResolver(query)
     }
 
     @ApiServiceDecorator(Post('create'), {
