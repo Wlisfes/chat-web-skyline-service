@@ -3,6 +3,7 @@ import { Type } from 'class-transformer'
 import { IsInt, Min } from 'class-validator'
 import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
 import * as Schema from '@wlisfes/chat-web-base-schema'
+import * as feign from '@wlisfes/chat-web-base-schema/feign'
 
 import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 /** 枚举字典分页查询参数。 */
@@ -46,14 +47,45 @@ export class UpdateChunkDto extends IntersectionType(ChunkKeyDto, PartialType(Cr
 /** 枚举字典详情响应。 */
 export class ChunkResponseDto extends Schema.TbSkylineChunkDto {}
 
+/** 枚举字典列表项响应：补充创建人、更新人选项。 */
+export class ChunkColumnResponseDto extends ChunkResponseDto {
+    @ApiProperty({
+        description: '创建人选项，通过 Account Feign 按 createBy 还原',
+        type: feign.AccountUserOptionResponseDto,
+        required: false
+    })
+    createByOptions?: feign.AccountUserOptionResponseDto
+
+    @ApiProperty({
+        description: '更新人选项，通过 Account Feign 按 modifyBy 还原',
+        type: feign.AccountUserOptionResponseDto,
+        required: false
+    })
+    modifyByOptions?: feign.AccountUserOptionResponseDto
+}
+
 /** 枚举字典分页响应。 */
 export class ChunkPageResponseDto extends PageResponseDataDto {
-    @ApiProperty({ description: '枚举字典列表', type: [ChunkResponseDto] })
-    list: ChunkResponseDto[]
+    @ApiProperty({ description: '枚举字典列表', type: [ChunkColumnResponseDto] })
+    list: ChunkColumnResponseDto[]
 }
 
 /** 枚举分类详情响应。 */
 export class ChunkModuleResponseDto extends Schema.TbSkylineChunkModuleDto {
+    @ApiProperty({
+        description: '创建人选项，通过 Account Feign 按 createBy 还原',
+        type: feign.AccountUserOptionResponseDto,
+        required: false
+    })
+    createByOptions?: feign.AccountUserOptionResponseDto
+
+    @ApiProperty({
+        description: '更新人选项，通过 Account Feign 按 modifyBy 还原',
+        type: feign.AccountUserOptionResponseDto,
+        required: false
+    })
+    modifyByOptions?: feign.AccountUserOptionResponseDto
+
     @ApiProperty({ description: '子表枚举项数量，按 module + type 联查 tb_skyline_chunk', example: 65, readOnly: true })
     chunkCount: number
 }

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { InjectRepository, DataBaseService, Not, Repository } from '@wlisfes/chat-web-base-schema/database'
 import { isEmpty, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
 import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
@@ -12,7 +13,9 @@ export class ChunkUtilsService {
         @InjectRepository(Schema.TbSkylineChunk) private readonly repository: Repository<Schema.TbSkylineChunk>,
         @InjectRepository(Schema.TbSkylineChunkModuleEntity)
         private readonly moduleRepository: Repository<Schema.TbSkylineChunkModuleEntity>,
-        private readonly database: DataBaseService
+        private readonly database: DataBaseService,
+        private readonly accountFeignClient: feign.FeignClientAccountManager,
+        private readonly configService: ConfigService
     ) {}
 
     /**
@@ -20,6 +23,7 @@ export class ChunkUtilsService {
      *
      * 更新人、更新时间取子表中对应分类最新一条枚举项（modifyTime 倒序，相同时 keyId 倒序）；
      * 创建人、创建时间保持分类表原值，分类下没有枚举项时更新人、更新时间也保持分类表原值。
+     * 更新人最终确定后，再通过 Account Feign 批量把创建人、更新人还原为 createByOptions、modifyByOptions。
      */
     public async appendChunkStatistics(list: Array<Schema.TbSkylineChunkModuleEntity>): Promise<Array<ChunkDto.ChunkModuleResponseDto>> {
         if (list.length === 0) {
@@ -30,7 +34,7 @@ export class ChunkUtilsService {
             qb.where('t.type IN (:...types)', { types: [...new Set(list.map(item => item.type))] })
             qb.orderBy('t.modifyTime', 'DESC')
             qb.addOrderBy('t.keyId', 'DESC')
-            return await qb.getMany().then(rows => {
+            return await qb.getMany().then(async rows => {
                 // 以 module:type 作为键汇总；rows 已按最新排序，同一分类首次出现的枚举项即最新一条。
                 const statistics = new Map<string, { count: number; latest: Schema.TbSkylineChunk }>()
                 for (const row of rows) {
@@ -42,15 +46,21 @@ export class ChunkUtilsService {
                         statistics.set(key, { count: 1, latest: row })
                     }
                 }
-                return list.map(item => {
+                const records: Array<ChunkDto.ChunkModuleResponseDto> = list.map(item => {
                     const current = statistics.get(`${item.module}:${item.type}`)
                     if (!current) {
                         return { ...item, chunkCount: 0 }
                     }
                     return { ...item, chunkCount: current.count, modifyBy: current.latest.modifyBy, modifyTime: current.latest.modifyTime }
                 })
+                return await feign.appendAccountUserOptions(this.accountFeignClient, this.configService, records, ['createBy', 'modifyBy'])
             })
         })
+    }
+
+    /** 通过 Account Feign 批量把枚举项的 createBy、modifyBy 还原为 createByOptions、modifyByOptions。 */
+    public async appendChunkOperators(list: Array<Schema.TbSkylineChunk>): Promise<Array<ChunkDto.ChunkColumnResponseDto>> {
+        return await feign.appendAccountUserOptions(this.accountFeignClient, this.configService, list, ['createBy', 'modifyBy'])
     }
 
     /**

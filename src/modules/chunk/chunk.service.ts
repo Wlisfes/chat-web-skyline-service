@@ -27,8 +27,8 @@ export class ChunkService {
         }
     }
 
-    /** 分页查询枚举字典；结果保持扁平结构，通过 pid 表示父子关系。 */
-    public async httpBaseSkylineColumnChunk(input: ChunkDto.ListChunkDto): Promise<PageResult<ChunkDto.ChunkResponseDto>> {
+    /** 分页查询枚举字典；结果保持扁平结构，通过 pid 表示父子关系，并补充创建人、更新人选项。 */
+    public async httpBaseSkylineColumnChunk(input: ChunkDto.ListChunkDto): Promise<PageResult<ChunkDto.ChunkColumnResponseDto>> {
         const { page, size } = fetchUntiePagination(input)
         return this.database.builder(this.repository, async qb => {
             if (isNotEmpty(input.module)) {
@@ -54,7 +54,7 @@ export class ChunkService {
             qb.skip((page - 1) * size)
             qb.take(size)
             return await qb.getManyAndCount().then(async ([list, total]) => {
-                return fetchResolver({ page, size, total, list })
+                return fetchResolver({ page, size, total, list: await this.chunkUtilsService.appendChunkOperators(list) })
             })
         })
     }
