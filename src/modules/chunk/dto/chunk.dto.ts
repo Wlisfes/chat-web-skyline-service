@@ -1,4 +1,5 @@
 import { ApiProperty, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
+import { Type } from 'class-transformer'
 import { IsInt, Min } from 'class-validator'
 import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
 import * as Schema from '@wlisfes/chat-web-base-schema'
@@ -19,6 +20,7 @@ export class ListChunkModuleDto extends IntersectionType(
 /** 枚举字典主键参数。 */
 export class ChunkKeyDto {
     @ApiProperty({ description: '枚举项主键', example: 10000 })
+    @Type(() => Number)
     @IsInt({ message: '枚举项主键必须是整数' })
     @Min(1, { message: '枚举项主键必须大于0' })
     keyId: number

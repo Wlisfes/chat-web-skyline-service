@@ -19,16 +19,6 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineChunkEnums()
     }
 
-    @ApiServiceDecorator(Post('column'), {
-        operation: { summary: '枚举字典分页列表' },
-        request: { source: 'body', type: ChunkDto.ListChunkDto },
-        response: { type: ChunkDto.ChunkPageResponseDto, description: '枚举字典分页数据' },
-        bearerAuth: true
-    })
-    public async httpBaseSkylineColumnChunk(@Body() input: ChunkDto.ListChunkDto) {
-        return this.chunkService.httpBaseSkylineColumnChunk(input)
-    }
-
     @ApiServiceDecorator(Post('column/module'), {
         operation: { summary: '枚举分类分页列表' },
         request: { source: 'body', type: ChunkDto.ListChunkModuleDto },
@@ -37,6 +27,16 @@ export class ChunkController {
     })
     public async httpBaseSkylineColumnChunkModule(@Body() input: ChunkDto.ListChunkModuleDto) {
         return this.chunkService.httpBaseSkylineColumnChunkModule(input)
+    }
+
+    @ApiServiceDecorator(Post('column'), {
+        operation: { summary: '枚举字典分页列表' },
+        request: { source: 'body', type: ChunkDto.ListChunkDto },
+        response: { type: ChunkDto.ChunkPageResponseDto, description: '枚举字典分页数据' },
+        bearerAuth: true
+    })
+    public async httpBaseSkylineColumnChunk(@Body() input: ChunkDto.ListChunkDto) {
+        return this.chunkService.httpBaseSkylineColumnChunk(input)
     }
 
     @ApiServiceDecorator(Get('resolve'), {
