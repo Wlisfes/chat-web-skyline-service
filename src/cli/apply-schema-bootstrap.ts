@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
-import mysql from 'mysql2/promise'
+import mysql, { RowDataPacket } from 'mysql2/promise'
+import { assertMysqlDatabaseIsolation } from '@wlisfes/chat-web-base-schema/database'
 import { applySchema } from '@/cli/apply-schema'
 import { DatabaseConfig, getDatabaseName, loadLocalEnvironment, loadSkylineDatabaseConfig } from '@/cli/database-config'
 
@@ -46,6 +47,18 @@ export async function createMigrationUser(
     await connection.query(`GRANT ALL PRIVILEGES ON ${mysql.escapeId(database)}.* TO ${account}`)
 }
 
+/** 判断配置账号是否已是仅能访问 Skyline 数据库的单库账号；单库账号无需也无权创建临时账号。 */
+export async function isIsolatedDatabaseAccount(connection: mysql.Connection, database: string): Promise<boolean> {
+    const [grantRows] = await connection.query<RowDataPacket[]>('SHOW GRANTS FOR CURRENT_USER()')
+    const grants = grantRows.flatMap(row => Object.values(row).filter((value): value is string => typeof value === 'string'))
+    try {
+        assertMysqlDatabaseIsolation(grants, database)
+        return true
+    } catch {
+        return false
+    }
+}
+
 /** 删除临时迁移账号，避免管理员账号授权长期留存。 */
 export async function dropMigrationUser(connection: mysql.Connection, credentials: MigrationCredentials): Promise<void> {
     const account = `${mysql.escape(credentials.username)}@${mysql.escape(MYSQL_ACCOUNT_HOST)}`
@@ -59,6 +72,11 @@ async function main(): Promise<void> {
     const database = getDatabaseName(config)
     const adminConnectionOptions = createAdminConnectionOptions(config, database)
     const adminConnection = await mysql.createConnection(adminConnectionOptions)
+    if (await isIsolatedDatabaseAccount(adminConnection, database)) {
+        await adminConnection.end()
+        await applySchema()
+        return
+    }
     const credentials = createMigrationCredentials()
 
     try {
