@@ -18,16 +18,15 @@ export class ChunkUtilsService {
     /**
      * 按 module + type 联查子表 tb_skyline_chunk，为当前页枚举分类补充枚举项数量和最近更新信息。
      *
-     * 更新时间取子表中对应分类最新一条枚举项（modifyTime 倒序，相同时 keyId 倒序）；
-     * 子表 tb_skyline_chunk 暂无 modify_by 字段，更新人暂保持分类表原值，待 Schema 补充审计字段后再改为取子表。
-     * 创建人、创建时间保持分类表原值，分类下没有枚举项时更新时间也保持分类表原值。
+     * 更新人、更新时间取子表中对应分类最新一条枚举项（modifyTime 倒序，相同时 keyId 倒序）；
+     * 创建人、创建时间保持分类表原值，分类下没有枚举项时更新人、更新时间也保持分类表原值。
      */
     public async appendChunkStatistics(list: Array<Schema.TbSkylineChunkModuleEntity>): Promise<Array<ChunkDto.ChunkModuleResponseDto>> {
         if (list.length === 0) {
             return []
         }
         return this.database.builder(this.repository, async qb => {
-            qb.select(['t.keyId', 't.module', 't.type', 't.modifyTime'])
+            qb.select(['t.keyId', 't.module', 't.type', 't.modifyBy', 't.modifyTime'])
             qb.where('t.type IN (:...types)', { types: [...new Set(list.map(item => item.type))] })
             qb.orderBy('t.modifyTime', 'DESC')
             qb.addOrderBy('t.keyId', 'DESC')
@@ -48,7 +47,7 @@ export class ChunkUtilsService {
                     if (!current) {
                         return { ...item, chunkCount: 0 }
                     }
-                    return { ...item, chunkCount: current.count, modifyTime: current.latest.modifyTime }
+                    return { ...item, chunkCount: current.count, modifyBy: current.latest.modifyBy, modifyTime: current.latest.modifyTime }
                 })
             })
         })

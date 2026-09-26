@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import type { AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
 import { InjectRepository, DataBaseService, In, Repository } from '@wlisfes/chat-web-base-schema/database'
 import { PageResult, isNotEmpty, fetchResolver, fetchUntiePagination } from '@wlisfes/chat-web-base-schema/utils'
 import { ChunkUtilsService } from '@/modules/chunk/chunk.utils.service'
@@ -87,20 +88,25 @@ export class ChunkService {
         return this.chunkUtilsService.findRequired(query.keyId)
     }
 
-    /** 新增枚举字典项。 */
-    public async httpBaseSkylineCreateChunk(input: ChunkDto.CreateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
+    /** 新增枚举字典项；创建人、更新人取当前登录账号。 */
+    public async httpBaseSkylineCreateChunk(principal: AuthPrincipal, input: ChunkDto.CreateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
         await this.chunkUtilsService.assertModuleType(input.module, input.type)
         await this.chunkUtilsService.assertParent(input.pid, input.module)
         await this.chunkUtilsService.assertUnique(input.module, input.type, input.value)
         // WithJsonColumn 会把 undefined 转成 NULL 写入，无法落到数据库 DEFAULT，未传 json 时显式写入空对象。
-        const entity = this.repository.create({ ...input, json: input.json ?? {} } as Schema.TbSkylineChunk)
+        const entity = this.repository.create({
+            ...input,
+            json: input.json ?? {},
+            createBy: principal.uid,
+            modifyBy: principal.uid
+        } as Schema.TbSkylineChunk)
         return await this.repository.save(entity).then(async node => {
             return await this.chunkUtilsService.findRequired(node.keyId)
         })
     }
 
-    /** 更新枚举字典项。 */
-    public async httpBaseSkylineUpdateChunk(input: ChunkDto.UpdateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
+    /** 更新枚举字典项；更新人取当前登录账号。 */
+    public async httpBaseSkylineUpdateChunk(principal: AuthPrincipal, input: ChunkDto.UpdateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
         const current = await this.chunkUtilsService.findRequired(input.keyId)
         if (!current.allowUpdate) {
             throw new BadRequestException('当前枚举项不允许更新')
@@ -112,7 +118,7 @@ export class ChunkService {
         await this.chunkUtilsService.assertParent(input.pid, module, input.keyId)
         await this.chunkUtilsService.assertUnique(module, type, value, input.keyId)
         const { keyId, ...changes } = input
-        return await this.repository.update(keyId, changes as never).then(async () => {
+        return await this.repository.update(keyId, { ...changes, modifyBy: principal.uid } as never).then(async () => {
             return await this.chunkUtilsService.findRequired(keyId)
         })
     }

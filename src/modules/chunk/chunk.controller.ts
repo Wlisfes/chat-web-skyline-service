@@ -1,4 +1,6 @@
 import { Body, Get, Post, Query } from '@nestjs/common'
+import { CurrentPrincipal } from '@wlisfes/chat-web-base-schema/auth'
+import type { AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
 import { ApiServiceDecorator, ApifoxController } from '@wlisfes/chat-web-base-schema/decorator'
 import { ChunkService } from '@/modules/chunk/chunk.service'
 import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
@@ -53,8 +55,11 @@ export class ChunkController {
         response: { type: ChunkDto.ChunkResponseDto, description: '新增后的枚举字典项' },
         bearerAuth: true
     })
-    public async httpBaseSkylineCreateChunk(@Body() input: ChunkDto.CreateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
-        return this.chunkService.httpBaseSkylineCreateChunk(input)
+    public async httpBaseSkylineCreateChunk(
+        @CurrentPrincipal() principal: AuthPrincipal,
+        @Body() input: ChunkDto.CreateChunkDto
+    ): Promise<ChunkDto.ChunkResponseDto> {
+        return this.chunkService.httpBaseSkylineCreateChunk(principal, input)
     }
 
     @ApiServiceDecorator(Post('update'), {
@@ -63,8 +68,11 @@ export class ChunkController {
         response: { type: ChunkDto.ChunkResponseDto, description: '更新后的枚举字典项' },
         bearerAuth: true
     })
-    public async httpBaseSkylineUpdateChunk(@Body() input: ChunkDto.UpdateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
-        return this.chunkService.httpBaseSkylineUpdateChunk(input)
+    public async httpBaseSkylineUpdateChunk(
+        @CurrentPrincipal() principal: AuthPrincipal,
+        @Body() input: ChunkDto.UpdateChunkDto
+    ): Promise<ChunkDto.ChunkResponseDto> {
+        return this.chunkService.httpBaseSkylineUpdateChunk(principal, input)
     }
 
     @ApiServiceDecorator(Post('delete'), {
