@@ -77,7 +77,7 @@ export class ChunkService {
             qb.skip((page - 1) * size)
             qb.take(size)
             return await qb.getManyAndCount().then(async ([list, total]) => {
-                return fetchResolver({ page, size, total, list: await this.chunkUtilsService.appendChunkCount(list) })
+                return fetchResolver({ page, size, total, list: await this.chunkUtilsService.appendChunkStatistics(list) })
             })
         })
     }

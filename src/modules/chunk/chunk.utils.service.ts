@@ -15,22 +15,41 @@ export class ChunkUtilsService {
         private readonly database: DataBaseService
     ) {}
 
-    /** 按 module + type 联查子表 tb_skyline_chunk，为当前页枚举分类补充枚举项数量。 */
-    public async appendChunkCount(list: Array<Schema.TbSkylineChunkModuleEntity>): Promise<Array<ChunkDto.ChunkModuleResponseDto>> {
+    /**
+     * 按 module + type 联查子表 tb_skyline_chunk，为当前页枚举分类补充枚举项数量和最近更新信息。
+     *
+     * 更新时间取子表中对应分类最新一条枚举项（modifyTime 倒序，相同时 keyId 倒序）；
+     * 子表 tb_skyline_chunk 暂无 modify_by 字段，更新人暂保持分类表原值，待 Schema 补充审计字段后再改为取子表。
+     * 创建人、创建时间保持分类表原值，分类下没有枚举项时更新时间也保持分类表原值。
+     */
+    public async appendChunkStatistics(list: Array<Schema.TbSkylineChunkModuleEntity>): Promise<Array<ChunkDto.ChunkModuleResponseDto>> {
         if (list.length === 0) {
             return []
         }
         return this.database.builder(this.repository, async qb => {
-            qb.select('t.module', 'module')
-            qb.addSelect('t.type', 'type')
-            qb.addSelect('COUNT(t.keyId)', 'count')
+            qb.select(['t.keyId', 't.module', 't.type', 't.modifyTime'])
             qb.where('t.type IN (:...types)', { types: [...new Set(list.map(item => item.type))] })
-            qb.groupBy('t.module')
-            qb.addGroupBy('t.type')
-            return await qb.getRawMany<{ module: Schema.TbSkylineChunkModule; type: string; count: string | number }>().then(rows => {
-                // 以 module:type 作为键汇总数量，未命中的分类数量为 0。
-                const counts = new Map(rows.map(row => [`${row.module}:${row.type}`, Number(row.count)]))
-                return list.map(item => ({ ...item, chunkCount: counts.get(`${item.module}:${item.type}`) ?? 0 }))
+            qb.orderBy('t.modifyTime', 'DESC')
+            qb.addOrderBy('t.keyId', 'DESC')
+            return await qb.getMany().then(rows => {
+                // 以 module:type 作为键汇总；rows 已按最新排序，同一分类首次出现的枚举项即最新一条。
+                const statistics = new Map<string, { count: number; latest: Schema.TbSkylineChunk }>()
+                for (const row of rows) {
+                    const key = `${row.module}:${row.type}`
+                    const current = statistics.get(key)
+                    if (current) {
+                        current.count += 1
+                    } else {
+                        statistics.set(key, { count: 1, latest: row })
+                    }
+                }
+                return list.map(item => {
+                    const current = statistics.get(`${item.module}:${item.type}`)
+                    if (!current) {
+                        return { ...item, chunkCount: 0 }
+                    }
+                    return { ...item, chunkCount: current.count, modifyTime: current.latest.modifyTime }
+                })
             })
         })
     }
