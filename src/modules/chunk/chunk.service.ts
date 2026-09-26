@@ -48,7 +48,7 @@ export class ChunkService {
                 .skip((page - 1) * size)
                 .take(size)
             const [list, total] = await qb.getManyAndCount()
-            return { page, size, total, list: list.map(entity => this.toResponse(entity)) }
+            return { page, size, total, list }
         })
     }
 
@@ -89,7 +89,7 @@ export class ChunkService {
 
     /** 查询枚举字典详情。 */
     public async httpBaseSkylineResolverChunk(query: ChunkDto.ChunkKeyDto): Promise<ChunkDto.ChunkResponseDto> {
-        return this.toResponse(await this.findRequired(query.keyId))
+        return this.findRequired(query.keyId)
     }
 
     /** 新增枚举字典项。 */
@@ -97,11 +97,9 @@ export class ChunkService {
         await this.assertModuleType(input.module, input.type)
         await this.assertParent(input.pid, input.module)
         await this.assertUnique(input.module, input.type, input.value)
-        const entity = this.repository.create({
-            ...input,
-            json: this.normalizeJson(input.json)
-        } as Schema.TbSkylineChunk)
-        return this.toResponse(await this.repository.save(entity))
+        // WithJsonColumn 会把 undefined 转成 NULL 写入，无法落到数据库 DEFAULT，未传 json 时显式写入空对象。
+        const entity = await this.repository.save(this.repository.create({ ...input, json: input.json ?? {} } as Schema.TbSkylineChunk))
+        return this.findRequired(entity.keyId)
     }
 
     /** 更新枚举字典项。 */
@@ -115,9 +113,8 @@ export class ChunkService {
         await this.assertParent(input.pid, module, input.keyId)
         await this.assertUnique(module, type, value, input.keyId)
         const { keyId, ...changes } = input
-        if ('json' in changes) changes.json = this.normalizeJson(changes.json)
         await this.repository.update(keyId, changes as never)
-        return this.toResponse(await this.findRequired(keyId))
+        return this.findRequired(keyId)
     }
 
     /** 硬删除枚举字典项；存在子项时必须先处理子项。 */
@@ -187,8 +184,7 @@ export class ChunkService {
 
     /** 把枚举实体转换为统一的下拉选项结构；description 取自扩展配置，缺省时回落为显示名称。 */
     private toOption(entity: Schema.TbSkylineChunk): SkylineChunkOption {
-        const json = this.normalizeJson(entity.json)
-        const description = json.description
+        const description = entity.json.description
         return {
             value: entity.value,
             label: entity.name,
@@ -196,23 +192,8 @@ export class ChunkService {
             keyId: entity.keyId,
             pid: entity.pid,
             sort: entity.sort,
-            json,
+            json: entity.json,
             children: []
-        }
-    }
-
-    /** 扩展配置缺省为空对象，并去掉职位迁移残留的 legacyKeyId。 */
-    private normalizeJson(json?: Record<string, unknown> | null): Record<string, unknown> {
-        const next = { ...(json ?? {}) }
-        delete next.legacyKeyId
-        return next
-    }
-
-    /** 对外返回时统一规范化 json，避免接口带出空值或迁移残留字段。 */
-    private toResponse(entity: Schema.TbSkylineChunk): ChunkDto.ChunkResponseDto {
-        return {
-            ...(entity as unknown as ChunkDto.ChunkResponseDto),
-            json: this.normalizeJson(entity.json)
         }
     }
 
