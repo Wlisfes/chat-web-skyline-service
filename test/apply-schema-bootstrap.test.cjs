@@ -4,6 +4,7 @@ const {
     createAdminConnectionOptions,
     createMigrationCredentials,
     createMigrationUser,
+    isIsolatedDatabaseAccount,
     dropMigrationUser
 } = require('../dist/cli/apply-schema-bootstrap')
 
@@ -49,4 +50,23 @@ test('只授权目标数据库并支持回收账号', async () => {
     assert.equal(calls[0], "CREATE USER 'skyline_mig_test'@'%' IDENTIFIED BY 'secret'")
     assert.equal(calls[1], "GRANT ALL PRIVILEGES ON `chat-web-skyline`.* TO 'skyline_mig_test'@'%'")
     assert.equal(calls[2], "DROP USER IF EXISTS 'skyline_mig_test'@'%'")
+})
+
+test('单库账号直接执行迁移，管理员账号需要创建临时账号', async () => {
+    const connectionOf = grants => ({
+        async query() {
+            return [grants.map(grant => ({ grant }))]
+        }
+    })
+    assert.equal(
+        await isIsolatedDatabaseAccount(
+            connectionOf([
+                'GRANT USAGE ON *.* TO `chat-web-skyline`@`%`',
+                'GRANT ALL PRIVILEGES ON `chat-web-skyline`.* TO `chat-web-skyline`@`%`'
+            ]),
+            'chat-web-skyline'
+        ),
+        true
+    )
+    assert.equal(await isIsolatedDatabaseAccount(connectionOf(['GRANT ALL PRIVILEGES ON *.* TO `root`@`%`']), 'chat-web-skyline'), false)
 })
