@@ -105,7 +105,7 @@ export class ChunkUtilsService {
     }
 
     /** 校验枚举分类（module + type）已在分类表中维护。 */
-    public async assertModuleType(module: Schema.TbSkylineChunkModule, type: string): Promise<void> {
+    public async assertModuleType(module: Schema.TbSkylineChunkModule, type: Schema.TbSkylineChunkModuleType): Promise<void> {
         const found = await this.moduleRepository.findOne({ where: { module, type } })
         if (!found) {
             throw new BadRequestException('枚举分类不存在')
@@ -139,7 +139,12 @@ export class ChunkUtilsService {
     }
 
     /** 同一模块、同一类型下的业务值必须唯一。 */
-    public async assertUnique(module: Schema.TbSkylineChunkModule, type: string, value: string, excludeKeyId?: number): Promise<void> {
+    public async assertUnique(
+        module: Schema.TbSkylineChunkModule,
+        type: Schema.TbSkylineChunkModuleType,
+        value: string,
+        excludeKeyId?: number
+    ): Promise<void> {
         const where: Record<string, unknown> = { module, type, value }
         if (isNotEmpty(excludeKeyId)) {
             where.keyId = Not(excludeKeyId)
