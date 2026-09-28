@@ -1,9 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { InjectRepository, DataBaseService, EntityManager, Repository } from '@wlisfes/chat-web-base-schema/database'
 import { DatetaskStatus } from '@/modules/datetask/datetask.constants'
+import { isEmpty, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
+import { ConfigService } from '@nestjs/config'
+import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
+import * as feign from '@wlisfes/chat-web-base-schema/feign'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 
-import { InjectRepository, DataBaseService, EntityManager, Repository } from '@wlisfes/chat-web-base-schema/database'
-import { isEmpty, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
 /** 系统任务的可读字段，避免控制器直接接触实体查询细节。 */
 export type DatetaskRecord = Schema.TbSkylineDatetaskSystem & {
     taskId: string
@@ -22,7 +25,9 @@ export type DatetaskRecord = Schema.TbSkylineDatetaskSystem & {
 export class DatetaskUtilsService {
     constructor(
         @InjectRepository(Schema.TbSkylineDatetaskSystem) private readonly repository: Repository<Schema.TbSkylineDatetaskSystem>,
-        private readonly database: DataBaseService
+        private readonly database: DataBaseService,
+        private readonly accountFeignClient: feign.FeignClientAccountManager,
+        private readonly configService: ConfigService
     ) {}
 
     /** 根据任务 ID 查找任务，不存在时抛出业务异常。 */
@@ -34,10 +39,14 @@ export class DatetaskUtilsService {
         const repository = manager?.getRepository(Schema.TbSkylineDatetaskSystem) ?? this.repository
         const task = await this.database.builder(repository, qb => {
             qb.where('t.taskId = :taskId', { taskId })
-            if (lock) qb.setLock('pessimistic_write')
+            if (lock) {
+                qb.setLock('pessimistic_write')
+            }
             return qb.getOne()
         })
-        if (!task) throw new NotFoundException('系统任务不存在')
+        if (!task) {
+            throw new NotFoundException('系统任务不存在')
+        }
         return task as DatetaskRecord
     }
 
@@ -92,7 +101,9 @@ export class DatetaskUtilsService {
                 for (const second of seconds) {
                     const result = new Date(minuteStart)
                     result.setSeconds(second, 0)
-                    if (result.getTime() >= candidate.getTime()) return result
+                    if (result.getTime() >= candidate.getTime()) {
+                        return result
+                    }
                 }
             }
             candidate.setTime(minuteStart.getTime() + 60_000)
@@ -100,9 +111,12 @@ export class DatetaskUtilsService {
         return undefined
     }
 
-    /** 将数据库任务转换为接口响应，保留共享实体字段。 */
-    public toResponse(task: Schema.TbSkylineDatetaskSystem): DatetaskRecord {
-        return { ...task } as DatetaskRecord
+    /** 通过 Account Feign 批量把任务的 createBy、modifyBy 还原为 createByOptions、modifyByOptions。 */
+    public async toResponse(list: Array<Schema.TbSkylineDatetaskSystem>): Promise<Array<DatetaskDto.DatetaskResponseDto>> {
+        return (await feign.appendAccountUserOptions(this.accountFeignClient, this.configService, list, [
+            'createBy',
+            'modifyBy'
+        ])) as Array<DatetaskDto.DatetaskResponseDto>
     }
 
     /** 判断任务是否允许由调度器注册。 */
@@ -111,15 +125,25 @@ export class DatetaskUtilsService {
     }
 
     private isCronField(field: string, minimum: number, maximum: number): boolean {
-        if (!field) return false
+        if (!field) {
+            return false
+        }
         return field.split(',').every(part => {
             const [range, stepText] = part.split('/')
-            if (part.split('/').length > 2) return false
+            if (part.split('/').length > 2) {
+                return false
+            }
             const step = stepText === undefined ? 1 : Number(stepText)
-            if (!Number.isInteger(step) || step < 1) return false
+            if (!Number.isInteger(step) || step < 1) {
+                return false
+            }
             const [startText, endText] = range.split('-')
-            if (range.split('-').length > 2) return false
-            if (startText === '*') return endText === undefined
+            if (range.split('-').length > 2) {
+                return false
+            }
+            if (startText === '*') {
+                return endText === undefined
+            }
             const start = Number(startText)
             const end = endText === undefined ? start : Number(endText)
             return Number.isInteger(start) && Number.isInteger(end) && start >= minimum && end <= maximum && start <= end
@@ -136,7 +160,9 @@ export class DatetaskUtilsService {
             // JavaScript 的 Date#getDay() 使用 0 表示星期日，而 Cron 同时允许 0 和 7。
             // 只在写入结果时归一化 7，不能把区间起点直接改成 0，否则单值 `7` 会被错误地扩展为 `0-7`。
             const normalized = maximum === 7 && value === 7 ? 0 : value
-            if (normalized >= minimum && normalized <= maximum) values.add(normalized)
+            if (normalized >= minimum && normalized <= maximum) {
+                values.add(normalized)
+            }
         }
         for (const part of field.split(',')) {
             const [range, stepText] = part.split('/')
@@ -160,7 +186,9 @@ export class DatetaskUtilsService {
         const dayOfWeekWildcard = dayOfWeekField === '*'
         const dayOfMonthMatches = this.matchesCronField(dayOfMonthField, dayOfMonth, 1, 31)
         const dayOfWeekMatches = this.matchesCronField(dayOfWeekField, dayOfWeek, 0, 7)
-        if (!dayOfMonthWildcard && !dayOfWeekWildcard) return dayOfMonthMatches || dayOfWeekMatches
+        if (!dayOfMonthWildcard && !dayOfWeekWildcard) {
+            return dayOfMonthMatches || dayOfWeekMatches
+        }
         return dayOfMonthMatches && dayOfWeekMatches
     }
 }

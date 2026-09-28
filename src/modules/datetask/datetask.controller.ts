@@ -1,4 +1,6 @@
 import { Body, Get, Post, Query } from '@nestjs/common'
+import { CurrentPrincipal } from '@wlisfes/chat-web-base-schema/auth'
+import { type AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
 import { ApiServiceDecorator, ApifoxController } from '@wlisfes/chat-web-base-schema/decorator'
 import { DatetaskService } from '@/modules/datetask/datetask.service'
 import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
@@ -44,9 +46,10 @@ export class DatetaskController {
         bearerAuth: true
     })
     public async httpBaseSkylineUpdateDatetaskStatus(
+        @CurrentPrincipal() principal: AuthPrincipal,
         @Body() input: DatetaskDto.UpdateDatetaskStatusDto
     ): Promise<DatetaskDto.DatetaskResponseDto> {
-        return this.datetaskService.httpBaseSkylineUpdateDatetaskStatus(input)
+        return this.datetaskService.httpBaseSkylineUpdateDatetaskStatus(principal, input)
     }
 
     @ApiServiceDecorator(Post('cron/update'), {
@@ -56,9 +59,10 @@ export class DatetaskController {
         bearerAuth: true
     })
     public async httpBaseSkylineUpdateDatetaskCron(
+        @CurrentPrincipal() principal: AuthPrincipal,
         @Body() input: DatetaskDto.UpdateDatetaskCronDto
     ): Promise<DatetaskDto.DatetaskResponseDto> {
-        return this.datetaskService.httpBaseSkylineUpdateDatetaskCron(input)
+        return this.datetaskService.httpBaseSkylineUpdateDatetaskCron(principal, input)
     }
 
     @ApiServiceDecorator(Post('trigger'), {
@@ -68,9 +72,10 @@ export class DatetaskController {
         bearerAuth: true
     })
     public async httpBaseSkylineTriggerDatetask(
+        @CurrentPrincipal() principal: AuthPrincipal,
         @Body() input: DatetaskDto.TriggerDatetaskDto
     ): Promise<DatetaskDto.TriggerDatetaskResponseDto> {
-        return this.datetaskService.httpBaseSkylineTriggerDatetask(input)
+        return this.datetaskService.httpBaseSkylineTriggerDatetask(principal, input)
     }
 
     @ApiServiceDecorator(Post('log/column'), {

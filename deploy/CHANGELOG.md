@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-09-28：定时任务记录操作人与执行触发方式
+
+- 影响机器：`chat-home-server`。
+- 关联版本：`@wlisfes/chat-web-base-schema@1.6.65`。
+- 变更内容：`tb_skyline_datetask_system` 新增 `create_by`、`modify_by`；`tb_skyline_datetask_log` 新增 `trigger_type`、`create_by`、`modify_by`。启用/停用、修改 Cron 记录修改人，手动触发记录为 `manual` 并写入触发人，任务列表与执行日志通过 Account Feign 还原操作人。
+- 机器侧操作：部署脚本启动前执行 `apply-schema-bootstrap`，自动应用 `20260928180000`、`20260928190000` 两个增量 SQL；测试库已提前执行。
+- 验证命令：Gateway `GET /api/skyline/health` 返回 `status=UP`；`/api/skyline/deploy/datetask/column` 返回 `modifyByOptions`。
+- 回滚方法：增量 DDL 不随镜像回滚，新列均有默认值，旧镜像可直接运行；如需删除列，执行 SQL 文件头部的反向 DDL。
+
 ## 2026-09-18：单测改回 Account 的 test/<module>.test.cjs 规则
 
 - 影响机器：无运行时端口、Nacos 或数据库变更。

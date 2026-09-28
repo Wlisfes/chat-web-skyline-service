@@ -48,7 +48,20 @@ function createUtilsService() {
             return callback(queryBuilder)
         }
     }
-    return { service: new DatetaskUtilsService({}, database), database, queryBuilder }
+    const accountFeignClient = {
+        calls: [],
+        async httpBaseAccountColumnUserResolver(authorization, body) {
+            this.calls.push({ authorization, body })
+            return body.uids.map(uid => ({ uid, number: uid, name: '用户' + uid }))
+        }
+    }
+    const configService = { get: () => 'service-token' }
+    return {
+        service: new DatetaskUtilsService({}, database, accountFeignClient, configService),
+        database,
+        queryBuilder,
+        accountFeignClient
+    }
 }
 test('应规范五段和六段 Cron 表达式', () => {
     const { service } = createUtilsService()
@@ -106,7 +119,15 @@ function createLogRepository() {
 }
 function createLogService() {
     const repository = createLogRepository()
-    return { service: new DatetaskLogService(repository), repository }
+    const accountFeignClient = {
+        calls: [],
+        async httpBaseAccountColumnUserResolver(authorization, body) {
+            this.calls.push({ authorization, body })
+            return body.uids.map(uid => ({ uid, number: uid, name: '用户' + uid }))
+        }
+    }
+    const configService = { get: () => 'service-token' }
+    return { service: new DatetaskLogService(repository, accountFeignClient, configService), repository, accountFeignClient }
 }
 test('应按开始时间倒序分页并按状态过滤执行日志', async () => {
     const { service } = createLogService()
@@ -131,10 +152,10 @@ test('应按开始时间倒序分页并按状态过滤执行日志', async () =>
         true
     )
     assert.equal(
-        page.list.every(item => typeof item.keyId === 'string'),
+        page.list.every(item => typeof item.executionId === 'string'),
         true
     )
-    assert.equal(new Set(page.list.map(item => item.keyId)).size, page.list.length)
+    assert.equal(new Set(page.list.map(item => item.executionId)).size, page.list.length)
     assert.equal(page.list[0].duration, 184)
 })
 test('完成日志应更新同一执行记录，占位缺失时补写完整记录', async () => {
@@ -143,7 +164,7 @@ test('完成日志应更新同一执行记录，占位缺失时补写完整记�
     const startTime = new Date('2026-09-02T00:00:00.000Z')
     await service.appendRunning(executionId, 'task-2', startTime, '任务二')
     const running = await service.list({ taskId: 'task-2', page: 1, size: 10 })
-    assert.equal(running.list[0].keyId, executionId)
+    assert.equal(running.list[0].executionId, executionId)
     assert.equal(running.list[0].status, DatetaskLogStatus.RUNNING)
     const record = {
         taskId: 'task-2',
@@ -157,7 +178,7 @@ test('完成日志应更新同一执行记录，占位缺失时补写完整记�
     await service.complete(executionId, record)
     const completed = await service.list({ taskId: 'task-2', page: 1, size: 10 })
     assert.equal(completed.total, 1)
-    assert.equal(completed.list[0].keyId, executionId)
+    assert.equal(completed.list[0].executionId, executionId)
     assert.equal(completed.list[0].status, DatetaskLogStatus.SUCCESS)
     assert.equal(completed.list[0].duration, 120)
     await service.complete('missing-execution', record)
@@ -247,7 +268,7 @@ function createExecutor(currentTask) {
             return currentTask
         }
     }
-    const logs = new DatetaskLogService(createLogRepository())
+    const logs = new DatetaskLogService(createLogRepository(), {}, { get: () => 'service-token' })
     const currency = {
         executeCalls: 0,
         pending: undefined,
@@ -400,8 +421,8 @@ function createDatetaskService() {
         async findRequired() {
             return this.current
         },
-        toResponse(task) {
-            return { ...task, response: true }
+        async toResponse(list) {
+            return list.map(task => ({ ...task, response: true }))
         },
         normalizeCron(value) {
             this.normalizeCalls.push(value)
@@ -423,8 +444,10 @@ function createDatetaskService() {
     }
     const executor = {
         ids: [],
-        async execute(id) {
+        triggers: [],
+        async execute(id, trigger) {
             this.ids.push(id)
+            this.triggers.push(trigger)
             return { count: 30 }
         }
     }
@@ -456,6 +479,10 @@ test('应返回系统任务静态枚举', async () => {
     assert.deepEqual(
         result.logStatusOptions.map(item => item.value),
         ['running', 'success', 'failed']
+    )
+    assert.deepEqual(
+        result.triggerTypeOptions.map(item => item.value),
+        ['system', 'manual']
     )
 })
 
@@ -493,24 +520,35 @@ test('应使用统一 QueryBuilder 返回任务分页数据', async () => {
 test('非法任务状态应拒绝更新', async () => {
     const { service, repository } = createDatetaskService()
     await assert.rejects(
-        () => service.httpBaseSkylineUpdateDatetaskStatus({ taskId: '2149446185344106496', status: TbSkylineDatetaskSystemStatus.FINISH }),
+        () =>
+            service.httpBaseSkylineUpdateDatetaskStatus(
+                { uid: '1001' },
+                { taskId: '2149446185344106496', status: TbSkylineDatetaskSystemStatus.FINISH }
+            ),
         BadRequestException
     )
     assert.equal(repository.transactionCalls, 0)
 })
 test('启停任务应在事务后同步调度器', async () => {
     const { service, manager, scheduler } = createDatetaskService()
-    await service.httpBaseSkylineUpdateDatetaskStatus({ taskId: '2149446185344106496', status: DatetaskManageStatus.STOP })
-    assert.deepEqual(manager.updates[0].values, { status: DatetaskStatus.STOP })
+    await service.httpBaseSkylineUpdateDatetaskStatus({ uid: '1001' }, { taskId: '2149446185344106496', status: DatetaskManageStatus.STOP })
+    assert.deepEqual(manager.updates[0].values, { status: DatetaskStatus.STOP, modifyBy: '1001' })
     assert.deepEqual(scheduler.unschedules, ['2149446185344106496'])
-    await service.httpBaseSkylineUpdateDatetaskStatus({ taskId: '2149446185344106496', status: DatetaskManageStatus.RUNNING })
+    await service.httpBaseSkylineUpdateDatetaskStatus(
+        { uid: '1001' },
+        { taskId: '2149446185344106496', status: DatetaskManageStatus.RUNNING }
+    )
     assert.deepEqual(scheduler.schedules, ['2149446185344106496'])
 })
 test('已完成任务不可通过状态接口修改', async () => {
     const { service, manager, scheduler, utils, repository } = createDatetaskService()
     utils.current = { ...utils.current, status: TbSkylineDatetaskSystemStatus.FINISH }
     await assert.rejects(
-        () => service.httpBaseSkylineUpdateDatetaskStatus({ taskId: '2149446185344106496', status: DatetaskManageStatus.STOP }),
+        () =>
+            service.httpBaseSkylineUpdateDatetaskStatus(
+                { uid: '1001' },
+                { taskId: '2149446185344106496', status: DatetaskManageStatus.STOP }
+            ),
         /已完成任务不可修改/
     )
     assert.equal(manager.updates.length, 0)
@@ -521,7 +559,7 @@ test('已完成任务不可通过 Cron 接口修改', async () => {
     const { service, manager, scheduler, utils } = createDatetaskService()
     utils.current = { ...utils.current, status: TbSkylineDatetaskSystemStatus.FINISH }
     await assert.rejects(
-        () => service.httpBaseSkylineUpdateDatetaskCron({ taskId: '2149446185344106496', cron: '0 1 8 * * *' }),
+        () => service.httpBaseSkylineUpdateDatetaskCron({ uid: '1001' }, { taskId: '2149446185344106496', cron: '0 1 8 * * *' }),
         /已完成任务不可修改/
     )
     assert.equal(manager.updates.length, 0)
@@ -529,15 +567,16 @@ test('已完成任务不可通过 Cron 接口修改', async () => {
 })
 test('修改 Cron、手动触发和日志查询应委托对应组件', async () => {
     const { service, manager, scheduler, executor, logs, utils } = createDatetaskService()
-    await service.httpBaseSkylineUpdateDatetaskCron({ taskId: '2149446185344106496', cron: '0 1 8 * * *' })
+    await service.httpBaseSkylineUpdateDatetaskCron({ uid: '1001' }, { taskId: '2149446185344106496', cron: '0 1 8 * * *' })
     assert.deepEqual(utils.normalizeCalls, ['0 1 8 * * *'])
-    assert.deepEqual(manager.updates[0].values, { cron: '0 1 8 * * *' })
+    assert.deepEqual(manager.updates[0].values, { cron: '0 1 8 * * *', modifyBy: '1001' })
     assert.deepEqual(scheduler.schedules, ['2149446185344106496'])
-    assert.deepEqual(await service.httpBaseSkylineTriggerDatetask({ taskId: '2149446185344106496' }), {
+    assert.deepEqual(await service.httpBaseSkylineTriggerDatetask({ uid: '1001' }, { taskId: '2149446185344106496' }), {
         success: true,
         result: { count: 30 }
     })
     assert.deepEqual(executor.ids, ['2149446185344106496'])
+    assert.deepEqual(executor.triggers, [{ triggerType: 'manual', uid: '1001' }])
     const input = { taskId: '2149446185344106496', page: 1, size: 10, status: DatetaskLogStatus.SUCCESS }
     assert.deepEqual(await service.httpBaseSkylineColumnDatetaskLog(input), { page: 1, size: 10, total: 0, list: [] })
     assert.deepEqual(logs.inputs, [input])
@@ -837,4 +876,39 @@ test('停用任务后不应执行旧的数据库重试', async t => {
     } finally {
         destroyScheduler(service)
     }
+})
+
+test('执行日志默认记录为系统执行，手动触发记录触发人并还原姓名', async () => {
+    const { service, repository, accountFeignClient } = createLogService()
+    const startTime = new Date('2026-09-28T00:00:00.000Z')
+    await service.appendRunning(service.createExecutionId('task-3'), 'task-3', startTime, '任务三')
+    await service.appendRunning(service.createExecutionId('task-3'), 'task-3', new Date(startTime.getTime() + 1000), '任务三', {
+        triggerType: 'manual',
+        uid: '1001'
+    })
+    assert.deepEqual(
+        repository.rows.map(row => [row.triggerType, row.createBy, row.modifyBy]),
+        [
+            ['system', '0', '0'],
+            ['manual', '1001', '1001']
+        ]
+    )
+    const page = await service.list({ taskId: 'task-3', page: 1, size: 10 })
+    assert.deepEqual(accountFeignClient.calls, [{ authorization: 'Bearer service-token', body: { uids: ['1001'] } }])
+    assert.equal(page.list[0].triggerType, 'manual')
+    assert.deepEqual(page.list[0].createByOptions, { uid: '1001', number: '1001', name: '用户1001' })
+    assert.equal(page.list[1].triggerType, 'system')
+    assert.deepEqual(page.list[1].createByOptions, { uid: '0', name: '系统' })
+})
+
+test('任务列表通过 Account Feign 还原创建人和更新人', async () => {
+    const { service, accountFeignClient } = createUtilsService()
+    const list = await service.toResponse([
+        { taskId: '1', createBy: '0', modifyBy: '1001' },
+        { taskId: '2', createBy: '0', modifyBy: null }
+    ])
+    assert.deepEqual(accountFeignClient.calls, [{ authorization: 'Bearer service-token', body: { uids: ['1001'] } }])
+    assert.deepEqual(list[0].createByOptions, { uid: '0', name: '系统' })
+    assert.deepEqual(list[0].modifyByOptions, { uid: '1001', number: '1001', name: '用户1001' })
+    assert.equal(list[1].modifyByOptions, undefined)
 })
