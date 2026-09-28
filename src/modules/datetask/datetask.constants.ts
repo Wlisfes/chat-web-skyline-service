@@ -3,7 +3,9 @@ import {
     TbSkylineDatetaskSystemType as DatetaskType,
     TbSkylineDatetaskSystemStatusDefinition,
     TbSkylineDatetaskLogStatus as DatetaskLogStatus,
-    TbSkylineDatetaskLogStatusDefinition as DatetaskLogStatusDefinition
+    TbSkylineDatetaskLogStatusDefinition as DatetaskLogStatusDefinition,
+    TbSkylineDatetaskLogTrigger as DatetaskLogTrigger,
+    TbSkylineDatetaskLogTriggerDefinition as DatetaskLogTriggerDefinition
 } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
 
 /** 系统任务的稳定标识。使用 19 位数字字符串兼容历史任务表约定。 */
@@ -20,6 +22,9 @@ export { DatetaskStatus, DatetaskType }
 
 /** 任务执行日志状态，复用共享 Skyline Schema 中的日志表定义。 */
 export { DatetaskLogStatus, DatetaskLogStatusDefinition }
+
+/** 任务执行触发方式，复用共享 Skyline Schema 中的日志表定义。 */
+export { DatetaskLogTrigger, DatetaskLogTriggerDefinition }
 
 /** 系统任务允许通过管理接口修改的状态。 */
 export enum DatetaskManageStatus {

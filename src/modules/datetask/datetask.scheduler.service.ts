@@ -27,7 +27,9 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
         this.refreshVersion += 1
         for (const timer of this.timers.values()) clearTimeout(timer)
         this.timers.clear()
-        if (this.refreshRetryTimer) clearTimeout(this.refreshRetryTimer)
+        if (this.refreshRetryTimer) {
+            clearTimeout(this.refreshRetryTimer)
+        }
         this.refreshRetryTimer = undefined
         this.generations.clear()
     }
@@ -45,18 +47,26 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
             tasks = await this.repository.find({ where: { status: In([DatetaskStatus.RUNNING, DatetaskStatus.WAIT]) } })
         } catch (error) {
             this.logger.error(`加载系统任务失败：${this.errorMessage(error)}`, undefined, DatetaskSchedulerService.name)
-            if (strict) throw error
-            if (version === this.refreshVersion) this.scheduleRefreshRetry()
+            if (strict) {
+                throw error
+            }
+            if (version === this.refreshVersion) {
+                this.scheduleRefreshRetry()
+            }
             return
         }
 
         // 只在读取成功且仍是最新刷新请求时替换调度；读取失败或过期结果都不能清空现有任务。
-        if (version !== this.refreshVersion) return
+        if (version !== this.refreshVersion) {
+            return
+        }
         this.clearTaskTimers()
         this.clearRefreshRetry()
 
         for (const task of tasks) {
-            if (this.datetaskUtilsService.isSchedulable(task)) this.schedule(task.taskId)
+            if (this.datetaskUtilsService.isSchedulable(task)) {
+                this.schedule(task.taskId)
+            }
         }
         this.logger.log(`系统任务调度器已加载 ${tasks.length} 条任务`, DatetaskSchedulerService.name)
     }
@@ -66,7 +76,9 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
         // 使正在读取列表的旧 refresh 结果失效，避免覆盖刚刚由业务更新的单任务调度。
         this.refreshVersion += 1
         const previous = this.timers.get(taskId)
-        if (previous) clearTimeout(previous)
+        if (previous) {
+            clearTimeout(previous)
+        }
         this.timers.delete(taskId)
         const generation = this.bumpGeneration(taskId)
         void this.scheduleNext(taskId, generation).catch(error => {
@@ -80,13 +92,17 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
         // 使正在读取列表的旧 refresh 结果失效，避免停用任务被旧快照重新注册。
         this.refreshVersion += 1
         const timer = this.timers.get(taskId)
-        if (timer) clearTimeout(timer)
+        if (timer) {
+            clearTimeout(timer)
+        }
         this.timers.delete(taskId)
         this.bumpGeneration(taskId)
     }
 
     private async scheduleNext(taskId: string, generation: number): Promise<void> {
-        if (!this.isCurrentGeneration(taskId, generation)) return
+        if (!this.isCurrentGeneration(taskId, generation)) {
+            return
+        }
         let task: Schema.TbSkylineDatetaskSystem
         try {
             task = await this.repository.findOne({ where: { taskId } })
@@ -95,8 +111,12 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
             this.scheduleRetry(taskId, generation)
             return
         }
-        if (!this.isCurrentGeneration(taskId, generation)) return
-        if (!task || !this.datetaskUtilsService.isSchedulable(task)) return
+        if (!this.isCurrentGeneration(taskId, generation)) {
+            return
+        }
+        if (!task || !this.datetaskUtilsService.isSchedulable(task)) {
+            return
+        }
 
         let next: Date | undefined
         try {
@@ -117,9 +137,13 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
         await this.repository.update({ taskId }, { nextTime: next } as never).catch(error => {
             this.logger.warn(`更新任务 ${taskId} 下次执行时间失败：${this.errorMessage(error)}`, DatetaskSchedulerService.name)
         })
-        if (!this.isCurrentGeneration(taskId, generation)) return
+        if (!this.isCurrentGeneration(taskId, generation)) {
+            return
+        }
         const timer = setTimeout(() => {
-            if (!this.isCurrentGeneration(taskId, generation) || this.timers.get(taskId) !== timer) return
+            if (!this.isCurrentGeneration(taskId, generation) || this.timers.get(taskId) !== timer) {
+                return
+            }
             this.timers.delete(taskId)
             if (requiresRecalculation) {
                 // Node.js 无法安全等待超过约 24.8 天；检查定时器到期后重新计算，绝不能提前执行任务。
@@ -170,15 +194,21 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
 
     /** 清理系统任务列表刷新重试定时器。 */
     private clearRefreshRetry(): void {
-        if (this.refreshRetryTimer) clearTimeout(this.refreshRetryTimer)
+        if (this.refreshRetryTimer) {
+            clearTimeout(this.refreshRetryTimer)
+        }
         this.refreshRetryTimer = undefined
     }
 
     /** 数据库恢复后自动重新读取任务列表，避免调度器永久停留在旧状态。 */
     private scheduleRefreshRetry(): void {
-        if (this.refreshRetryTimer) return
+        if (this.refreshRetryTimer) {
+            return
+        }
         const timer = setTimeout(() => {
-            if (this.refreshRetryTimer !== timer) return
+            if (this.refreshRetryTimer !== timer) {
+                return
+            }
             this.refreshRetryTimer = undefined
             void this.refresh(false).catch(error => {
                 // refresh(false) 通常会自行处理读取异常；这里兜底处理替换阶段的异常，确保仍会重试。
@@ -194,9 +224,13 @@ export class DatetaskSchedulerService implements OnModuleDestroy {
      * 通过 generation 和 timer 身份双重校验，停用或重新配置任务后旧重试不会复活。
      */
     private scheduleRetry(taskId: string, generation: number): void {
-        if (!this.isCurrentGeneration(taskId, generation) || this.timers.has(taskId)) return
+        if (!this.isCurrentGeneration(taskId, generation) || this.timers.has(taskId)) {
+            return
+        }
         const timer = setTimeout(() => {
-            if (!this.isCurrentGeneration(taskId, generation) || this.timers.get(taskId) !== timer) return
+            if (!this.isCurrentGeneration(taskId, generation) || this.timers.get(taskId) !== timer) {
+                return
+            }
             this.timers.delete(taskId)
             void this.scheduleNext(taskId, generation).catch(error => {
                 this.logger.error(`任务 ${taskId} 重试调度失败：${this.errorMessage(error)}`, undefined, DatetaskSchedulerService.name)

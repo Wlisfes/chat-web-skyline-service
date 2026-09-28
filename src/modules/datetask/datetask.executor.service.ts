@@ -1,12 +1,13 @@
 import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { CURRENCY_EXCHANGE_TASK_HANDLER, DatetaskLogStatus, DatetaskStatus } from '@/modules/datetask/datetask.constants'
+import { InjectDataSource, DataSource, EntityManager, QueryRunner } from '@wlisfes/chat-web-base-schema/database'
+import { DATETASK_SYSTEM_TRIGGER, DatetaskLogCompleteInput } from '@/modules/datetask/datetask.log.service'
+import { DatetaskLogService, DatetaskTriggerContext } from '@/modules/datetask/datetask.log.service'
 import { CurrencyExchangeTaskService } from '@/modules/datetask/currency-exchange-task.service'
-import { DatetaskLogCompleteInput, DatetaskLogService } from '@/modules/datetask/datetask.log.service'
 import { DatetaskRecord, DatetaskUtilsService } from '@/modules/datetask/datetask.utils.service'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
 
-import { InjectDataSource, DataSource, EntityManager, QueryRunner } from '@wlisfes/chat-web-base-schema/database'
 interface DistributedLock {
     queryRunner: QueryRunner
     name: string
@@ -25,8 +26,11 @@ export class DatetaskExecutorService {
         private readonly logger: Logger
     ) {}
 
-    /** 执行一次任务；同一进程内同一任务不会并发执行。 */
-    public async execute(taskId: string): Promise<DatetaskDto.DatetaskExecutionResultDto> {
+    /** 执行一次任务；同一进程内同一任务不会并发执行。未传触发上下文时按系统调度执行记录。 */
+    public async execute(
+        taskId: string,
+        trigger: DatetaskTriggerContext = DATETASK_SYSTEM_TRIGGER
+    ): Promise<DatetaskDto.DatetaskExecutionResultDto> {
         if (this.running.has(taskId)) {
             this.logger.warn(`任务正在执行，跳过本次触发：${taskId}`, DatetaskExecutorService.name)
             return { skipped: true, reason: '任务正在执行' }
@@ -37,7 +41,9 @@ export class DatetaskExecutorService {
         let task: DatetaskRecord | undefined
         try {
             distributedLock = await this.acquireDistributedLock(taskId)
-            if (!distributedLock) return { skipped: true, reason: '任务正在其他实例执行' }
+            if (!distributedLock) {
+                return { skipped: true, reason: '任务正在其他实例执行' }
+            }
 
             // GET_LOCK 已在当前 MySQL 会话提供互斥；此处没有开启事务，禁止再请求事务级悲观锁。
             task = await this.datetaskUtilsService.findRequired(taskId, distributedLock.queryRunner.manager, false)
@@ -53,7 +59,7 @@ export class DatetaskExecutorService {
 
             const startedAt = new Date()
             const executionId = this.datetaskLogService.createExecutionId(taskId)
-            await this.appendRunningLogSafely(executionId, taskId, startedAt, task.taskName)
+            await this.appendRunningLogSafely(executionId, taskId, startedAt, task.taskName, trigger)
             try {
                 const result = await this.executeHandler(task)
                 const endedAt = new Date()
@@ -65,7 +71,8 @@ export class DatetaskExecutorService {
                     startTime: startedAt,
                     endTime: endedAt,
                     result,
-                    taskName: task.taskName
+                    taskName: task.taskName,
+                    trigger
                 }
                 await this.completeLogSafely(executionId, record)
                 return result
@@ -80,7 +87,8 @@ export class DatetaskExecutorService {
                     startTime: startedAt,
                     endTime: endedAt,
                     result: { message },
-                    taskName: task.taskName
+                    taskName: task.taskName,
+                    trigger
                 }
                 await this.completeLogSafely(executionId, record)
                 this.logger.error(
@@ -114,7 +122,9 @@ export class DatetaskExecutorService {
         const name = `chat-web-skyline:datetask:${taskId}`
         let released = false
         const releaseQueryRunner = async (): Promise<void> => {
-            if (released) return
+            if (released) {
+                return
+            }
             released = true
             await queryRunner.release().catch(() => undefined)
         }
@@ -124,7 +134,9 @@ export class DatetaskExecutorService {
                 acquired?: number | string | null
             }>
             const acquired = rows?.[0]?.acquired
-            if (acquired === 1 || acquired === '1') return { queryRunner, name }
+            if (acquired === 1 || acquired === '1') {
+                return { queryRunner, name }
+            }
             if (acquired === 0 || acquired === '0') {
                 await releaseQueryRunner()
                 return undefined
@@ -141,7 +153,9 @@ export class DatetaskExecutorService {
 
     /** 释放 MySQL 会话级锁；释放失败不能覆盖任务执行结果。 */
     private async releaseDistributedLock(lock?: DistributedLock): Promise<void> {
-        if (!lock) return
+        if (!lock) {
+            return
+        }
         try {
             await lock.queryRunner.query('SELECT RELEASE_LOCK(?)', [lock.name])
         } catch (error) {
@@ -166,9 +180,15 @@ export class DatetaskExecutorService {
     }
 
     /** 写入执行中日志；日志表异常不影响任务本身执行。 */
-    private async appendRunningLogSafely(executionId: string, taskId: string, startedAt: Date, taskName?: string): Promise<void> {
+    private async appendRunningLogSafely(
+        executionId: string,
+        taskId: string,
+        startedAt: Date,
+        taskName: string | undefined,
+        trigger: DatetaskTriggerContext
+    ): Promise<void> {
         try {
-            await this.datetaskLogService.appendRunning(executionId, taskId, startedAt, taskName)
+            await this.datetaskLogService.appendRunning(executionId, taskId, startedAt, taskName, trigger)
         } catch (error) {
             this.logger.warn(`写入系统任务执行中日志失败：任务ID=${taskId}，原因=${this.errorMessage(error)}`, DatetaskExecutorService.name)
         }

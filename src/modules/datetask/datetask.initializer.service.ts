@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { SYSTEM_TASK_DEFINITIONS } from '@/modules/datetask/datetask.constants'
 import { DatetaskSchedulerService } from '@/modules/datetask/datetask.scheduler.service'
 import * as Schema from '@wlisfes/chat-web-base-schema'
+import * as feign from '@wlisfes/chat-web-base-schema/feign'
 
 import { InjectRepository, Repository } from '@wlisfes/chat-web-base-schema/database'
 /** 幂等写入系统内置任务定义；页面不提供新增和删除入口。 */
@@ -27,16 +28,27 @@ export class DatetaskInitializerService implements OnModuleInit {
                     .createQueryBuilder()
                     .insert()
                     .into(Schema.TbSkylineDatetaskSystem)
-                    .values(this.repository.create(definition as never))
+                    .values(
+                        // 内置任务由系统初始化，创建人、更新人统一记为系统账号。
+                        this.repository.create({
+                            ...definition,
+                            createBy: feign.ACCOUNT_SYSTEM_UID,
+                            modifyBy: feign.ACCOUNT_SYSTEM_UID
+                        } as never)
+                    )
                     .execute()
                 if (result.identifiers.length > 0) {
                     this.logger.log(`已初始化系统任务：${definition.taskName}（${definition.taskId}）`, DatetaskInitializerService.name)
                 }
             } catch (error) {
                 // 多实例同时启动时允许另一实例先插入同一 taskId；其他数据库错误必须继续抛出。
-                if (!this.isDuplicateKeyError(error)) throw error
+                if (!this.isDuplicateKeyError(error)) {
+                    throw error
+                }
                 const concurrent = await this.repository.findOne({ where: { taskId: definition.taskId } })
-                if (!concurrent) throw error
+                if (!concurrent) {
+                    throw error
+                }
             }
         }
         await this.datetaskSchedulerService.refresh(true)
@@ -62,14 +74,17 @@ export class DatetaskInitializerService implements OnModuleInit {
             handler: definition.handler,
             comment: definition.comment,
             type: definition.type,
-            body
+            body,
+            modifyBy: feign.ACCOUNT_SYSTEM_UID
         })
         await this.repository.save(existing)
         this.logger.log(`已同步系统任务定义：${definition.taskName}（${definition.taskId}）`, DatetaskInitializerService.name)
     }
 
     private isDuplicateKeyError(error: unknown): boolean {
-        if (!error || typeof error !== 'object') return false
+        if (!error || typeof error !== 'object') {
+            return false
+        }
         const value = error as {
             code?: unknown
             errno?: unknown

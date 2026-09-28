@@ -2,14 +2,9 @@ import { ApiProperty, ApiPropertyOptional, IntersectionType, PartialType, PickTy
 import { Type } from 'class-transformer'
 import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator'
 import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
-import {
-    DATETASK_MANAGE_STATUS_OPTIONS,
-    DatetaskLogStatus,
-    DatetaskLogStatusDefinition,
-    DatetaskManageStatus,
-    DatetaskStatus
-} from '@/modules/datetask/datetask.constants'
+import * as DatetaskConstants from '@/modules/datetask/datetask.constants'
 import * as Schema from '@wlisfes/chat-web-base-schema'
+import * as feign from '@wlisfes/chat-web-base-schema/feign'
 
 import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 /** 系统任务分页查询参数；任务类型必填，用于区分系统、周期和手动任务列表。 */
@@ -33,9 +28,13 @@ export class ResolveDatetaskDto extends DatetaskKeyDto {}
 
 /** 更新系统任务状态参数；管理端只能在启用和停用之间切换。 */
 export class UpdateDatetaskStatusDto extends DatetaskKeyDto {
-    @ApiProperty({ description: '任务状态', enum: DatetaskManageStatus, example: DatetaskManageStatus.RUNNING })
-    @IsEnum(DatetaskManageStatus, { message: '任务状态格式错误' })
-    status: DatetaskManageStatus
+    @ApiProperty({
+        description: '任务状态',
+        enum: DatetaskConstants.DatetaskManageStatus,
+        example: DatetaskConstants.DatetaskManageStatus.RUNNING
+    })
+    @IsEnum(DatetaskConstants.DatetaskManageStatus, { message: '任务状态格式错误' })
+    status: DatetaskConstants.DatetaskManageStatus
 }
 
 /** 更新系统任务 Cron 参数。 */
@@ -52,10 +51,14 @@ export class TriggerDatetaskDto extends DatetaskKeyDto {}
 
 /** 系统任务执行日志分页查询参数。 */
 export class ListDatetaskLogDto extends IntersectionType(PageDto, DatetaskKeyDto) {
-    @ApiPropertyOptional({ description: '执行状态', enum: DatetaskLogStatus, example: DatetaskLogStatus.SUCCESS })
+    @ApiPropertyOptional({
+        description: '执行状态',
+        enum: DatetaskConstants.DatetaskLogStatus,
+        example: DatetaskConstants.DatetaskLogStatus.SUCCESS
+    })
     @IsOptional()
-    @IsEnum(DatetaskLogStatus, { message: '执行状态格式错误' })
-    status?: DatetaskLogStatus
+    @IsEnum(DatetaskConstants.DatetaskLogStatus, { message: '执行状态格式错误' })
+    status?: DatetaskConstants.DatetaskLogStatus
 }
 
 /** 汇率同步任务响应数据。 */
@@ -105,31 +108,19 @@ export class DatetaskExecutionResultDto {
 }
 
 /** 任务执行日志返回项。 */
-export class DatetaskLogResponseDto {
-    @ApiProperty({ description: '执行记录唯一标识，用于列表行标识', example: '2149446185344106496:1756771200000:1' })
-    keyId: string
-
-    @ApiProperty({ description: '任务ID', example: '2149446185344106496' })
-    taskId: string
-
-    @ApiProperty({ description: '执行状态', enum: DatetaskLogStatus, example: DatetaskLogStatus.SUCCESS })
-    status: DatetaskLogStatus
-
-    @ApiProperty({ description: '耗时（毫秒）', example: 1250 })
-    duration: number
-
-    @ApiProperty({ description: '开始时间', example: '2026-09-02 08:00:00.000' })
-    startTime: string
-
-    @ApiProperty({ description: '结束时间', example: '2026-09-02 08:00:01.250' })
-    endTime?: string
-
-    @ApiPropertyOptional({ description: '执行结果或错误信息', type: DatetaskExecutionResultDto })
-    result?: DatetaskExecutionResultDto
+export class DatetaskLogResponseDto extends Schema.TbSkylineDatetaskLogDto {
+    @ApiPropertyOptional({ description: '触发人选项，通过 Account Feign 按 createBy 还原', type: feign.AccountUserOptionResponseDto })
+    createByOptions?: feign.AccountUserOptionResponseDto
 }
 
 /** 系统任务详情响应。 */
-export class DatetaskResponseDto extends Schema.TbSkylineDatetaskSystemDto {}
+export class DatetaskResponseDto extends Schema.TbSkylineDatetaskSystemDto {
+    @ApiPropertyOptional({ description: '创建人选项，通过 Account Feign 按 createBy 还原', type: feign.AccountUserOptionResponseDto })
+    createByOptions?: feign.AccountUserOptionResponseDto
+
+    @ApiPropertyOptional({ description: '更新人选项，通过 Account Feign 按 modifyBy 还原', type: feign.AccountUserOptionResponseDto })
+    modifyByOptions?: feign.AccountUserOptionResponseDto
+}
 
 /** 系统任务分页响应。 */
 export class DatetaskPageResponseDto extends PageResponseDataDto {
@@ -156,6 +147,7 @@ export class TriggerDatetaskResponseDto {
 export class DatetaskEnumsResponseDto extends EnumsResponseDto({
     typeOptions: { description: '任务类型选项', example: Schema.TbSkylineDatetaskSystemTypeDefinition.options },
     statusOptions: { description: '任务状态选项', example: Schema.TbSkylineDatetaskSystemStatusDefinition.options },
-    manageStatusOptions: { description: '管理端可切换的任务状态选项', example: DATETASK_MANAGE_STATUS_OPTIONS },
-    logStatusOptions: { description: '任务执行日志状态选项', example: DatetaskLogStatusDefinition.options }
+    manageStatusOptions: { description: '管理端可切换的任务状态选项', example: DatetaskConstants.DATETASK_MANAGE_STATUS_OPTIONS },
+    logStatusOptions: { description: '任务执行日志状态选项', example: DatetaskConstants.DatetaskLogStatusDefinition.options },
+    triggerTypeOptions: { description: '任务执行触发方式选项', example: DatetaskConstants.DatetaskLogTriggerDefinition.options }
 }) {}
