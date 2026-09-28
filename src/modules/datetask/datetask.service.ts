@@ -62,7 +62,7 @@ export class DatetaskService {
     }
 
     /** 启用或停用系统任务。 */
-    public async httpBaseSkylineUpdateDatetaskStatus(
+    public async httpBaseSkylineDatetaskStatusUpdate(
         principal: AuthPrincipal,
         input: DatetaskDto.UpdateDatetaskStatusDto
     ): Promise<DatetaskDto.DatetaskResponseDto> {

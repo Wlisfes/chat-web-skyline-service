@@ -45,11 +45,11 @@ export class DatetaskController {
         response: { type: DatetaskDto.DatetaskResponseDto, description: '更新后的系统任务' },
         bearerAuth: true
     })
-    public async httpBaseSkylineUpdateDatetaskStatus(
+    public async httpBaseSkylineDatetaskStatusUpdate(
         @CurrentPrincipal() principal: AuthPrincipal,
         @Body() input: DatetaskDto.UpdateDatetaskStatusDto
     ): Promise<DatetaskDto.DatetaskResponseDto> {
-        return this.datetaskService.httpBaseSkylineUpdateDatetaskStatus(principal, input)
+        return this.datetaskService.httpBaseSkylineDatetaskStatusUpdate(principal, input)
     }
 
     @ApiServiceDecorator(Post('cron/update'), {
