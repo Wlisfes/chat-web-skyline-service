@@ -521,7 +521,7 @@ test('非法任务状态应拒绝更新', async () => {
     const { service, repository } = createDatetaskService()
     await assert.rejects(
         () =>
-            service.httpBaseSkylineUpdateDatetaskStatus(
+            service.httpBaseSkylineDatetaskStatusUpdate(
                 { uid: '1001' },
                 { taskId: '2149446185344106496', status: TbSkylineDatetaskSystemStatus.FINISH }
             ),
@@ -531,10 +531,10 @@ test('非法任务状态应拒绝更新', async () => {
 })
 test('启停任务应在事务后同步调度器', async () => {
     const { service, manager, scheduler } = createDatetaskService()
-    await service.httpBaseSkylineUpdateDatetaskStatus({ uid: '1001' }, { taskId: '2149446185344106496', status: DatetaskManageStatus.STOP })
+    await service.httpBaseSkylineDatetaskStatusUpdate({ uid: '1001' }, { taskId: '2149446185344106496', status: DatetaskManageStatus.STOP })
     assert.deepEqual(manager.updates[0].values, { status: DatetaskStatus.STOP, modifyBy: '1001' })
     assert.deepEqual(scheduler.unschedules, ['2149446185344106496'])
-    await service.httpBaseSkylineUpdateDatetaskStatus(
+    await service.httpBaseSkylineDatetaskStatusUpdate(
         { uid: '1001' },
         { taskId: '2149446185344106496', status: DatetaskManageStatus.RUNNING }
     )
@@ -545,7 +545,7 @@ test('已完成任务不可通过状态接口修改', async () => {
     utils.current = { ...utils.current, status: TbSkylineDatetaskSystemStatus.FINISH }
     await assert.rejects(
         () =>
-            service.httpBaseSkylineUpdateDatetaskStatus(
+            service.httpBaseSkylineDatetaskStatusUpdate(
                 { uid: '1001' },
                 { taskId: '2149446185344106496', status: DatetaskManageStatus.STOP }
             ),
