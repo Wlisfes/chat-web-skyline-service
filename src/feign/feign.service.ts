@@ -10,11 +10,11 @@ export class FeignService extends FeignSchema.FeignClientSkylineManager implemen
     }
 
     /** 按枚举类型编码批量获取启用状态的枚举字典选项。 */
-    public override async httpBaseSkylineColumnChunkOption(
+    public override async httpBaseSkylineChunkOptionColumn(
         _authorization: string,
         input: FeignSchema.SkylineColumnChunkOptionInput
-    ): Promise<FeignSchema.SkylineChunkOptionGroup[]> {
-        return this.chunkService.httpBaseSkylineColumnChunkOption(input)
+    ): Promise<FeignSchema.SkylineChunkOptionRecord> {
+        return this.chunkService.httpBaseSkylineChunkOptionColumn(input)
     }
 
     /** 按枚举业务值解析单个启用状态的枚举字典选项。 */
