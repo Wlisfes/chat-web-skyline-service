@@ -42,15 +42,19 @@ export class ChunkController {
     }
 
     @RequirePermissions('*')
-    @ApiServiceDecorator(Post('column/option'), {
+    @ApiServiceDecorator(Post('option/column'), {
         operation: { summary: '按枚举类型编码批量获取启用状态的枚举字典选项' },
         request: { source: 'body', type: feign.SkylineColumnChunkOptionRequestDto },
-        response: { type: feign.SkylineChunkOptionGroupDto, isArray: true, description: '按枚举类型编码分组的枚举字典选项' }
+        response: {
+            type: feign.SkylineChunkOptionGroupDto,
+            schema: feign.SkylineChunkOptionRecordSchema,
+            description: '以枚举类型编码为 key 的枚举字典选项分组'
+        }
     })
-    public async httpBaseSkylineColumnChunkOption(
+    public async httpBaseSkylineChunkOptionColumn(
         @Body() input: feign.SkylineColumnChunkOptionRequestDto
-    ): Promise<feign.SkylineChunkOptionGroup[]> {
-        return this.chunkService.httpBaseSkylineColumnChunkOption(input)
+    ): Promise<feign.SkylineChunkOptionRecord> {
+        return this.chunkService.httpBaseSkylineChunkOptionColumn(input)
     }
 
     @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))

@@ -139,18 +139,20 @@ export class ChunkService {
     }
 
     /** 供内部服务按枚举类型编码批量获取启用状态的枚举字典选项，结果按类型分组并组装成选项树。 */
-    public async httpBaseSkylineColumnChunkOption(input: feign.SkylineColumnChunkOptionInput): Promise<feign.SkylineChunkOptionGroup[]> {
+    public async httpBaseSkylineChunkOptionColumn(input: feign.SkylineColumnChunkOptionInput): Promise<feign.SkylineChunkOptionRecord> {
         const types = Array.from(new Set(input.types))
         const where: Record<string, unknown> = { type: In(types), status: Schema.TbSkylineChunkStatus.CHUNK_ENABLE }
         if (isNotEmpty(input.module)) {
             where.module = input.module
         }
         return await this.repository.find({ where, order: { type: 'ASC', sort: 'ASC', keyId: 'ASC' } }).then(entities => {
-            // 按请求顺序返回分组，缺失的类型返回空选项，调用方无需再做存在性判断。
-            return types.map(type => {
-                const options = this.chunkUtilsService.buildOptionTree(entities.filter(entity => entity.type === type))
-                return { type, count: options.length, options }
-            })
+            // 以请求的类型编码为 key 返回分组，缺失的类型返回空选项，调用方无需再做存在性判断。
+            return Object.fromEntries(
+                types.map(type => {
+                    const options = this.chunkUtilsService.buildOptionTree(entities.filter(entity => entity.type === type))
+                    return [type, { type, count: options.length, options }]
+                })
+            )
         })
     }
 
