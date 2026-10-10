@@ -46,13 +46,18 @@ export class ChunkUtilsService {
                         statistics.set(key, { count: 1, latest: row })
                     }
                 }
-                const records: Array<ChunkDto.ChunkModuleResponseDto> = list.map(item => {
+                // 直接在原列表项上追加统计字段，最终返回原 list。
+                const records = list as Array<ChunkDto.ChunkModuleResponseDto>
+                for (const item of records) {
                     const current = statistics.get(`${item.module}:${item.type}`)
                     if (!current) {
-                        return { ...item, chunkCount: 0 }
+                        item.chunkCount = 0
+                    } else {
+                        item.chunkCount = current.count
+                        item.modifyBy = current.latest.modifyBy
+                        item.modifyTime = current.latest.modifyTime
                     }
-                    return { ...item, chunkCount: current.count, modifyBy: current.latest.modifyBy, modifyTime: current.latest.modifyTime }
-                })
+                }
                 return await feign.appendAccountUserOptions(this.accountFeignClient, this.configService, records, ['createBy', 'modifyBy'])
             })
         })
