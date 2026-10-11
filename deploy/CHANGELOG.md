@@ -1,5 +1,15 @@
 # Skyline 部署变更记录
 
+## 2026-10-11：迁入 Account 账号、组织、角色和菜单能力
+
+- 影响机器：`chat-home-server`。
+- 变更内容：从 Account 复制一份账号（`deploy/user`）、组织（`deploy/organization`）、角色（`deploy/role`）、菜单（`deploy/sheet`）管理接口，接口方法统一为 `httpBaseSkyline*`；新增 Feign `/feign/skyline/user/column/resolve`、`/feign/skyline/user/resolve`。账号岗位、职级枚举改为本服务内直接读取，不再走 Feign；枚举字典、定时任务的操作人还原从 Account Feign 切换为 Skyline 账号 Feign（`FeignClientSkylineManager` / `appendSkylineUserOptions` / `SKYLINE_SYSTEM_UID`）。Account 服务保持在线，调用方切换前两套服务并行。
+- 新增表：`tb_skyline_user`、`tb_skyline_organization`、`tb_skyline_organization_closure`、`tb_skyline_user_organization`、`tb_skyline_sheet`、`tb_skyline_role`（含 `super_admin` 种子）、`tb_skyline_user_role`、`tb_skyline_role_sheet`、`tb_skyline_role_data_scope`、`tb_skyline_role_data_scope_organization`、`tb_skyline_user_chunk`（原 `tb_account_chunk`，`link_name` 前缀改为 `tb_skyline_user.`）。
+- 依赖：`@wlisfes/chat-web-base-schema@1.6.84`。
+- 机器侧操作：部署时 apply-schema 自动执行 `20261011100000` 至 `20261011100010` 共 11 个建表 SQL（`CREATE TABLE IF NOT EXISTS`，可重复执行）。表数据需在建表后单独从 `chat-web-account` 复制到 `chat-web-skyline`，主键保持不变，`tb_account_chunk.link_name` 的 `tb_account_user.` 前缀转换为 `tb_skyline_user.`；复制后逐表核对行数。
+- 验证命令：Gateway `GET /api/skyline/health` 返回 `status=UP`；登录后 `POST /api/skyline/deploy/user/column` 返回与 Account 一致的账号分页数据。
+- 回滚方法：回退 Skyline 镜像；新增表不被旧镜像使用，可保留，或确认无调用后手动删除。Account 服务未下线，调用方无需回滚。
+
 ## 2026-10-10：新增系统联系方式枚举
 
 - 影响机器：`chat-home-server`。

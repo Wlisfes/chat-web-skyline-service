@@ -32,8 +32,8 @@ export class DatetaskInitializerService implements OnModuleInit {
                         // 内置任务由系统初始化，创建人、更新人统一记为系统账号。
                         this.repository.create({
                             ...definition,
-                            createBy: feign.ACCOUNT_SYSTEM_UID,
-                            modifyBy: feign.ACCOUNT_SYSTEM_UID
+                            createBy: feign.SKYLINE_SYSTEM_UID,
+                            modifyBy: feign.SKYLINE_SYSTEM_UID
                         } as never)
                     )
                     .execute()
@@ -75,7 +75,7 @@ export class DatetaskInitializerService implements OnModuleInit {
             comment: definition.comment,
             type: definition.type,
             body,
-            modifyBy: feign.ACCOUNT_SYSTEM_UID
+            modifyBy: feign.SKYLINE_SYSTEM_UID
         })
         await this.repository.save(existing)
         this.logger.log(`已同步系统任务定义：${definition.taskName}（${definition.taskId}）`, DatetaskInitializerService.name)

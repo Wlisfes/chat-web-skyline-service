@@ -48,19 +48,19 @@ function createUtilsService() {
             return callback(queryBuilder)
         }
     }
-    const accountFeignClient = {
+    const skylineFeignClient = {
         calls: [],
-        async httpBaseAccountColumnUserResolver(authorization, body) {
+        async httpBaseSkylineColumnUserResolver(authorization, body) {
             this.calls.push({ authorization, body })
             return body.uids.map(uid => ({ uid, number: uid, name: '用户' + uid }))
         }
     }
     const configService = { get: () => 'service-token' }
     return {
-        service: new DatetaskUtilsService({}, database, accountFeignClient, configService),
+        service: new DatetaskUtilsService({}, database, skylineFeignClient, configService),
         database,
         queryBuilder,
-        accountFeignClient
+        skylineFeignClient
     }
 }
 test('应规范五段和六段 Cron 表达式', () => {
@@ -119,15 +119,15 @@ function createLogRepository() {
 }
 function createLogService() {
     const repository = createLogRepository()
-    const accountFeignClient = {
+    const skylineFeignClient = {
         calls: [],
-        async httpBaseAccountColumnUserResolver(authorization, body) {
+        async httpBaseSkylineColumnUserResolver(authorization, body) {
             this.calls.push({ authorization, body })
             return body.uids.map(uid => ({ uid, number: uid, name: '用户' + uid }))
         }
     }
     const configService = { get: () => 'service-token' }
-    return { service: new DatetaskLogService(repository, accountFeignClient, configService), repository, accountFeignClient }
+    return { service: new DatetaskLogService(repository, skylineFeignClient, configService), repository, skylineFeignClient }
 }
 test('应按开始时间倒序分页并按状态过滤执行日志', async () => {
     const { service } = createLogService()
@@ -879,7 +879,7 @@ test('停用任务后不应执行旧的数据库重试', async t => {
 })
 
 test('执行日志默认记录为系统执行，手动触发记录触发人并还原姓名', async () => {
-    const { service, repository, accountFeignClient } = createLogService()
+    const { service, repository, skylineFeignClient } = createLogService()
     const startTime = new Date('2026-09-28T00:00:00.000Z')
     await service.appendRunning(service.createExecutionId('task-3'), 'task-3', startTime, '任务三')
     await service.appendRunning(service.createExecutionId('task-3'), 'task-3', new Date(startTime.getTime() + 1000), '任务三', {
@@ -894,20 +894,20 @@ test('执行日志默认记录为系统执行，手动触发记录触发人并�
         ]
     )
     const page = await service.list({ taskId: 'task-3', page: 1, size: 10 })
-    assert.deepEqual(accountFeignClient.calls, [{ authorization: 'Bearer service-token', body: { uids: ['1001'] } }])
+    assert.deepEqual(skylineFeignClient.calls, [{ authorization: 'Bearer service-token', body: { uids: ['1001'] } }])
     assert.equal(page.list[0].triggerType, 'manual')
     assert.deepEqual(page.list[0].createByOptions, { uid: '1001', number: '1001', name: '用户1001' })
     assert.equal(page.list[1].triggerType, 'system')
     assert.deepEqual(page.list[1].createByOptions, { uid: '0', name: '系统' })
 })
 
-test('任务列表通过 Account Feign 还原创建人和更新人', async () => {
-    const { service, accountFeignClient } = createUtilsService()
+test('任务列表通过 Skyline 账号 Feign 还原创建人和更新人', async () => {
+    const { service, skylineFeignClient } = createUtilsService()
     const list = await service.toResponse([
         { taskId: '1', createBy: '0', modifyBy: '1001' },
         { taskId: '2', createBy: '0', modifyBy: null }
     ])
-    assert.deepEqual(accountFeignClient.calls, [{ authorization: 'Bearer service-token', body: { uids: ['1001'] } }])
+    assert.deepEqual(skylineFeignClient.calls, [{ authorization: 'Bearer service-token', body: { uids: ['1001'] } }])
     assert.deepEqual(list[0].createByOptions, { uid: '0', name: '系统' })
     assert.deepEqual(list[0].modifyByOptions, { uid: '1001', number: '1001', name: '用户1001' })
     assert.equal(list[1].modifyByOptions, undefined)
