@@ -1,6 +1,6 @@
 import { Logger, Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { FeignClientAccountManager, FeignClientFinanceManager, FeignModule } from '@wlisfes/chat-web-base-schema/feign'
+import { FeignClientSkylineManager, FeignClientFinanceManager, FeignModule } from '@wlisfes/chat-web-base-schema/feign'
 import { TbSkylineDatetaskLog, TbSkylineDatetaskSystem } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
 import { CurrencyExchangeTaskService } from '@/modules/datetask/currency-exchange-task.service'
 import { DatetaskController } from '@/modules/datetask/datetask.controller'
@@ -15,7 +15,7 @@ import { DatetaskUtilsService } from '@/modules/datetask/datetask.utils.service'
 @Module({
     imports: [
         TypeOrmModule.forFeature([TbSkylineDatetaskSystem, TbSkylineDatetaskLog]),
-        FeignModule.register([FeignClientFinanceManager, FeignClientAccountManager])
+        FeignModule.register([FeignClientFinanceManager, FeignClientSkylineManager])
     ],
     controllers: [DatetaskController],
     providers: [

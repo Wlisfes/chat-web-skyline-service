@@ -50,18 +50,18 @@ export class ChunkResponseDto extends Schema.TbSkylineChunkDto {}
 /** 枚举字典列表项响应：补充创建人、更新人选项。 */
 export class ChunkColumnResponseDto extends ChunkResponseDto {
     @ApiProperty({
-        description: '创建人选项，通过 Account Feign 按 createBy 还原',
-        type: feign.AccountUserOptionResponseDto,
+        description: '创建人选项，通过 Skyline 账号 Feign 按 createBy 还原',
+        type: feign.SkylineUserOptionResponseDto,
         required: false
     })
-    createByOptions?: feign.AccountUserOptionResponseDto
+    createByOptions?: feign.SkylineUserOptionResponseDto
 
     @ApiProperty({
-        description: '更新人选项，通过 Account Feign 按 modifyBy 还原',
-        type: feign.AccountUserOptionResponseDto,
+        description: '更新人选项，通过 Skyline 账号 Feign 按 modifyBy 还原',
+        type: feign.SkylineUserOptionResponseDto,
         required: false
     })
-    modifyByOptions?: feign.AccountUserOptionResponseDto
+    modifyByOptions?: feign.SkylineUserOptionResponseDto
 }
 
 /** 枚举字典分页响应。 */
@@ -73,18 +73,18 @@ export class ChunkPageResponseDto extends PageResponseDataDto {
 /** 枚举分类详情响应。 */
 export class ChunkModuleResponseDto extends Schema.TbSkylineChunkModuleDto {
     @ApiProperty({
-        description: '创建人选项，通过 Account Feign 按 createBy 还原',
-        type: feign.AccountUserOptionResponseDto,
+        description: '创建人选项，通过 Skyline 账号 Feign 按 createBy 还原',
+        type: feign.SkylineUserOptionResponseDto,
         required: false
     })
-    createByOptions?: feign.AccountUserOptionResponseDto
+    createByOptions?: feign.SkylineUserOptionResponseDto
 
     @ApiProperty({
-        description: '更新人选项，通过 Account Feign 按 modifyBy 还原',
-        type: feign.AccountUserOptionResponseDto,
+        description: '更新人选项，通过 Skyline 账号 Feign 按 modifyBy 还原',
+        type: feign.SkylineUserOptionResponseDto,
         required: false
     })
-    modifyByOptions?: feign.AccountUserOptionResponseDto
+    modifyByOptions?: feign.SkylineUserOptionResponseDto
 
     @ApiProperty({ description: '子表枚举项数量，按 module + type 联查 tb_skyline_chunk', example: 65, readOnly: true })
     chunkCount: number

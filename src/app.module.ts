@@ -9,6 +9,10 @@ import { AppService } from './app.service'
 import { DatabaseModule } from '@/database/database.module'
 import { DatetaskModule } from '@/modules/datetask/datetask.module'
 import { ChunkModule } from '@/modules/chunk/chunk.module'
+import { OrganizationModule } from '@/modules/organization/organization.module'
+import { RoleModule } from '@/modules/role/role.module'
+import { SheetModule } from '@/modules/sheet/sheet.module'
+import { UserModule } from '@/modules/user/user.module'
 import { FeignModule } from '@/feign/feign.module'
 
 @Module({
@@ -21,6 +25,10 @@ import { FeignModule } from '@/feign/feign.module'
         DatabaseModule,
         DatetaskModule,
         ChunkModule,
+        OrganizationModule,
+        SheetModule,
+        RoleModule,
+        UserModule,
         FeignModule
     ],
     controllers: [AppController],

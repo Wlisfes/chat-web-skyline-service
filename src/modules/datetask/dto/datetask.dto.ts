@@ -109,17 +109,17 @@ export class DatetaskExecutionResultDto {
 
 /** 任务执行日志返回项。 */
 export class DatetaskLogResponseDto extends Schema.TbSkylineDatetaskLogDto {
-    @ApiPropertyOptional({ description: '触发人选项，通过 Account Feign 按 createBy 还原', type: feign.AccountUserOptionResponseDto })
-    createByOptions?: feign.AccountUserOptionResponseDto
+    @ApiPropertyOptional({ description: '触发人选项，通过 Skyline 账号 Feign 按 createBy 还原', type: feign.SkylineUserOptionResponseDto })
+    createByOptions?: feign.SkylineUserOptionResponseDto
 }
 
 /** 系统任务详情响应。 */
 export class DatetaskResponseDto extends Schema.TbSkylineDatetaskSystemDto {
-    @ApiPropertyOptional({ description: '创建人选项，通过 Account Feign 按 createBy 还原', type: feign.AccountUserOptionResponseDto })
-    createByOptions?: feign.AccountUserOptionResponseDto
+    @ApiPropertyOptional({ description: '创建人选项，通过 Skyline 账号 Feign 按 createBy 还原', type: feign.SkylineUserOptionResponseDto })
+    createByOptions?: feign.SkylineUserOptionResponseDto
 
-    @ApiPropertyOptional({ description: '更新人选项，通过 Account Feign 按 modifyBy 还原', type: feign.AccountUserOptionResponseDto })
-    modifyByOptions?: feign.AccountUserOptionResponseDto
+    @ApiPropertyOptional({ description: '更新人选项，通过 Skyline 账号 Feign 按 modifyBy 还原', type: feign.SkylineUserOptionResponseDto })
+    modifyByOptions?: feign.SkylineUserOptionResponseDto
 }
 
 /** 系统任务分页响应。 */

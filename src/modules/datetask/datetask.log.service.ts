@@ -16,7 +16,7 @@ export interface DatetaskTriggerContext {
 }
 
 /** 系统调度执行的默认触发上下文。 */
-export const DATETASK_SYSTEM_TRIGGER: DatetaskTriggerContext = { triggerType: DatetaskLogTrigger.SYSTEM, uid: feign.ACCOUNT_SYSTEM_UID }
+export const DATETASK_SYSTEM_TRIGGER: DatetaskTriggerContext = { triggerType: DatetaskLogTrigger.SYSTEM, uid: feign.SKYLINE_SYSTEM_UID }
 
 /** 完成一次执行时需要写入的日志内容。 */
 export interface DatetaskLogCompleteInput {
@@ -42,7 +42,7 @@ export class DatetaskLogService {
 
     constructor(
         @InjectRepository(Schema.TbSkylineDatetaskLog) private readonly repository: Repository<Schema.TbSkylineDatetaskLog>,
-        private readonly accountFeignClient: feign.FeignClientAccountManager,
+        private readonly skylineFeignClient: feign.FeignClientSkylineManager,
         private readonly configService: ConfigService
     ) {}
 
@@ -111,7 +111,7 @@ export class DatetaskLogService {
             take: size
         })
         // 触发人姓名属于展示元数据，使用服务间凭据按列表批量还原。
-        const list = await feign.appendAccountUserOptions(this.accountFeignClient, this.configService, rows, ['createBy'])
+        const list = await feign.appendSkylineUserOptions(this.skylineFeignClient, this.configService, rows, ['createBy'])
         return { page, size, total, list }
     }
 }

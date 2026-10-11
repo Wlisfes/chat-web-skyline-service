@@ -26,7 +26,7 @@ export class DatetaskUtilsService {
     constructor(
         @InjectRepository(Schema.TbSkylineDatetaskSystem) private readonly repository: Repository<Schema.TbSkylineDatetaskSystem>,
         private readonly database: DataBaseService,
-        private readonly accountFeignClient: feign.FeignClientAccountManager,
+        private readonly skylineFeignClient: feign.FeignClientSkylineManager,
         private readonly configService: ConfigService
     ) {}
 
@@ -111,9 +111,9 @@ export class DatetaskUtilsService {
         return undefined
     }
 
-    /** 通过 Account Feign 批量把任务的 createBy、modifyBy 还原为 createByOptions、modifyByOptions。 */
+    /** 通过 Skyline 账号 Feign 批量把任务的 createBy、modifyBy 还原为 createByOptions、modifyByOptions。 */
     public async toResponse(list: Array<Schema.TbSkylineDatetaskSystem>): Promise<Array<DatetaskDto.DatetaskResponseDto>> {
-        return (await feign.appendAccountUserOptions(this.accountFeignClient, this.configService, list, [
+        return (await feign.appendSkylineUserOptions(this.skylineFeignClient, this.configService, list, [
             'createBy',
             'modifyBy'
         ])) as Array<DatetaskDto.DatetaskResponseDto>

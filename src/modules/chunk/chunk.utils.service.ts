@@ -14,7 +14,7 @@ export class ChunkUtilsService {
         @InjectRepository(Schema.TbSkylineChunkModuleEntity)
         private readonly moduleRepository: Repository<Schema.TbSkylineChunkModuleEntity>,
         private readonly database: DataBaseService,
-        private readonly accountFeignClient: feign.FeignClientAccountManager,
+        private readonly skylineFeignClient: feign.FeignClientSkylineManager,
         private readonly configService: ConfigService
     ) {}
 
@@ -23,7 +23,7 @@ export class ChunkUtilsService {
      *
      * 更新人、更新时间取子表中对应分类最新一条枚举项（modifyTime 倒序，相同时 keyId 倒序）；
      * 创建人、创建时间保持分类表原值，分类下没有枚举项时更新人、更新时间也保持分类表原值。
-     * 更新人最终确定后，再通过 Account Feign 批量把创建人、更新人还原为 createByOptions、modifyByOptions。
+     * 更新人最终确定后，再通过 Skyline 账号 Feign 批量把创建人、更新人还原为 createByOptions、modifyByOptions。
      */
     public async appendChunkStatistics(list: Array<Schema.TbSkylineChunkModuleEntity>): Promise<Array<ChunkDto.ChunkModuleResponseDto>> {
         if (list.length === 0) {
@@ -58,14 +58,14 @@ export class ChunkUtilsService {
                         item.modifyTime = current.latest.modifyTime
                     }
                 }
-                return await feign.appendAccountUserOptions(this.accountFeignClient, this.configService, records, ['createBy', 'modifyBy'])
+                return await feign.appendSkylineUserOptions(this.skylineFeignClient, this.configService, records, ['createBy', 'modifyBy'])
             })
         })
     }
 
-    /** 通过 Account Feign 批量把枚举项的 createBy、modifyBy 还原为 createByOptions、modifyByOptions。 */
+    /** 通过 Skyline 账号 Feign 批量把枚举项的 createBy、modifyBy 还原为 createByOptions、modifyByOptions。 */
     public async appendChunkOperators(list: Array<Schema.TbSkylineChunk>): Promise<Array<ChunkDto.ChunkColumnResponseDto>> {
-        return await feign.appendAccountUserOptions(this.accountFeignClient, this.configService, list, ['createBy', 'modifyBy'])
+        return await feign.appendSkylineUserOptions(this.skylineFeignClient, this.configService, list, ['createBy', 'modifyBy'])
     }
 
     /**

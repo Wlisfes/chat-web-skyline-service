@@ -41,7 +41,7 @@ Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 
 
 机器配置位于 `/opt/chat-web-skyline-service/.env`。服务统一读取 `PORT`，容器内固定为 `5040`；此外还必须提供 `NACOS_SERVER`、`NACOS_SERVICE_NAME` 和 `NACOS_NAMESPACE`。默认 Data ID 为 `${NACOS_SERVICE_NAME}.yaml`，服务注册名为 `NACOS_SERVICE_NAME` 的值；真实机器配置不得提交到仓库。
 
-Skyline 的业务数据库配置位于 Nacos `database.chat-web-skyline`，对应表为 `tb_skyline_datetask_system`。`deploy.sh` 会使用待发布镜像执行 `dist/cli/apply-schema-bootstrap.js`：先使用 Nacos 中的管理员连接创建仅授权 Skyline 数据库的临时账号，再以该账号调用 `dist/cli/apply-schema.js`，迁移结束后立即回收临时账号。增量 SQL 按文件名顺序应用，并在 `tb_skyline_schema_migration` 中保存文件校验和；迁移失败时不会切换当前容器。TypeORM 保持 `synchronize: false`，不会在服务启动时自行改表。系统任务初始化失败会在容器日志中记录并触发健康检查失败。
+Skyline 的业务数据库配置位于 Nacos `database.chat-web-skyline`，对应表包括定时任务（`tb_skyline_datetask_system`、`tb_skyline_datetask_log`）、枚举字典（`tb_skyline_chunk`、`tb_skyline_chunk_module`），以及从 Account 迁入的账号、组织、角色和菜单表（`tb_skyline_user`、`tb_skyline_organization`、`tb_skyline_organization_closure`、`tb_skyline_user_organization`、`tb_skyline_sheet`、`tb_skyline_role`、`tb_skyline_user_role`、`tb_skyline_role_sheet`、`tb_skyline_role_data_scope`、`tb_skyline_role_data_scope_organization`、`tb_skyline_user_chunk`）。`deploy.sh` 会使用待发布镜像执行 `dist/cli/apply-schema-bootstrap.js`：先使用 Nacos 中的管理员连接创建仅授权 Skyline 数据库的临时账号，再以该账号调用 `dist/cli/apply-schema.js`，迁移结束后立即回收临时账号。增量 SQL 按文件名顺序应用，并在 `tb_skyline_schema_migration` 中保存文件校验和；迁移失败时不会切换当前容器。TypeORM 保持 `synchronize: false`，不会在服务启动时自行改表。系统任务初始化失败会在容器日志中记录并触发健康检查失败。
 
 流水线会先把 `deploy/bootstrap-nacos-config.cjs` 安装到 `/opt/chat-web-skyline-service`，再使用 `node:22-alpine`（加入 `chat-web-infrastructure` 网络）执行只读校验。脚本不会回写 Nacos，不会补齐或覆盖任何业务配置；它校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `gateway.feign.service_token/url/timeout`。脚本不会把 Nacos 配置正文或凭据写入 Runner 日志；缺少节点/凭据时应先人工配置后重跑流水线。
 
