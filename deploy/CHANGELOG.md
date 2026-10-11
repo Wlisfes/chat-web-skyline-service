@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-10-10：新增系统联系方式枚举
+
+- 影响机器：`chat-home-server`。
+- 变更内容：升级 `@wlisfes/chat-web-base-schema` 到 1.6.80，新增枚举编码 `CHUNK_SYSTEM_COMMON_CONTACT_TYPE`（联系方式，14 项，主键 1024188-1024201），修复管理端请求该枚举时返回“枚举类型编码格式错误”。
+- 依赖：`@wlisfes/chat-web-base-schema@1.6.80`。
+- 机器侧操作：部署时 apply-schema 自动执行 `20261009100000__tb_skyline_chunk__seed_contact_type.sql`（可重复执行；生产库此前已执行，本次显示 skipped）。
+- 验证命令：登录后 `POST /api/skyline/deploy/chunk/option/column` 传 `types: ["CHUNK_SYSTEM_COMMON_CONTACT_TYPE"]` 返回 14 个选项。
+- 回滚方法：回退 Skyline 镜像；按 SQL 文件头部说明删除枚举数据。
+
 ## 2026-09-28：定时任务记录操作人与执行触发方式
 
 - 影响机器：`chat-home-server`。

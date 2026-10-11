@@ -13,7 +13,7 @@
 
 ```bash
 cp .env.example .env
-yarn install
+node scripts/yarn-auth.cjs install --frozen-lockfile --check-files --ignore-scripts
 yarn dev
 ```
 
