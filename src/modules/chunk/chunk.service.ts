@@ -28,6 +28,17 @@ export class ChunkService {
         }
     }
 
+    /** 按 module + type 获取枚举字典树；传入 keyId 时排除自身及其子孙节点，用于选择父级主键。 */
+    public async httpBaseSkylineChunkTreeStructure(query: ChunkDto.ChunkTreeQueryDto): Promise<ChunkDto.ChunkTreeNodeResponseDto[]> {
+        await this.chunkUtilsService.assertModuleType(query.module, query.type)
+        const entities = await this.repository.find({
+            select: ['keyId', 'pid', 'module', 'type', 'name', 'value', 'sort', 'status'],
+            where: { module: query.module, type: query.type },
+            order: { sort: 'ASC', keyId: 'ASC' }
+        })
+        return this.chunkUtilsService.buildTree(entities, query.keyId)
+    }
+
     /** 分页查询枚举字典；结果保持扁平结构，通过 pid 表示父子关系，并补充创建人、更新人选项。 */
     public async httpBaseSkylineColumnChunk(input: ChunkDto.ListChunkDto): Promise<PageResult<ChunkDto.ChunkColumnResponseDto>> {
         const { page, size } = fetchUntiePagination(input)

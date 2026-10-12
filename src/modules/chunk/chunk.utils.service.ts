@@ -94,6 +94,37 @@ export class ChunkUtilsService {
         return roots
     }
 
+    /**
+     * 把扁平枚举项按 pid 组装成父级选择树。
+     *
+     * excludeKeyId 对应编辑中的枚举项，自身及其子孙节点不会返回，避免把父级设置成自身或子孙节点形成循环。
+     */
+    public buildTree(entities: Schema.TbSkylineChunk[], excludeKeyId?: number): ChunkDto.ChunkTreeNodeResponseDto[] {
+        const nodes = new Map<number, ChunkDto.ChunkTreeNodeResponseDto>()
+        for (const entity of entities) {
+            const { keyId, pid, module, type, name, value, sort, status } = entity
+            nodes.set(keyId, { keyId, pid, module, type, name, value, sort, status, children: [] })
+        }
+
+        const roots: ChunkDto.ChunkTreeNodeResponseDto[] = []
+        for (const node of nodes.values()) {
+            const parent = isNotEmpty(node.pid) ? nodes.get(node.pid) : undefined
+            if (parent) {
+                parent.children.push(node)
+            } else {
+                roots.push(node)
+            }
+        }
+
+        if (isEmpty(excludeKeyId)) {
+            return roots
+        }
+        const exclude = (items: ChunkDto.ChunkTreeNodeResponseDto[]): ChunkDto.ChunkTreeNodeResponseDto[] => {
+            return items.filter(item => item.keyId !== excludeKeyId).map(item => ({ ...item, children: exclude(item.children) }))
+        }
+        return exclude(roots)
+    }
+
     /** 把枚举实体转换为统一的下拉选项结构；description 取自扩展配置，缺省时回落为显示名称。 */
     public toOption(entity: Schema.TbSkylineChunk): feign.SkylineChunkOption {
         const description = entity.json.description
