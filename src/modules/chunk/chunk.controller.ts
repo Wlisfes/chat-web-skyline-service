@@ -58,6 +58,18 @@ export class ChunkController {
     }
 
     @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
+    @ApiServiceDecorator(Get('tree/structure'), {
+        operation: { summary: '枚举字典父级树结构' },
+        request: { source: 'query', type: ChunkDto.ChunkTreeQueryDto },
+        response: { type: ChunkDto.ChunkTreeNodeResponseDto, isArray: true, description: '枚举字典树结构' }
+    })
+    public async httpBaseSkylineChunkTreeStructure(
+        @Query() query: ChunkDto.ChunkTreeQueryDto
+    ): Promise<ChunkDto.ChunkTreeNodeResponseDto[]> {
+        return this.chunkService.httpBaseSkylineChunkTreeStructure(query)
+    }
+
+    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
     @ApiServiceDecorator(Get('resolve'), {
         operation: { summary: '枚举字典详情' },
         request: { source: 'query', type: ChunkDto.ChunkKeyDto },

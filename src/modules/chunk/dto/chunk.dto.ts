@@ -1,4 +1,4 @@
-import { ApiProperty, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
+import { ApiProperty, ApiPropertyOptional, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
 import { Transform, Type } from 'class-transformer'
 import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator'
 import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
@@ -27,6 +27,16 @@ export class ChunkKeyDto {
     keyId: number
 }
 
+/** 枚举字典树结构查询参数：GET /deploy/chunk/tree/structure。 */
+export class ChunkTreeQueryDto extends PickType(Schema.TbSkylineChunkDto, ['module', 'type'] as const) {
+    @ApiPropertyOptional({ description: '编辑中的枚举项主键；传入后排除自身及其子孙节点', example: 10000 })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt({ message: '枚举项主键必须是整数' })
+    @Min(1, { message: '枚举项主键必须大于0' })
+    keyId?: number
+}
+
 /** 新增枚举字典参数。 */
 export class CreateChunkDto extends PickType(Schema.TbSkylineChunkDto, [
     'pid',
@@ -52,6 +62,21 @@ export class UpdateChunkDto extends IntersectionType(ChunkKeyDto, PartialType(Cr
 
 /** 枚举字典详情响应。 */
 export class ChunkResponseDto extends Schema.TbSkylineChunkDto {}
+
+/** 枚举字典树节点响应：GET /deploy/chunk/tree/structure。 */
+export class ChunkTreeNodeResponseDto extends PickType(Schema.TbSkylineChunkDto, [
+    'keyId',
+    'pid',
+    'module',
+    'type',
+    'name',
+    'value',
+    'sort',
+    'status'
+] as const) {
+    @ApiProperty({ description: '子枚举项节点', type: () => ChunkTreeNodeResponseDto, isArray: true, example: [] })
+    children: ChunkTreeNodeResponseDto[]
+}
 
 /** 枚举字典列表项响应：补充创建人、更新人选项。 */
 export class ChunkColumnResponseDto extends ChunkResponseDto {
