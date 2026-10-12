@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import type { AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
 import { InjectRepository, DataBaseService, In, Repository } from '@wlisfes/chat-web-base-schema/database'
@@ -88,21 +89,38 @@ export class ChunkService {
         return this.chunkUtilsService.findRequired(query.keyId)
     }
 
-    /** 新增枚举字典项；创建人、更新人取当前登录账号。 */
+    /** 新增枚举字典项；业务值为空时使用新增后的主键，创建人、更新人取当前登录账号。 */
     public async httpBaseSkylineCreateChunk(principal: AuthPrincipal, input: ChunkDto.CreateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
+        const value = input.value?.trim()
         await this.chunkUtilsService.assertModuleType(input.module, input.type)
         await this.chunkUtilsService.assertParent(input.pid, input.module)
-        await this.chunkUtilsService.assertUnique(input.module, input.type, input.value)
-        // WithJsonColumn 会把 undefined 转成 NULL 写入，无法落到数据库 DEFAULT，未传 json 时显式写入空对象。
-        const entity = this.repository.create({
-            ...input,
-            json: input.json ?? {},
-            createBy: principal.uid,
-            modifyBy: principal.uid
-        } as Schema.TbSkylineChunk)
-        return await this.repository.save(entity).then(async node => {
-            return await this.chunkUtilsService.findRequired(node.keyId)
+        if (isNotEmpty(value)) {
+            await this.chunkUtilsService.assertUnique(input.module, input.type, value)
+        }
+        const keyId = await this.repository.manager.transaction(async manager => {
+            // 业务值为空时先写入唯一占位值，拿到自增主键后在同一事务内回填为主键。
+            // WithJsonColumn 会把 undefined 转成 NULL 写入，无法落到数据库 DEFAULT，未传 json 时显式写入空对象。
+            const entity = manager.create(Schema.TbSkylineChunk, {
+                ...input,
+                value: value || `__pending_${randomUUID()}`,
+                json: input.json ?? {},
+                createBy: principal.uid,
+                modifyBy: principal.uid
+            } as Schema.TbSkylineChunk)
+            const node = await manager.save(entity)
+            if (!value) {
+                const nextValue = String(node.keyId)
+                const existing = await manager.findOne(Schema.TbSkylineChunk, {
+                    where: { module: input.module, type: input.type, value: nextValue }
+                })
+                if (existing) {
+                    throw new BadRequestException('同一模块下该类型的业务值已存在')
+                }
+                await manager.update(Schema.TbSkylineChunk, node.keyId, { value: nextValue })
+            }
+            return node.keyId
         })
+        return await this.chunkUtilsService.findRequired(keyId)
     }
 
     /** 更新枚举字典项；更新人取当前登录账号。 */
@@ -113,14 +131,16 @@ export class ChunkService {
         }
         const module = input.module ?? current.module
         const type = input.type ?? current.type
-        const value = input.value ?? current.value
+        const value = input.value === '' ? String(input.keyId) : (input.value ?? current.value)
         await this.chunkUtilsService.assertModuleType(module, type)
         await this.chunkUtilsService.assertParent(input.pid, module, input.keyId)
         await this.chunkUtilsService.assertUnique(module, type, value, input.keyId)
         const { keyId, ...changes } = input
-        return await this.repository.update(keyId, { ...changes, modifyBy: principal.uid } as never).then(async () => {
-            return await this.chunkUtilsService.findRequired(keyId)
-        })
+        return await this.repository
+            .update(keyId, { ...changes, ...(input.value === undefined ? {} : { value }), modifyBy: principal.uid } as never)
+            .then(async () => {
+                return await this.chunkUtilsService.findRequired(keyId)
+            })
     }
 
     /** 硬删除枚举字典项；存在子项时必须先处理子项。 */
