@@ -1,17 +1,14 @@
 import { ApiProperty, ApiPropertyOptional, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
-import { Type } from 'class-transformer'
-import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator'
+import { IsEnum, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
-import * as DatetaskConstants from '@/modules/datetask/datetask.constants'
-import * as Schema from '@wlisfes/chat-web-base-schema'
+import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
+import * as TaskSchema from '@wlisfes/chat-web-base-schema/chat-web-task-mysql'
 import * as feign from '@wlisfes/chat-web-base-schema/feign'
 
-import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
-/** 系统任务分页查询参数；任务类型必填，用于区分系统、周期和手动任务列表。 */
+/** 系统任务分页查询参数；任务数据由 Task 服务提供，只保留周期任务。 */
 export class ListDatetaskDto extends IntersectionType(
     PageDto,
-    PickType(Schema.TbSkylineDatetaskSystemDto, ['type'] as const),
-    PartialType(PickType(Schema.TbSkylineDatetaskSystemDto, ['taskName', 'status'] as const))
+    PartialType(PickType(TaskSchema.TbTaskCronDto, ['taskName', 'module', 'status'] as const))
 ) {}
 
 /** 系统任务主键参数。 */
@@ -26,18 +23,18 @@ export class DatetaskKeyDto {
 /** 系统任务详情查询参数。 */
 export class ResolveDatetaskDto extends DatetaskKeyDto {}
 
-/** 更新系统任务状态参数；管理端只能在启用和停用之间切换。 */
+/** 启用或停用系统任务参数。 */
 export class UpdateDatetaskStatusDto extends DatetaskKeyDto {
     @ApiProperty({
-        description: '任务状态',
-        enum: DatetaskConstants.DatetaskManageStatus,
-        example: DatetaskConstants.DatetaskManageStatus.RUNNING
+        description: TaskSchema.TbTaskCronStatusDefinition.comment,
+        enum: TaskSchema.TbTaskCronStatus,
+        example: TaskSchema.TbTaskCronStatus.ENABLE
     })
-    @IsEnum(DatetaskConstants.DatetaskManageStatus, { message: '任务状态格式错误' })
-    status: DatetaskConstants.DatetaskManageStatus
+    @IsEnum(TaskSchema.TbTaskCronStatus, { message: '任务状态格式错误' })
+    status: TaskSchema.TbTaskCronStatus
 }
 
-/** 更新系统任务 Cron 参数。 */
+/** 修改系统任务 Cron 参数。 */
 export class UpdateDatetaskCronDto extends DatetaskKeyDto {
     @ApiProperty({ description: 'Cron 表达式；汇率任务默认每天 08:00、20:00 各执行一次', example: '0 0 8,20 * * *' })
     @IsString({ message: 'Cron表达式必须是字符串' })
@@ -52,73 +49,30 @@ export class TriggerDatetaskDto extends DatetaskKeyDto {}
 /** 系统任务执行日志分页查询参数。 */
 export class ListDatetaskLogDto extends IntersectionType(PageDto, DatetaskKeyDto) {
     @ApiPropertyOptional({
-        description: '执行状态',
-        enum: DatetaskConstants.DatetaskLogStatus,
-        example: DatetaskConstants.DatetaskLogStatus.SUCCESS
+        description: TaskSchema.TbTaskExecutionStatusDefinition.comment,
+        enum: TaskSchema.TbTaskExecutionStatus,
+        example: TaskSchema.TbTaskExecutionStatus.SUCCESS
     })
     @IsOptional()
-    @IsEnum(DatetaskConstants.DatetaskLogStatus, { message: '执行状态格式错误' })
-    status?: DatetaskConstants.DatetaskLogStatus
+    @IsEnum(TaskSchema.TbTaskExecutionStatus, { message: '执行状态格式错误' })
+    status?: TaskSchema.TbTaskExecutionStatus
 }
 
-/** 汇率同步任务响应数据。 */
-export class ExchangeSyncResultDto {
-    @ApiProperty({ description: '实际汇率日期', format: 'date', example: '2026-09-02' })
-    @IsDateString({}, { message: '汇率日期格式错误' })
-    date: string
-
-    @ApiProperty({ description: '写入条数', example: 30 })
-    @Type(() => Number)
-    @IsInt({ message: '写入条数必须是整数' })
-    @Min(0, { message: '写入条数不能小于0' })
-    count: number
-}
-
-/** 汇率同步结果明细。 */
-export class DatetaskExchangeRateItemDto {
-    @ApiProperty({ description: '币种编码', example: 'CNY' })
-    currency: string
-
-    @ApiProperty({ description: '基于 USD 的汇率', example: 7.2534 })
-    rate: number
-
-    @ApiProperty({ description: '汇率日期', format: 'date', example: '2026-09-02' })
-    date: string
-}
-
-/** 任务执行结果，覆盖成功、跳过和失败场景。 */
-export class DatetaskExecutionResultDto {
-    @ApiPropertyOptional({ description: '实际汇率日期', format: 'date', example: '2026-09-02' })
-    date?: string
-
-    @ApiPropertyOptional({ description: '写入条数', example: 30 })
-    count?: number
-
-    @ApiPropertyOptional({ description: '汇率同步明细', type: [DatetaskExchangeRateItemDto] })
-    list?: DatetaskExchangeRateItemDto[]
-
-    @ApiPropertyOptional({ description: '是否跳过本次执行', example: true })
-    skipped?: boolean
-
-    @ApiPropertyOptional({ description: '跳过原因', example: '任务正在其他实例执行' })
-    reason?: string
-
-    @ApiPropertyOptional({ description: '失败或补充说明', example: 'Finance 服务暂不可用' })
-    message?: string
-}
-
-/** 任务执行日志返回项。 */
-export class DatetaskLogResponseDto extends Schema.TbSkylineDatetaskLogDto {
-    @ApiPropertyOptional({ description: '触发人选项，通过 Skyline 账号 Feign 按 createBy 还原', type: feign.SkylineUserOptionResponseDto })
-    createByOptions?: feign.SkylineUserOptionResponseDto
+/** 单条执行记录查询参数，用于手动触发后轮询结果。 */
+export class ResolveDatetaskLogDto {
+    @ApiProperty({ description: '执行记录ID（19位数字字符串）', example: '2150123456789012345' })
+    @IsString({ message: '执行记录ID必须是字符串' })
+    @IsNotEmpty({ message: '执行记录ID不能为空' })
+    @Matches(/^\d{1,19}$/, { message: '执行记录ID必须是1至19位数字字符串' })
+    executionId: string
 }
 
 /** 系统任务详情响应。 */
-export class DatetaskResponseDto extends Schema.TbSkylineDatetaskSystemDto {
-    @ApiPropertyOptional({ description: '创建人选项，通过 Skyline 账号 Feign 按 createBy 还原', type: feign.SkylineUserOptionResponseDto })
+export class DatetaskResponseDto extends TaskSchema.TbTaskCronDto {
+    @ApiPropertyOptional({ description: '创建人选项，通过 Skyline 账号按 createBy 还原', type: feign.SkylineUserOptionResponseDto })
     createByOptions?: feign.SkylineUserOptionResponseDto
 
-    @ApiPropertyOptional({ description: '更新人选项，通过 Skyline 账号 Feign 按 modifyBy 还原', type: feign.SkylineUserOptionResponseDto })
+    @ApiPropertyOptional({ description: '更新人选项，通过 Skyline 账号按 modifyBy 还原', type: feign.SkylineUserOptionResponseDto })
     modifyByOptions?: feign.SkylineUserOptionResponseDto
 }
 
@@ -128,26 +82,34 @@ export class DatetaskPageResponseDto extends PageResponseDataDto {
     list: DatetaskResponseDto[]
 }
 
+/** 任务执行日志返回项。 */
+export class DatetaskLogResponseDto extends TaskSchema.TbTaskExecutionDto {
+    @ApiPropertyOptional({ description: '触发人选项，通过 Skyline 账号按 createBy 还原', type: feign.SkylineUserOptionResponseDto })
+    createByOptions?: feign.SkylineUserOptionResponseDto
+}
+
 /** 系统任务日志分页响应。 */
 export class DatetaskLogPageResponseDto extends PageResponseDataDto {
     @ApiProperty({ description: '任务执行日志列表', type: [DatetaskLogResponseDto] })
     list: DatetaskLogResponseDto[]
 }
 
-/** 手动触发任务响应。 */
+/** 手动触发任务响应；finished 为 false 时按 executionId 轮询执行日志详情。 */
 export class TriggerDatetaskResponseDto {
-    @ApiProperty({ description: '是否触发成功', example: true })
-    success: boolean
+    @ApiProperty({ description: '执行记录ID', example: '2150123456789012345' })
+    executionId: string
 
-    @ApiPropertyOptional({ description: '执行结果', type: DatetaskExecutionResultDto })
-    result?: DatetaskExecutionResultDto
+    @ApiProperty({ description: '是否已在等待时间内结束（成功或失败）', example: true })
+    finished: boolean
+
+    @ApiProperty({ description: '执行记录', type: DatetaskLogResponseDto })
+    execution: DatetaskLogResponseDto
 }
 
 /** 系统任务静态枚举响应。 */
 export class DatetaskEnumsResponseDto extends EnumsResponseDto({
-    typeOptions: { description: '任务类型选项', example: Schema.TbSkylineDatetaskSystemTypeDefinition.options },
-    statusOptions: { description: '任务状态选项', example: Schema.TbSkylineDatetaskSystemStatusDefinition.options },
-    manageStatusOptions: { description: '管理端可切换的任务状态选项', example: DatetaskConstants.DATETASK_MANAGE_STATUS_OPTIONS },
-    logStatusOptions: { description: '任务执行日志状态选项', example: DatetaskConstants.DatetaskLogStatusDefinition.options },
-    triggerTypeOptions: { description: '任务执行触发方式选项', example: DatetaskConstants.DatetaskLogTriggerDefinition.options }
+    moduleOptions: { description: '任务所属模块选项', example: TaskSchema.TbTaskCronModuleDefinition.options },
+    statusOptions: { description: '任务状态选项', example: TaskSchema.TbTaskCronStatusDefinition.options },
+    logStatusOptions: { description: '执行状态选项', example: TaskSchema.TbTaskExecutionStatusDefinition.options },
+    triggerTypeOptions: { description: '触发方式选项', example: TaskSchema.TbTaskExecutionTriggerDefinition.options }
 }) {}

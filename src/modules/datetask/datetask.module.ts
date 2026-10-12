@@ -1,33 +1,14 @@
-import { Logger, Module } from '@nestjs/common'
-import { TypeOrmModule } from '@nestjs/typeorm'
-import { FeignClientSkylineManager, FeignClientFinanceManager, FeignModule } from '@wlisfes/chat-web-base-schema/feign'
-import { TbSkylineDatetaskLog, TbSkylineDatetaskSystem } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
-import { CurrencyExchangeTaskService } from '@/modules/datetask/currency-exchange-task.service'
+import { Module } from '@nestjs/common'
+import { FeignClientTaskManager, FeignModule } from '@wlisfes/chat-web-base-schema/feign'
 import { DatetaskController } from '@/modules/datetask/datetask.controller'
-import { DatetaskExecutorService } from '@/modules/datetask/datetask.executor.service'
-import { DatetaskInitializerService } from '@/modules/datetask/datetask.initializer.service'
-import { DatetaskLogService } from '@/modules/datetask/datetask.log.service'
-import { DatetaskSchedulerService } from '@/modules/datetask/datetask.scheduler.service'
 import { DatetaskService } from '@/modules/datetask/datetask.service'
-import { DatetaskUtilsService } from '@/modules/datetask/datetask.utils.service'
+import { UserModule } from '@/modules/user/user.module'
 
-/** Skyline 系统任务模块；仅暴露内置任务的查询和运维操作。 */
+/** 系统任务管理模块；只做权限校验和转发，调度与执行由 chat-web-task-service 负责。 */
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([TbSkylineDatetaskSystem, TbSkylineDatetaskLog]),
-        FeignModule.register([FeignClientFinanceManager, FeignClientSkylineManager])
-    ],
+    imports: [FeignModule.register([FeignClientTaskManager]), UserModule],
     controllers: [DatetaskController],
-    providers: [
-        Logger,
-        DatetaskService,
-        DatetaskUtilsService,
-        DatetaskLogService,
-        DatetaskExecutorService,
-        DatetaskSchedulerService,
-        DatetaskInitializerService,
-        CurrencyExchangeTaskService
-    ],
+    providers: [DatetaskService],
     exports: [DatetaskService]
 })
 export class DatetaskModule {}
