@@ -53,38 +53,36 @@ test('树形枚举分类列表按一级节点分页并返回 items', async () =>
     )
 })
 
-test('枚举分类统计补充枚举项数量和最近更新信息', async () => {
+test('枚举分类统计在数据库内聚合并补充最近更新信息', async () => {
     const calls = []
-    const rows = [
-        { keyId: 9, module: 'CHUNK_CRM', type: 'area', modifyBy: '2', modifyTime: '2026-10-12 08:30:00' },
-        { keyId: 8, module: 'CHUNK_CRM', type: 'area', modifyBy: '1', modifyTime: '2026-10-11 08:30:00' },
-        { keyId: 7, module: 'CHUNK_CRM', type: 'area', modifyBy: '1', modifyTime: '2026-10-10 08:30:00' }
-    ]
-    const qb = {
-        select: fields => calls.push(['select', fields]),
-        where: (sql, params) => calls.push(['where', sql, params]),
-        orderBy: (...args) => calls.push(['orderBy', ...args]),
-        addOrderBy: (...args) => calls.push(['addOrderBy', ...args]),
-        getMany: async () => rows
+    const repository = {
+        query: async (sql, params) => {
+            calls.push({ sql, params })
+            return [{ module: 'CHUNK_CRM', type: 'area', chunkCount: '3', modifyBy: '2', modifyTime: new Date(2026, 9, 12, 8, 30, 0) }]
+        }
     }
-    const database = { builder: async (_repository, callback) => callback(qb) }
     const feignClient = {
         httpBaseSkylineColumnUserResolver: async (_authorization, input) => input.uids.map(uid => ({ uid, name: `用户${uid}` }))
     }
     const configService = { get: () => 'service-token' }
-    const utils = new ChunkUtilsService({}, {}, database, feignClient, configService)
+    const utils = new ChunkUtilsService(repository, {}, {}, feignClient, configService)
     const list = [
         { keyId: 1, module: 'CHUNK_CRM', type: 'area', createBy: '1', modifyBy: '1', modifyTime: '2026-01-01 00:00:00' },
-        { keyId: 2, module: 'CHUNK_CRM', type: 'empty', createBy: '1', modifyBy: '1', modifyTime: '2026-01-01 00:00:00' }
+        { keyId: 2, module: 'CHUNK_CRM', type: 'empty', createBy: '1', modifyBy: '1', modifyTime: '2026-01-01 00:00:00' },
+        { keyId: 3, module: 'CHUNK_CRM', type: 'area', createBy: '1', modifyBy: '1', modifyTime: '2026-01-01 00:00:00' }
     ]
     const records = await utils.appendChunkStatistics(list)
 
-    assert.deepEqual(calls[1], ['where', 't.type IN (:...types)', { types: ['area', 'empty'] }])
+    assert.equal(calls.length, 1)
+    assert.match(calls[0].sql, /ROW_NUMBER\(\) OVER/)
+    assert.deepEqual(calls[0].params, ['area', 'empty'])
     assert.deepEqual(
         records.map(item => [item.keyId, item.chunkCount, item.modifyBy, item.modifyTime]),
         [
             [1, 3, '2', '2026-10-12 08:30:00'],
-            [2, 0, '1', '2026-01-01 00:00:00']
+            [2, 0, '1', '2026-01-01 00:00:00'],
+            [3, 3, '2', '2026-10-12 08:30:00']
         ]
     )
+    assert.equal(list[0].chunkCount, undefined)
 })
