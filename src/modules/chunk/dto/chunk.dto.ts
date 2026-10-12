@@ -1,6 +1,6 @@
 import { ApiProperty, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
-import { Type } from 'class-transformer'
-import { IsInt, Min } from 'class-validator'
+import { Transform, Type } from 'class-transformer'
+import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator'
 import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 import * as feign from '@wlisfes/chat-web-base-schema/feign'
@@ -33,13 +33,19 @@ export class CreateChunkDto extends PickType(Schema.TbSkylineChunkDto, [
     'module',
     'type',
     'name',
-    'value',
     'json',
     'sort',
     'status',
     'allowDelete',
     'allowUpdate'
-] as const) {}
+] as const) {
+    @ApiProperty({ description: '枚举项业务值；为空时默认使用新增后的枚举项主键', required: false, example: 'running' })
+    @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+    @IsOptional()
+    @IsString({ message: '枚举项业务值必须是字符串' })
+    @MaxLength(128, { message: '枚举项业务值长度不能超过128位' })
+    value?: string
+}
 
 /** 更新枚举字典参数。 */
 export class UpdateChunkDto extends IntersectionType(ChunkKeyDto, PartialType(CreateChunkDto)) {}
