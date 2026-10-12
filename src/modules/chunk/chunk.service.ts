@@ -1,12 +1,11 @@
-import { randomUUID } from 'node:crypto'
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
-import type { AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
 import { InjectRepository, DataBaseService, In, Repository } from '@wlisfes/chat-web-base-schema/database'
-import { PageResult, isNotEmpty, fetchResolver, fetchUntiePagination } from '@wlisfes/chat-web-base-schema/utils'
+import { v4, PageResult, isNotEmpty, fetchResolver, fetchUntiePagination } from '@wlisfes/chat-web-base-schema/utils'
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { type AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
 import { ChunkUtilsService } from '@/modules/chunk/chunk.utils.service'
+import * as feign from '@wlisfes/chat-web-base-schema/feign'
 import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
 import * as Schema from '@wlisfes/chat-web-base-schema'
-import * as feign from '@wlisfes/chat-web-base-schema/feign'
 
 /** Skyline 枚举字典 CRUD 业务服务。 */
 @Injectable()
@@ -42,6 +41,12 @@ export class ChunkService {
     /** 分页查询枚举字典；结果保持扁平结构，通过 pid 表示父子关系，并补充创建人、更新人选项。 */
     public async httpBaseSkylineColumnChunk(input: ChunkDto.ListChunkDto): Promise<PageResult<ChunkDto.ChunkColumnResponseDto>> {
         const { page, size } = fetchUntiePagination(input)
+        if (isNotEmpty(input.module) && isNotEmpty(input.type)) {
+            const chunkModule = await this.moduleRepository.findOne({ where: { module: input.module, type: input.type } })
+            if (chunkModule?.kind === Schema.TbSkylineChunkModuleKind.TREE) {
+                return this.httpBaseSkylineColumnChunkTree(input, page, size)
+            }
+        }
         return this.database.builder(this.repository, async qb => {
             if (isNotEmpty(input.module)) {
                 qb.andWhere('t.module = :module', { module: input.module })
@@ -69,6 +74,33 @@ export class ChunkService {
                 return fetchResolver({ page, size, total, list: await this.chunkUtilsService.appendChunkOperators(list) })
             })
         })
+    }
+
+    /**
+     * 树形枚举分类的分页列表：按一级节点分页，下级节点挂在 items 中返回。
+     *
+     * 存在名称、状态筛选时保留命中节点及其祖先节点，保证命中的下级节点仍能展示完整层级；
+     * 传入 pid 时以该节点的直接下级作为分页根节点。
+     */
+    private async httpBaseSkylineColumnChunkTree(
+        input: ChunkDto.ListChunkDto,
+        page: number,
+        size: number
+    ): Promise<PageResult<ChunkDto.ChunkColumnResponseDto>> {
+        const entities = await this.repository.find({
+            where: { module: input.module, type: input.type },
+            order: { sort: 'ASC', keyId: 'ASC' }
+        })
+        const name = input.name?.trim()
+        const filter =
+            isNotEmpty(name) || isNotEmpty(input.status)
+                ? (node: ChunkDto.ChunkColumnResponseDto) => {
+                      return (!isNotEmpty(name) || node.name.includes(name)) && (!isNotEmpty(input.status) || node.status === input.status)
+                  }
+                : undefined
+        const tree = this.chunkUtilsService.buildColumnTree(entities, filter, input.pid)
+        const list = tree.slice((page - 1) * size, page * size)
+        return fetchResolver({ page, size, total: tree.length, list: await this.chunkUtilsService.appendChunkTreeOperators(list) })
     }
 
     /** 分页查询枚举分类；分类数据由 SQL 维护，接口不提供增删改。 */
@@ -113,7 +145,7 @@ export class ChunkService {
             // WithJsonColumn 会把 undefined 转成 NULL 写入，无法落到数据库 DEFAULT，未传 json 时显式写入空对象。
             const entity = manager.create(Schema.TbSkylineChunk, {
                 ...input,
-                value: value || `__pending_${randomUUID()}`,
+                value: value || `__pending_${v4()}`,
                 json: input.json ?? {},
                 createBy: principal.uid,
                 modifyBy: principal.uid
@@ -205,6 +237,6 @@ export class ChunkService {
             where: { pid: entity.keyId, status: Schema.TbSkylineChunkStatus.CHUNK_ENABLE },
             order: { sort: 'ASC', keyId: 'ASC' }
         })
-        return { ...this.chunkUtilsService.toOption(entity), children: this.chunkUtilsService.buildOptionTree(children, entity.keyId) }
+        return { ...this.chunkUtilsService.toOption(entity), children: this.chunkUtilsService.buildOptionTree(children) }
     }
 }

@@ -1,11 +1,11 @@
 import { ApiProperty, ApiPropertyOptional, IntersectionType, PartialType, PickType } from '@nestjs/swagger'
-import { Transform, Type } from 'class-transformer'
 import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator'
 import { EnumsResponseDto, PageResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
+import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
+import { Transform, Type } from 'class-transformer'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 import * as feign from '@wlisfes/chat-web-base-schema/feign'
 
-import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 /** 枚举字典分页查询参数。 */
 export class ListChunkDto extends IntersectionType(
     PageDto,
@@ -38,17 +38,10 @@ export class ChunkTreeQueryDto extends PickType(Schema.TbSkylineChunkDto, ['modu
 }
 
 /** 新增枚举字典参数。 */
-export class CreateChunkDto extends PickType(Schema.TbSkylineChunkDto, [
-    'pid',
-    'module',
-    'type',
-    'name',
-    'json',
-    'sort',
-    'status',
-    'allowDelete',
-    'allowUpdate'
-] as const) {
+export class CreateChunkDto extends IntersectionType(
+    PickType(Schema.TbSkylineChunkDto, ['pid', 'module', 'type', 'name', 'json'] as const),
+    PickType(Schema.TbSkylineChunkDto, ['sort', 'status', 'allowDelete', 'allowUpdate'] as const)
+) {
     @ApiProperty({ description: '枚举项业务值；为空时默认使用新增后的枚举项主键', required: false, example: 'running' })
     @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
     @IsOptional()
@@ -64,35 +57,24 @@ export class UpdateChunkDto extends IntersectionType(ChunkKeyDto, PartialType(Cr
 export class ChunkResponseDto extends Schema.TbSkylineChunkDto {}
 
 /** 枚举字典树节点响应：GET /deploy/chunk/tree/structure。 */
-export class ChunkTreeNodeResponseDto extends PickType(Schema.TbSkylineChunkDto, [
-    'keyId',
-    'pid',
-    'module',
-    'type',
-    'name',
-    'value',
-    'sort',
-    'status'
-] as const) {
+export class ChunkTreeNodeResponseDto extends IntersectionType(
+    PickType(Schema.TbSkylineChunkDto, ['keyId', 'pid', 'module', 'type'] as const),
+    PickType(Schema.TbSkylineChunkDto, ['name', 'value', 'sort', 'status'] as const)
+) {
     @ApiProperty({ description: '子枚举项节点', type: () => ChunkTreeNodeResponseDto, isArray: true, example: [] })
     children: ChunkTreeNodeResponseDto[]
 }
 
 /** 枚举字典列表项响应：补充创建人、更新人选项。 */
-export class ChunkColumnResponseDto extends ChunkResponseDto {
+export class ChunkColumnResponseDto extends IntersectionType(ChunkResponseDto, feign.SkylineUserOptionsResponseDto) {
     @ApiProperty({
-        description: '创建人选项，通过 Skyline 账号 Feign 按 createBy 还原',
-        type: feign.SkylineUserOptionResponseDto,
-        required: false
+        description: '子枚举项；枚举分类字段类型为 tree 时返回树结构，select 时不返回',
+        type: () => ChunkColumnResponseDto,
+        isArray: true,
+        required: false,
+        example: []
     })
-    createByOptions?: feign.SkylineUserOptionResponseDto
-
-    @ApiProperty({
-        description: '更新人选项，通过 Skyline 账号 Feign 按 modifyBy 还原',
-        type: feign.SkylineUserOptionResponseDto,
-        required: false
-    })
-    modifyByOptions?: feign.SkylineUserOptionResponseDto
+    items?: ChunkColumnResponseDto[]
 }
 
 /** 枚举字典分页响应。 */
@@ -102,21 +84,7 @@ export class ChunkPageResponseDto extends PageResponseDataDto {
 }
 
 /** 枚举分类详情响应。 */
-export class ChunkModuleResponseDto extends Schema.TbSkylineChunkModuleDto {
-    @ApiProperty({
-        description: '创建人选项，通过 Skyline 账号 Feign 按 createBy 还原',
-        type: feign.SkylineUserOptionResponseDto,
-        required: false
-    })
-    createByOptions?: feign.SkylineUserOptionResponseDto
-
-    @ApiProperty({
-        description: '更新人选项，通过 Skyline 账号 Feign 按 modifyBy 还原',
-        type: feign.SkylineUserOptionResponseDto,
-        required: false
-    })
-    modifyByOptions?: feign.SkylineUserOptionResponseDto
-
+export class ChunkModuleResponseDto extends IntersectionType(Schema.TbSkylineChunkModuleDto, feign.SkylineUserOptionsResponseDto) {
     @ApiProperty({ description: '子表枚举项数量，按 module + type 联查 tb_skyline_chunk', example: 65, readOnly: true })
     chunkCount: number
 }

@@ -1,12 +1,11 @@
+import { InjectRepository, DataBaseService, Not, Repository } from '@wlisfes/chat-web-base-schema/database'
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { InjectRepository, DataBaseService, Not, Repository } from '@wlisfes/chat-web-base-schema/database'
-import { isEmpty, isNotEmpty } from '@wlisfes/chat-web-base-schema/utils'
+import * as utils from '@wlisfes/chat-web-base-schema/utils'
+import * as feign from '@wlisfes/chat-web-base-schema/feign'
 import * as ChunkDto from '@/modules/chunk/dto/chunk.dto'
 import * as Schema from '@wlisfes/chat-web-base-schema'
-import * as feign from '@wlisfes/chat-web-base-schema/feign'
 
-/** Skyline 枚举字典工具服务：沉淀查询补充、选项树组装与业务校验等公共逻辑。 */
 @Injectable()
 export class ChunkUtilsService {
     constructor(
@@ -20,7 +19,6 @@ export class ChunkUtilsService {
 
     /**
      * 按 module + type 联查子表 tb_skyline_chunk，为当前页枚举分类补充枚举项数量和最近更新信息。
-     *
      * 更新人、更新时间取子表中对应分类最新一条枚举项（modifyTime 倒序，相同时 keyId 倒序）；
      * 创建人、创建时间保持分类表原值，分类下没有枚举项时更新人、更新时间也保持分类表原值。
      * 更新人最终确定后，再通过 Skyline 账号 Feign 批量把创建人、更新人还原为 createByOptions、modifyByOptions。
@@ -70,59 +68,52 @@ export class ChunkUtilsService {
 
     /**
      * 把扁平枚举项按 pid 组装成选项树。
-     *
-     * rootPid 表示本次组装的根节点父级，pid 等于它、为空或指向集合外节点的枚举项都作为根节点返回，
-     * 避免单个枚举项父级被禁用时整组选项丢失。
+     * pid 为空或指向集合外节点的枚举项都作为根节点返回，避免单个枚举项父级被禁用时整组选项丢失。
      */
-    public buildOptionTree(entities: Schema.TbSkylineChunk[], rootPid?: number): feign.SkylineChunkOption[] {
-        const options = new Map<number, feign.SkylineChunkOption>()
-        for (const entity of entities) {
-            options.set(entity.keyId, this.toOption(entity))
-        }
-
-        const roots: feign.SkylineChunkOption[] = []
-        for (const entity of entities) {
-            const option = options.get(entity.keyId) as feign.SkylineChunkOption
-            const parent = isNotEmpty(entity.pid) && entity.pid !== rootPid ? options.get(entity.pid) : undefined
-            if (parent) {
-                parent.children.push(option)
-            } else {
-                roots.push(option)
-            }
-        }
-
-        return roots
+    public buildOptionTree(entities: Schema.TbSkylineChunk[]): feign.SkylineChunkOption[] {
+        return utils.fromTreeList(
+            entities.map(entity => this.toOption(entity)),
+            { id: 'keyId' }
+        )
     }
 
     /**
      * 把扁平枚举项按 pid 组装成父级选择树。
-     *
      * excludeKeyId 对应编辑中的枚举项，自身及其子孙节点不会返回，避免把父级设置成自身或子孙节点形成循环。
      */
     public buildTree(entities: Schema.TbSkylineChunk[], excludeKeyId?: number): ChunkDto.ChunkTreeNodeResponseDto[] {
-        const nodes = new Map<number, ChunkDto.ChunkTreeNodeResponseDto>()
-        for (const entity of entities) {
-            const { keyId, pid, module, type, name, value, sort, status } = entity
-            nodes.set(keyId, { keyId, pid, module, type, name, value, sort, status, children: [] })
+        const tree = utils.fromTreeList<ChunkDto.ChunkTreeNodeResponseDto>(
+            entities.map(({ keyId, pid, module, type, name, value, sort, status }) => {
+                return { keyId, pid, module, type, name, value, sort, status, children: [] }
+            }),
+            { id: 'keyId' }
+        )
+        if (utils.isNotEmpty(excludeKeyId)) {
+            utils.removeTreeNode(tree, node => node.keyId === excludeKeyId)
         }
+        return tree
+    }
 
-        const roots: ChunkDto.ChunkTreeNodeResponseDto[] = []
-        for (const node of nodes.values()) {
-            const parent = isNotEmpty(node.pid) ? nodes.get(node.pid) : undefined
-            if (parent) {
-                parent.children.push(node)
-            } else {
-                roots.push(node)
-            }
-        }
+    /**
+     * 把枚举项组装成列表树，子节点字段为 items。
+     *
+     * filter 存在时保留命中节点及其祖先节点；rootPid 为空时返回一级节点，否则返回 rootPid 的直接下级。
+     */
+    public buildColumnTree(
+        entities: Schema.TbSkylineChunk[],
+        filter?: (node: ChunkDto.ChunkColumnResponseDto) => boolean,
+        rootPid?: number | null
+    ): ChunkDto.ChunkColumnResponseDto[] {
+        const config = { id: 'keyId', children: 'items' }
+        const tree = utils.fromTreeList<ChunkDto.ChunkColumnResponseDto>(entities, config)
+        const filtered = filter ? utils.filterTree(tree, filter, config) : tree
+        return utils.isEmpty(rootPid) ? filtered : (utils.findTreeNode(filtered, node => node.keyId === rootPid, config)?.items ?? [])
+    }
 
-        if (isEmpty(excludeKeyId)) {
-            return roots
-        }
-        const exclude = (items: ChunkDto.ChunkTreeNodeResponseDto[]): ChunkDto.ChunkTreeNodeResponseDto[] => {
-            return items.filter(item => item.keyId !== excludeKeyId).map(item => ({ ...item, children: exclude(item.children) }))
-        }
-        return exclude(roots)
+    /** 为列表树中的所有节点补充创建人、更新人选项。 */
+    public async appendChunkTreeOperators(list: ChunkDto.ChunkColumnResponseDto[]): Promise<ChunkDto.ChunkColumnResponseDto[]> {
+        await this.appendChunkOperators(utils.toTreeList(list, { children: 'items' }))
+        return list
     }
 
     /** 把枚举实体转换为统一的下拉选项结构；description 取自扩展配置，缺省时回落为显示名称。 */
@@ -159,17 +150,17 @@ export class ChunkUtilsService {
 
     /** 校验父枚举项存在、不能指向自身，且必须属于同一模块。 */
     public async assertParent(pid?: number | null, module?: Schema.TbSkylineChunkModule, keyId?: number): Promise<void> {
-        if (isEmpty(pid)) {
+        if (utils.isEmpty(pid)) {
             return
         }
-        if (isNotEmpty(keyId) && pid === keyId) {
+        if (utils.isNotEmpty(keyId) && pid === keyId) {
             throw new BadRequestException('枚举项不能将自身设置为父节点')
         }
         const parent = await this.repository.findOne({ where: { keyId: pid } })
         if (!parent) {
             throw new NotFoundException('父枚举项不存在')
         }
-        if (isNotEmpty(module) && parent.module !== module) {
+        if (utils.isNotEmpty(module) && parent.module !== module) {
             throw new BadRequestException('父枚举项必须属于同一模块')
         }
     }
@@ -182,7 +173,7 @@ export class ChunkUtilsService {
         excludeKeyId?: number
     ): Promise<void> {
         const where: Record<string, unknown> = { module, type, value }
-        if (isNotEmpty(excludeKeyId)) {
+        if (utils.isNotEmpty(excludeKeyId)) {
             where.keyId = Not(excludeKeyId)
         }
         const existing = await this.repository.findOne({ where })
