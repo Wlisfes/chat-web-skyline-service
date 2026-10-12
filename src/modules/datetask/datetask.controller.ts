@@ -4,7 +4,7 @@ import { ApiServiceDecorator, ApifoxController } from '@wlisfes/chat-web-base-sc
 import { DatetaskService } from '@/modules/datetask/datetask.service'
 import * as DatetaskDto from '@/modules/datetask/dto/datetask.dto'
 
-/** 系统任务管理 HTTP 接口。 */
+/** 系统任务管理 HTTP 接口；路由与权限码保持不变，数据由 Task 服务提供。 */
 @ApifoxController('Skyline 系统任务管理', 'deploy/datetask', { bearerAuth: true })
 export class DatetaskController {
     constructor(private readonly datetaskService: DatetaskService) {}
@@ -85,5 +85,17 @@ export class DatetaskController {
     })
     public async httpBaseSkylineColumnDatetaskLog(@Body() input: DatetaskDto.ListDatetaskLogDto) {
         return this.datetaskService.httpBaseSkylineColumnDatetaskLog(input)
+    }
+
+    @RequirePermissions('chat:deploy:datetask:system:logs')
+    @ApiServiceDecorator(Get('log/resolve'), {
+        operation: { summary: '系统任务单条执行日志，用于手动触发后轮询结果' },
+        request: { source: 'query', type: DatetaskDto.ResolveDatetaskLogDto },
+        response: { type: DatetaskDto.DatetaskLogResponseDto, description: '执行日志' }
+    })
+    public async httpBaseSkylineResolverDatetaskLog(
+        @Query() query: DatetaskDto.ResolveDatetaskLogDto
+    ): Promise<DatetaskDto.DatetaskLogResponseDto> {
+        return this.datetaskService.httpBaseSkylineResolverDatetaskLog(query)
     }
 }

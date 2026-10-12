@@ -35,7 +35,7 @@ yarn dev
 
 ## 共享基础包
 
-项目安装 `@wlisfes/chat-web-base-schema`，并按照该包的 `peerDependencies` 与 `chat-web-account-service` 的版本补齐：
+项目安装 `@wlisfes/chat-web-base-schema`，并按照该包的 `peerDependencies` 与本仓库 `package.json` 锁定的版本补齐：
 
 - `@nestjs/swagger`、`@nestjs/typeorm`
 - `class-transformer`、`express`

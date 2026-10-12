@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-10-12：定时任务迁出到 Task 服务
+
+- 影响机器：`chat-home-server`。
+- 变更内容：删除本服务的调度器、执行器和执行日志写入；系统任务管理接口（`/deploy/datetask/*`）路由和权限码不变，改为通过 `/feign/task` 调用 `chat-web-task-service`；新增 `GET /deploy/datetask/log/resolve` 供手动触发后轮询结果。任务状态改为 `enable`/`disable`，执行日志改为 Task 服务的执行记录。
+- 依赖：新版 `@wlisfes/chat-web-base-schema`；`chat-web-task-service` 先于本服务上线，并完成任务数据迁移；管理端同步发布。
+- 机器侧操作：Nacos 配置补充 `gateway.feign.task_timeout: 15000`。
+- 验证命令：管理端“系统任务管理”页面列表、启停、改 Cron、手动触发、执行日志均正常；本服务日志不再出现“系统任务调度器已加载”。
+- 回滚方法：回退本服务镜像即可恢复本地调度；旧表 `tb_skyline_datetask_system`、`tb_skyline_datetask_log` 仍保留，确认稳定后再删除。
+
 ## 2026-10-11：迁入 Account 账号、组织、角色和菜单能力
 
 - 影响机器：`chat-home-server`。
