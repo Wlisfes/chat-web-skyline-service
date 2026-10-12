@@ -18,47 +18,43 @@ export class ChunkUtilsService {
     ) {}
 
     /**
-     * 按 module + type 联查子表 tb_skyline_chunk，为当前页枚举分类补充枚举项数量和最近更新信息。
-     * 更新人、更新时间取子表中对应分类最新一条枚举项（modifyTime 倒序，相同时 keyId 倒序）；
-     * 创建人、创建时间保持分类表原值，分类下没有枚举项时更新人、更新时间也保持分类表原值。
-     * 更新人最终确定后，再通过 Skyline 账号 Feign 批量把创建人、更新人还原为 createByOptions、modifyByOptions。
+     * 按 module + type 聚合子表 tb_skyline_chunk，为当前页枚举分类补充枚举项数量和最近更新信息。
+     *
+     * 使用 MySQL 窗口函数在数据库内完成计数和最新记录筛选，每个分类只返回一行，避免把整页分类下的枚举项全部加载到内存。
+     * 更新人、更新时间取对应分类最新一条枚举项（modifyTime 倒序，相同时 keyId 倒序）；分类下没有枚举项时保持分类表原值。
      */
     public async appendChunkStatistics(list: Array<Schema.TbSkylineChunkModuleEntity>): Promise<Array<ChunkDto.ChunkModuleResponseDto>> {
         if (list.length === 0) {
             return []
         }
-        return this.database.builder(this.repository, async qb => {
-            qb.select(['t.keyId', 't.module', 't.type', 't.modifyBy', 't.modifyTime'])
-            qb.where('t.type IN (:...types)', { types: [...new Set(list.map(item => item.type))] })
-            qb.orderBy('t.modifyTime', 'DESC')
-            qb.addOrderBy('t.keyId', 'DESC')
-            return await qb.getMany().then(async rows => {
-                // 以 module:type 作为键汇总；rows 已按最新排序，同一分类首次出现的枚举项即最新一条。
-                const statistics = new Map<string, { count: number; latest: Schema.TbSkylineChunk }>()
-                for (const row of rows) {
-                    const key = `${row.module}:${row.type}`
-                    const current = statistics.get(key)
-                    if (current) {
-                        current.count += 1
-                    } else {
-                        statistics.set(key, { count: 1, latest: row })
-                    }
-                }
-                // 直接在原列表项上追加统计字段，最终返回原 list。
-                const records = list as Array<ChunkDto.ChunkModuleResponseDto>
-                for (const item of records) {
-                    const current = statistics.get(`${item.module}:${item.type}`)
-                    if (!current) {
-                        item.chunkCount = 0
-                    } else {
-                        item.chunkCount = current.count
-                        item.modifyBy = current.latest.modifyBy
-                        item.modifyTime = current.latest.modifyTime
-                    }
-                }
-                return await feign.appendSkylineUserOptions(this.skylineFeignClient, this.configService, records, ['createBy', 'modifyBy'])
-            })
-        })
+        const types = [...new Set(list.map(item => item.type))]
+        const rows: Array<{ module: string; type: string; chunkCount: string | number; modifyBy: string; modifyTime: Date | string }> =
+            await this.repository.query(
+                `SELECT s.module, s.type, s.chunkCount, s.modifyBy, s.modifyTime
+                FROM (
+                    SELECT
+                        c.module,
+                        c.type,
+                        c.modify_by AS modifyBy,
+                        c.modify_time AS modifyTime,
+                        COUNT(*) OVER (PARTITION BY c.module, c.type) AS chunkCount,
+                        ROW_NUMBER() OVER (PARTITION BY c.module, c.type ORDER BY c.modify_time DESC, c.key_id DESC) AS rowNumber
+                    FROM tb_skyline_chunk c
+                    WHERE c.type IN (${types.map(() => '?').join(', ')})
+                ) s
+                WHERE s.rowNumber = 1`,
+                types
+            )
+        const statistics = new Map(rows.map(row => [`${row.module}:${row.type}`, row]))
+        const records = list.map(item => {
+            const current = statistics.get(`${item.module}:${item.type}`)
+            if (!current) {
+                return { ...item, chunkCount: 0 }
+            }
+            const modifyTime = utils.moment(current.modifyTime).format('YYYY-MM-DD HH:mm:ss')
+            return { ...item, chunkCount: Number(current.chunkCount), modifyBy: current.modifyBy, modifyTime }
+        }) as Array<ChunkDto.ChunkModuleResponseDto>
+        return await feign.appendSkylineUserOptions(this.skylineFeignClient, this.configService, records, ['createBy', 'modifyBy'])
     }
 
     /** 通过 Skyline 账号 Feign 批量把枚举项的 createBy、modifyBy 还原为 createByOptions、modifyByOptions。 */
