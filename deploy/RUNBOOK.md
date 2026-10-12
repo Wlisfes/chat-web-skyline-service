@@ -62,7 +62,7 @@ Skyline 的业务数据库配置位于 Nacos `database.chat-web-skyline`，对�
 docker inspect chat-web-skyline-service --format '{{.Config.Image}} {{.State.Health.Status}} {{.RestartCount}}'
 docker exec chat-web-skyline-service node -e "require('http').get('http://127.0.0.1:5040/health/live', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 docker exec chat-web-gateway-service node -e "fetch('http://127.0.0.1:5000/api/skyline/health/live').then(response => response.text()).then(console.log)"
-curl -kfsS --resolve chat.lisfes.com:443:127.0.0.1 https://chat.lisfes.com/api/skyline/health/live
+curl -kfsS --resolve chat.lisfes.cn:443:127.0.0.1 https://chat.lisfes.cn/api/skyline/health/live
 docker logs --tail 100 chat-web-skyline-service
 
 # 手动执行/核对 Skyline Schema（需要当前目录存在 .env）

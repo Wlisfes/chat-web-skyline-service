@@ -7,7 +7,7 @@
 - 新增表：`tb_skyline_user`、`tb_skyline_organization`、`tb_skyline_organization_closure`、`tb_skyline_user_organization`、`tb_skyline_sheet`、`tb_skyline_role`（含 `super_admin` 种子）、`tb_skyline_user_role`、`tb_skyline_role_sheet`、`tb_skyline_role_data_scope`、`tb_skyline_role_data_scope_organization`、`tb_skyline_user_chunk`（原 `tb_account_chunk`，`link_name` 前缀改为 `tb_skyline_user.`）。
 - 依赖：`@wlisfes/chat-web-base-schema@1.6.84`。
 - 机器侧操作：部署时 apply-schema 自动执行 `20261011100000` 至 `20261011100010` 共 11 个建表 SQL（`CREATE TABLE IF NOT EXISTS`，可重复执行）。表数据需在建表后单独从 `chat-web-account` 复制到 `chat-web-skyline`，主键保持不变，`tb_account_chunk.link_name` 的 `tb_account_user.` 前缀转换为 `tb_skyline_user.`；复制后逐表核对行数。
-- 验证命令：Gateway `GET /api/skyline/health` 返回 `status=UP`；登录后 `POST /api/skyline/deploy/user/column` 返回与 Account 一致的账号分页数据。
+- 验证命令：`GET https://chat.lisfes.cn/api/skyline/health/live` 返回 `{"status":"UP"}`；使用服务间凭据 `POST https://chat-web.lisfes.cn/feign/skyline/user/column/resolve` 返回账号摘要，`/feign/skyline/user/resolve` 查询不存在的 UID 返回 404「账号不存在」；登录后 `POST /api/skyline/deploy/user/column` 返回与 Account 一致的账号分页数据。
 - 回滚方法：回退 Skyline 镜像；新增表不被旧镜像使用，可保留，或确认无调用后手动删除。Account 服务未下线，调用方无需回滚。
 
 ## 2026-10-10：新增系统联系方式枚举
