@@ -68,13 +68,13 @@ export class ChunkTreeNodeResponseDto extends IntersectionType(
 /** 枚举字典列表项响应：补充创建人、更新人选项。 */
 export class ChunkColumnResponseDto extends IntersectionType(ChunkResponseDto, feign.SkylineUserOptionsResponseDto) {
     @ApiProperty({
-        description: '子枚举项；枚举分类字段类型为 tree 时返回树结构，select 时不返回',
+        description: '子枚举项；枚举分类字段类型为 tree 且存在下级时返回，叶子节点和 select 类型不返回',
         type: () => ChunkColumnResponseDto,
         isArray: true,
         required: false,
         example: []
     })
-    items?: ChunkColumnResponseDto[]
+    children?: ChunkColumnResponseDto[]
 }
 
 /** 枚举字典分页响应。 */
