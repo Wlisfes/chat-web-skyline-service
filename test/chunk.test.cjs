@@ -33,13 +33,15 @@ test('树形枚举分类列表按一级节点分页并返回 children', async ()
         { keyId: 3, pid: null, module: 'CHUNK_CRM', type: 'source', name: '线下', value: 'offline', sort: 20, status: 'enable' },
         { keyId: 4, pid: 3, module: 'CHUNK_CRM', type: 'source', name: '展会', value: 'expo', sort: 10, status: 'disable' }
     ]
-    const repository = { find: async () => rows }
+    const calls = []
+    const repository = { find: async options => (calls.push(options), rows) }
     const moduleRepository = { findOne: async () => ({ kind: 'tree' }) }
     const utils = new ChunkUtilsService(repository, moduleRepository, {}, {}, {})
     utils.appendChunkOperators = async list => list
     const service = new ChunkService(repository, moduleRepository, {}, utils)
 
     const pageOne = await service.httpBaseSkylineColumnChunk({ page: 1, size: 1, module: 'CHUNK_CRM', type: 'source' })
+    assert.deepEqual(calls[0].order, { sort: 'DESC', keyId: 'ASC' })
     assert.equal(pageOne.total, 2)
     assert.deepEqual(
         pageOne.list.map(item => [item.keyId, item.children.map(child => child.keyId)]),
@@ -87,5 +89,33 @@ test('枚举分类统计补充枚举项数量和最近更新信息', async () =>
             [1, 3, '2', '2026-10-12 08:30:00'],
             [2, 0, '1', '2026-01-01 00:00:00']
         ]
+    )
+})
+
+test('不允许更新、删除的枚举项仅超级管理员可操作', async () => {
+    const current = { keyId: 5, module: 'CHUNK_CRM', type: 'source', value: '5', allowUpdate: false, allowDelete: false }
+    const calls = []
+    const repository = {
+        update: async (...args) => calls.push(['update', ...args]),
+        count: async () => 0,
+        delete: async keyId => calls.push(['delete', keyId])
+    }
+    const utils = {
+        findRequired: async () => current,
+        assertModuleType: async () => undefined,
+        assertParent: async () => undefined,
+        assertUnique: async () => undefined
+    }
+    const service = new ChunkService(repository, {}, {}, utils)
+
+    await assert.rejects(service.httpBaseSkylineUpdateChunk({ uid: '1' }, { keyId: 5, name: '改名' }), /当前枚举项不允许更新/)
+    await assert.rejects(service.httpBaseSkylineDeleteChunk({ uid: '1' }, { keyId: 5 }), /当前枚举项不允许删除/)
+    assert.equal(calls.length, 0)
+
+    await service.httpBaseSkylineUpdateChunk({ uid: '0', superAdmin: true }, { keyId: 5, name: '改名' })
+    assert.deepEqual(await service.httpBaseSkylineDeleteChunk({ uid: '0', superAdmin: true }, { keyId: 5 }), { success: true })
+    assert.deepEqual(
+        calls.map(item => item[0]),
+        ['update', 'delete']
     )
 })
