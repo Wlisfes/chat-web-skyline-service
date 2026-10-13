@@ -241,6 +241,11 @@ export class ChunkService {
             where: { pid: entity.keyId, status: Schema.TbSkylineChunkStatus.CHUNK_ENABLE },
             order: { sort: 'ASC', keyId: 'ASC' }
         })
-        return { ...this.chunkUtilsService.toOption(entity), children: this.chunkUtilsService.buildOptionTree(children) }
+        const options = this.chunkUtilsService.buildOptionTree(children)
+        // 无下级时不返回 children 字段，与批量选项接口的叶子节点保持一致。
+        return {
+            ...this.chunkUtilsService.toOption(entity),
+            ...(options.length > 0 ? { children: options } : {})
+        }
     }
 }
