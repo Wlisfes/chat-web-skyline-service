@@ -56,14 +56,17 @@ export class ChunkUtilsService {
                         item.modifyTime = current.latest.modifyTime
                     }
                 }
-                return await feign.appendSkylineUserOptions(this.skylineFeignClient, this.configService, records, ['createBy', 'modifyBy'])
+                return await feign.fetchAppendSkylineUserOptions(this.skylineFeignClient, this.configService, records, [
+                    'createBy',
+                    'modifyBy'
+                ])
             })
         })
     }
 
     /** 通过 Skyline 账号 Feign 批量把枚举项的 createBy、modifyBy 还原为 createByOptions、modifyByOptions。 */
     public async appendChunkOperators(list: Array<Schema.TbSkylineChunk>): Promise<Array<ChunkDto.ChunkColumnResponseDto>> {
-        return await feign.appendSkylineUserOptions(this.skylineFeignClient, this.configService, list, ['createBy', 'modifyBy'])
+        return await feign.fetchAppendSkylineUserOptions(this.skylineFeignClient, this.configService, list, ['createBy', 'modifyBy'])
     }
 
     /**
