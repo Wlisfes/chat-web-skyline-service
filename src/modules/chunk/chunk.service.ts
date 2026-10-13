@@ -87,7 +87,7 @@ export class ChunkService {
         page: number,
         size: number
     ): Promise<PageResult<ChunkDto.ChunkColumnResponseDto>> {
-        // 各层级同级节点按排序号倒序，排序号相同时按主键升序；组树时保持查询顺序。
+        // 各层级同级节点按排序号升序，排序号相同时按主键升序；组树时保持查询顺序。
         const entities = await this.repository.find({
             where: { module: input.module, type: input.type },
             order: { sort: 'ASC', keyId: 'ASC' }

@@ -41,7 +41,7 @@ test('树形枚举分类列表按一级节点分页并返回 children', async ()
     const service = new ChunkService(repository, moduleRepository, {}, utils)
 
     const pageOne = await service.httpBaseSkylineColumnChunk({ page: 1, size: 1, module: 'CHUNK_CRM', type: 'source' })
-    assert.deepEqual(calls[0].order, { sort: 'DESC', keyId: 'ASC' })
+    assert.deepEqual(calls[0].order, { sort: 'ASC', keyId: 'ASC' })
     assert.equal(pageOne.total, 2)
     assert.deepEqual(
         pageOne.list.map(item => [item.keyId, item.children.map(child => child.keyId)]),
