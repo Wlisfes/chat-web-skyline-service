@@ -72,12 +72,19 @@ export class ChunkUtilsService {
     /**
      * 把扁平枚举项按 pid 组装成选项树。
      * pid 为空或指向集合外节点的枚举项都作为根节点返回，避免单个枚举项父级被禁用时整组选项丢失。
+     * 叶子节点不返回 children 字段，前端下拉、树形选择据此判断节点是否可展开。
      */
     public buildOptionTree(entities: Schema.TbSkylineChunk[]): feign.SkylineChunkOption[] {
-        return utils.fromTreeList(
+        const tree = utils.fromTreeList(
             entities.map(entity => this.toOption(entity)),
             { id: 'keyId' }
         )
+        for (const node of utils.toTreeList(tree)) {
+            if (node.children?.length === 0) {
+                delete node.children
+            }
+        }
+        return tree
     }
 
     /**

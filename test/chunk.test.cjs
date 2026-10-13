@@ -119,3 +119,28 @@ test('不允许更新、删除的枚举项仅超级管理员可操作', async ()
         ['update', 'delete']
     )
 })
+
+test('枚举选项树的叶子节点不返回 children 字段', async () => {
+    const rows = [
+        { keyId: 1, pid: null, module: 'CHUNK_CRM', type: 'source', name: '市场分配', value: '1', sort: 10, status: 'enable', json: {} },
+        { keyId: 2, pid: 1, module: 'CHUNK_CRM', type: 'source', name: '线上推广', value: '2', sort: 10, status: 'enable', json: {} },
+        { keyId: 3, pid: 2, module: 'CHUNK_CRM', type: 'source', name: 'Web注册', value: '3', sort: 10, status: 'enable', json: {} },
+        { keyId: 4, pid: null, module: 'CHUNK_CRM', type: 'source', name: '自主开发', value: '4', sort: 20, status: 'enable', json: {} }
+    ]
+    const repository = { find: async () => rows }
+    const utils = new ChunkUtilsService(repository, {}, {}, {}, {})
+    const service = new ChunkService(repository, {}, {}, utils)
+
+    const record = await service.httpBaseSkylineChunkOptionColumn({ types: ['source'] })
+    const [market, self] = record.source.options
+    assert.deepEqual(
+        market.children.map(item => item.keyId),
+        [2]
+    )
+    assert.deepEqual(
+        market.children[0].children.map(item => item.keyId),
+        [3]
+    )
+    assert.equal('children' in market.children[0].children[0], false)
+    assert.equal('children' in self, false)
+})
