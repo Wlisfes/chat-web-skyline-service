@@ -98,7 +98,7 @@ export class ChunkUtilsService {
     }
 
     /**
-     * 把枚举项组装成列表树，子节点字段为 items。
+     * 把枚举项组装成列表树，子节点字段为 children，叶子节点不返回 children，便于前端表格直接按树形结构渲染。
      *
      * filter 存在时保留命中节点及其祖先节点；rootPid 为空时返回一级节点，否则返回 rootPid 的直接下级。
      */
@@ -107,15 +107,24 @@ export class ChunkUtilsService {
         filter?: (node: ChunkDto.ChunkColumnResponseDto) => boolean,
         rootPid?: number | null
     ): ChunkDto.ChunkColumnResponseDto[] {
-        const config = { id: 'keyId', children: 'items' }
+        const config = { id: 'keyId', children: 'children' }
         const tree = utils.fromTreeList<ChunkDto.ChunkColumnResponseDto>(entities, config)
         const filtered = filter ? utils.filterTree(tree, filter, config) : tree
-        return utils.isEmpty(rootPid) ? filtered : (utils.findTreeNode(filtered, node => node.keyId === rootPid, config)?.items ?? [])
+        const list = utils.isEmpty(rootPid)
+            ? filtered
+            : (utils.findTreeNode(filtered, node => node.keyId === rootPid, config)?.children ?? [])
+        // 表格把存在 children 数组的行视为可展开节点，叶子节点删除空数组，避免出现无内容的展开按钮。
+        for (const node of utils.toTreeList(list, config)) {
+            if (node.children?.length === 0) {
+                delete node.children
+            }
+        }
+        return list
     }
 
     /** 为列表树中的所有节点补充创建人、更新人选项。 */
     public async appendChunkTreeOperators(list: ChunkDto.ChunkColumnResponseDto[]): Promise<ChunkDto.ChunkColumnResponseDto[]> {
-        await this.appendChunkOperators(utils.toTreeList(list, { children: 'items' }))
+        await this.appendChunkOperators(utils.toTreeList(list, { children: 'children' }))
         return list
     }
 

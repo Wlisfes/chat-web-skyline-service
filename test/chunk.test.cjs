@@ -26,7 +26,7 @@ test('枚举父级树按 module + type 查询并排除编辑项及其子孙节�
     )
 })
 
-test('树形枚举分类列表按一级节点分页并返回 items', async () => {
+test('树形枚举分类列表按一级节点分页并返回 children', async () => {
     const rows = [
         { keyId: 1, pid: null, module: 'CHUNK_CRM', type: 'source', name: '线上', value: 'online', sort: 10, status: 'enable' },
         { keyId: 2, pid: 1, module: 'CHUNK_CRM', type: 'source', name: '官网', value: 'site', sort: 10, status: 'enable' },
@@ -42,13 +42,14 @@ test('树形枚举分类列表按一级节点分页并返回 items', async () =>
     const pageOne = await service.httpBaseSkylineColumnChunk({ page: 1, size: 1, module: 'CHUNK_CRM', type: 'source' })
     assert.equal(pageOne.total, 2)
     assert.deepEqual(
-        pageOne.list.map(item => [item.keyId, item.items.map(child => child.keyId)]),
+        pageOne.list.map(item => [item.keyId, item.children.map(child => child.keyId)]),
         [[1, [2]]]
     )
+    assert.equal('children' in pageOne.list[0].children[0], false)
 
     const filtered = await service.httpBaseSkylineColumnChunk({ page: 1, size: 10, module: 'CHUNK_CRM', type: 'source', status: 'disable' })
     assert.deepEqual(
-        filtered.list.map(item => [item.keyId, item.items.map(child => child.keyId)]),
+        filtered.list.map(item => [item.keyId, item.children.map(child => child.keyId)]),
         [[3, [4]]]
     )
 })
