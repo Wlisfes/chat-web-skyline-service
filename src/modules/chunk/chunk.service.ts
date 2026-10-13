@@ -38,7 +38,7 @@ export class ChunkService {
         return this.chunkUtilsService.buildTree(entities, query.keyId)
     }
 
-    /** 分页查询枚举字典；结果保持扁平结构，通过 pid 表示父子关系，并补充创建人、更新人选项。 */
+    /** 分页查询枚举字典；同级按排序号倒序、主键升序，结果保持扁平结构，通过 pid 表示父子关系，并补充创建人、更新人选项。 */
     public async httpBaseSkylineColumnChunk(input: ChunkDto.ListChunkDto): Promise<PageResult<ChunkDto.ChunkColumnResponseDto>> {
         const { page, size } = fetchUntiePagination(input)
         if (isNotEmpty(input.module) && isNotEmpty(input.type)) {
@@ -66,7 +66,7 @@ export class ChunkService {
             qb.orderBy('t.module', 'ASC')
             qb.addOrderBy('t.type', 'ASC')
             qb.addOrderBy('t.pid', 'ASC')
-            qb.addOrderBy('t.sort', 'ASC')
+            qb.addOrderBy('t.sort', 'DESC')
             qb.addOrderBy('t.keyId', 'ASC')
             qb.skip((page - 1) * size)
             qb.take(size)
@@ -87,6 +87,7 @@ export class ChunkService {
         page: number,
         size: number
     ): Promise<PageResult<ChunkDto.ChunkColumnResponseDto>> {
+        // 各层级同级节点按排序号升序，排序号相同时按主键升序；组树时保持查询顺序。
         const entities = await this.repository.find({
             where: { module: input.module, type: input.type },
             order: { sort: 'ASC', keyId: 'ASC' }
@@ -166,10 +167,10 @@ export class ChunkService {
         return await this.chunkUtilsService.findRequired(keyId)
     }
 
-    /** 更新枚举字典项；更新人取当前登录账号。 */
+    /** 更新枚举字典项；不允许更新的枚举项仅超级管理员可修改，更新人取当前登录账号。 */
     public async httpBaseSkylineUpdateChunk(principal: AuthPrincipal, input: ChunkDto.UpdateChunkDto): Promise<ChunkDto.ChunkResponseDto> {
         const current = await this.chunkUtilsService.findRequired(input.keyId)
-        if (!current.allowUpdate) {
+        if (!current.allowUpdate && principal.superAdmin !== true) {
             throw new BadRequestException('当前枚举项不允许更新')
         }
         const module = input.module ?? current.module
@@ -187,9 +188,12 @@ export class ChunkService {
     }
 
     /** 硬删除枚举字典项；存在子项时必须先处理子项。 */
-    public async httpBaseSkylineDeleteChunk(input: ChunkDto.ChunkKeyDto): Promise<ChunkDto.DeleteChunkResponseDto> {
+    public async httpBaseSkylineDeleteChunk(
+        principal: AuthPrincipal,
+        input: ChunkDto.ChunkKeyDto
+    ): Promise<ChunkDto.DeleteChunkResponseDto> {
         const current = await this.chunkUtilsService.findRequired(input.keyId)
-        if (!current.allowDelete) {
+        if (!current.allowDelete && principal.superAdmin !== true) {
             throw new BadRequestException('当前枚举项不允许删除')
         }
         const children = await this.repository.count({ where: { pid: input.keyId } })

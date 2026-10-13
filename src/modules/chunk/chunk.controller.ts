@@ -111,7 +111,10 @@ export class ChunkController {
         request: { source: 'body', type: ChunkDto.ChunkKeyDto },
         response: { type: ChunkDto.DeleteChunkResponseDto, description: '删除结果' }
     })
-    public async httpBaseSkylineDeleteChunk(@Body() input: ChunkDto.ChunkKeyDto): Promise<ChunkDto.DeleteChunkResponseDto> {
-        return this.chunkService.httpBaseSkylineDeleteChunk(input)
+    public async httpBaseSkylineDeleteChunk(
+        @CurrentPrincipal() principal: AuthPrincipal,
+        @Body() input: ChunkDto.ChunkKeyDto
+    ): Promise<ChunkDto.DeleteChunkResponseDto> {
+        return this.chunkService.httpBaseSkylineDeleteChunk(principal, input)
     }
 }
