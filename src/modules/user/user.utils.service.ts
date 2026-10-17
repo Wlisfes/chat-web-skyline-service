@@ -37,14 +37,14 @@ export class UserUtilsService {
         return options
     }
 
-    /**获取岗位枚举（CHUNK_SYSTEM_ACCOUNT_USER_POST）。*/
+    /**获取岗位枚举（CHUNK_SKYLINE_USER_POST）。*/
     public findPostOptions(): Promise<Map<number, string>> {
-        return this.findChunkOptions(Schema.TbSkylineChunkModuleType.CHUNK_SYSTEM_ACCOUNT_USER_POST)
+        return this.findChunkOptions(Schema.TbSkylineChunkModuleType.CHUNK_SKYLINE_USER_POST)
     }
 
-    /**获取职级枚举（CHUNK_SYSTEM_ACCOUNT_USER_LEVEL）。*/
+    /**获取职级枚举（CHUNK_SKYLINE_USER_LEVEL）。*/
     public findLevelOptions(): Promise<Map<number, string>> {
-        return this.findChunkOptions(Schema.TbSkylineChunkModuleType.CHUNK_SYSTEM_ACCOUNT_USER_LEVEL)
+        return this.findChunkOptions(Schema.TbSkylineChunkModuleType.CHUNK_SKYLINE_USER_LEVEL)
     }
 
     /**按枚举主键还原枚举名称，不存在或已禁用的枚举项不返回。*/

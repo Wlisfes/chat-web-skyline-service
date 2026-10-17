@@ -6,7 +6,7 @@ import { PageDto } from '@wlisfes/chat-web-base-schema/utils'
 import { Type } from 'class-transformer'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 
-/** 账号枚举展示数据，来源于 Skyline 枚举（岗位 CHUNK_SYSTEM_ACCOUNT_USER_POST、职级 CHUNK_SYSTEM_ACCOUNT_USER_LEVEL）。 */
+/** 账号枚举展示数据，来源于 Skyline 枚举（岗位 CHUNK_SKYLINE_USER_POST、职级 CHUNK_SKYLINE_USER_LEVEL）。 */
 export class UserChunkResponseDto {
     @ApiProperty({ description: '枚举主键（Skyline 枚举值）', example: 1024100 })
     keyId: number
