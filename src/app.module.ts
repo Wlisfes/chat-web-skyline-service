@@ -9,6 +9,7 @@ import { AppService } from './app.service'
 import { DatabaseModule } from '@/database/database.module'
 import { DatetaskModule } from '@/modules/datetask/datetask.module'
 import { ChunkModule } from '@/modules/chunk/chunk.module'
+import { CountryModule } from '@/modules/country/country.module'
 import { OrganizationModule } from '@/modules/organization/organization.module'
 import { RoleModule } from '@/modules/role/role.module'
 import { SheetModule } from '@/modules/sheet/sheet.module'
@@ -25,6 +26,7 @@ import { FeignModule } from '@/feign/feign.module'
         DatabaseModule,
         DatetaskModule,
         ChunkModule,
+        CountryModule,
         OrganizationModule,
         SheetModule,
         RoleModule,

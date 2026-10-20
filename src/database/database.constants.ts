@@ -1,6 +1,7 @@
 import {
     TbSkylineChunk,
     TbSkylineChunkModuleEntity,
+    TbSkylineCountry,
     TbSkylineOrganization,
     TbSkylineOrganizationClosure,
     TbSkylineRole,
@@ -21,6 +22,7 @@ export const SKYLINE_MYSQL_CONFIG_KEY = 'database.chat-web-skyline'
 export const SKYLINE_MYSQL_ENTITIES = [
     TbSkylineChunk,
     TbSkylineChunkModuleEntity,
+    TbSkylineCountry,
     TbSkylineUser,
     TbSkylineOrganization,
     TbSkylineOrganizationClosure,
@@ -31,5 +33,6 @@ export const SKYLINE_MYSQL_ENTITIES = [
     TbSkylineRoleSheet,
     TbSkylineRoleDataScope,
     TbSkylineRoleDataScopeOrganization,
-    TbSkylineUserChunk
+    TbSkylineUserChunk,
+    TbSkylineCountry
 ]

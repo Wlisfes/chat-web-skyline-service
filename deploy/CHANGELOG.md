@@ -1,5 +1,15 @@
 # Skyline 部署变更记录
 
+## 2026-10-20：国家/地区基础数据从 Finance 迁入
+
+- 影响机器：`chat-home-server`。
+- 变更内容：新增 `tb_skyline_country` 及国家/地区管理接口 `GET /deploy/country/enums`、`POST /deploy/country/column`、`POST /deploy/country/status/update`、`POST /deploy/country/select`，权限码沿用 `chat:finance:base:country`、`chat:finance:base:country:update`；新增 Feign `POST /feign/skyline/country/column/resolve`（单次最多 100 个）与 `POST /feign/skyline/country/resolve`，供 Finance、SRM 按 `countryKeyId` 查询国际区号、MCC 和名称。
+- 依赖：新版 `@wlisfes/chat-web-base-schema`（含 `20261020120000__tb_skyline_country__create_from_finance.sql`）；需先于 Finance、SRM 上线。
+- 机器侧操作：部署时执行 Schema 增量，按原 `key_id` 写入 137 条国家/地区数据；无需修改 `.env` 与 Nacos。
+- 验证命令：`yarn test`；部署后管理端“国家/地区管理”列表、启停正常，`SELECT COUNT(*) FROM tb_skyline_country` 为 137。
+- 回滚方法：回退本服务镜像；`tb_skyline_country` 可保留，Finance 旧表 `tb_finance_country` 未删除。
+
+
 ## 2026-10-12：定时任务迁出到 Task 服务
 
 - 影响机器：`chat-home-server`。

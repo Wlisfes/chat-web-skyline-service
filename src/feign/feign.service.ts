@@ -2,14 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { assertUid } from '@wlisfes/chat-web-base-schema/utils'
 import * as FeignSchema from '@wlisfes/chat-web-base-schema/feign'
 import { ChunkService } from '@/modules/chunk/chunk.service'
+import { CountryService } from '@/modules/country/country.service'
 import { UserService } from '@/modules/user/user.service'
 
-/** 统一编排 Skyline 服务对外暴露的枚举字典与账号还原 Feign 调用，实现与业务模块保持单向依赖。 */
+/** 统一编排 Skyline 服务对外暴露的枚举字典、账号与国家/地区还原 Feign 调用，实现与业务模块保持单向依赖。 */
 @Injectable()
 export class FeignService extends FeignSchema.FeignClientSkylineManager implements FeignSchema.FeignClientSkylineImplementation {
     constructor(
         private readonly chunkService: ChunkService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly countryService: CountryService
     ) {
         super()
     }
@@ -49,5 +51,21 @@ export class FeignService extends FeignSchema.FeignClientSkylineManager implemen
             throw new NotFoundException('账号不存在')
         }
         return user
+    }
+
+    /** 按国家/地区主键批量获取展示摘要。 */
+    public override async httpBaseSkylineColumnCountryResolver(
+        _authorization: string,
+        input: FeignSchema.SkylineColumnCountryResolverDto
+    ): Promise<FeignSchema.SkylineCountrySummary[]> {
+        return this.countryService.httpBaseSkylineColumnCountryResolver(input)
+    }
+
+    /** 按国家/地区主键获取单个展示摘要；不存在时返回 404。 */
+    public override async httpBaseSkylineCountryResolver(
+        _authorization: string,
+        input: FeignSchema.SkylineCountryResolverDto
+    ): Promise<FeignSchema.SkylineCountrySummary> {
+        return this.countryService.httpBaseSkylineCountryResolver(input)
     }
 }
