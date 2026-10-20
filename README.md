@@ -49,6 +49,10 @@ yarn dev
 
 定时执行和手动触发都使用统一的内部 Bearer 凭据，该凭据从 Nacos `gateway.feign.service_token` 读取；不会把终端用户的 `Authorization` 转发给 Finance。
 
+## 国家/地区
+
+国家/地区基础数据（国际区号、MCC、中英文名称、启停状态）存放在 `tb_skyline_country`，管理端接口为 `/api/skyline/deploy/country/{enums,column,status/update,select}`。其他服务通过共享 Feign `httpBaseSkylineColumnCountryResolver`（单次最多 100 个）和 `httpBaseSkylineCountryResolver` 按 `countryKeyId` 查询，列表回显可用 `fetchAppendSkylineCountryOptions`。
+
 ## 验证
 
 ```bash

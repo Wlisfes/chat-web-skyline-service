@@ -45,3 +45,28 @@ test('Skyline 账号还原 Feign 只接受服务间凭据并在账号不存在�
         error => error?.status === 401
     )
 })
+
+test('Skyline 国家/地区 Feign 只接受服务间凭据', async () => {
+    const country = { keyId: 1000, code: '86', mcc: '460', cnName: '中国', enName: 'China', status: 'enable' }
+    const controller = new FeignController(
+        new FeignService(
+            {},
+            {},
+            {
+                async httpBaseSkylineColumnCountryResolver(input) {
+                    return input.keyIds.includes(1000) ? [country] : []
+                },
+                async httpBaseSkylineCountryResolver(input) {
+                    return { ...country, keyId: input.keyId }
+                }
+            }
+        ),
+        config({ 'gateway.feign.service_token': 'service-token' })
+    )
+    assert.deepEqual(await controller.httpBaseSkylineColumnCountryResolver('Bearer service-token', { keyIds: [1000] }), [country])
+    assert.equal((await controller.httpBaseSkylineCountryResolver('Bearer service-token', { keyId: 1000 })).code, '86')
+    await assert.rejects(
+        () => controller.httpBaseSkylineColumnCountryResolver('Bearer user-token', { keyIds: [1000] }),
+        error => error?.status === 401
+    )
+})
