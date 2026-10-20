@@ -222,14 +222,14 @@ export class RoleUtilsService {
         }
     }
 
-    /**校验菜单列表存在且已启用*/
+    /**校验菜单列表存在；禁用菜单允许预先授权，启用后自动生效*/
     public async findSheetsRequired(manager: EntityManager, sheetKeyIds: number[]): Promise<void> {
         if (sheetKeyIds.length === 0) return
         const sheets = await manager.find(Schema.TbSkylineSheet, {
-            where: { keyId: In(sheetKeyIds), status: Schema.TbSkylineSheetStatus.ENABLED }
+            where: { keyId: In(sheetKeyIds) }
         })
         if (sheets.length !== sheetKeyIds.length) {
-            throw new BadRequestException('菜单列表包含不存在或已禁用的节点')
+            throw new BadRequestException('菜单列表包含不存在的节点')
         }
     }
 
