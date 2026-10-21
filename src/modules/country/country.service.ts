@@ -102,6 +102,30 @@ export class CountryService {
         })
     }
 
+    /** 按国际区号和 MCC 批量获取展示摘要，供 Feign 使用；单次最多 100 组，不存在的组合直接忽略。 */
+    public async httpBaseSkylineColumnCountryCodeResolver(input: {
+        items?: Array<{ code: string; mcc: string }>
+    }): Promise<feign.SkylineCountrySummary[]> {
+        const items = [...new Map((input.items ?? []).map(item => [`${item.code}:${item.mcc}`, item])).values()]
+        if (items.length === 0) {
+            return []
+        }
+        if (items.length > 100) {
+            throw new BadRequestException('单次最多查询100个国家/地区')
+        }
+        return this.database.builder(this.countryRepository, async qb => {
+            const params: Record<string, string> = {}
+            const clauses = items.map((item, index) => {
+                params[`code${index}`] = item.code
+                params[`mcc${index}`] = item.mcc
+                return `(t.code = :code${index} AND t.mcc = :mcc${index})`
+            })
+            qb.select(['t.keyId', 't.code', 't.mcc', 't.cnName', 't.enName', 't.status'])
+            qb.where(clauses.join(' OR '), params)
+            return qb.getMany()
+        })
+    }
+
     /** 按主键获取单个国家/地区展示摘要，供 Feign 使用；不存在时抛出 404。 */
     public async httpBaseSkylineCountryResolver(input: feign.SkylineCountryResolverDto): Promise<feign.SkylineCountrySummary> {
         const [country] = await this.httpBaseSkylineColumnCountryResolver({ keyIds: [input.keyId] })

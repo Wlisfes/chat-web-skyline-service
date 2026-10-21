@@ -5,12 +5,12 @@ import { CountryService } from '@/modules/country/country.service'
 import * as Schema from '@wlisfes/chat-web-base-schema'
 import * as CountryDto from '@/modules/country/dto/country.dto'
 
-/** Skyline 国家/地区基础数据管理接口；权限码沿用迁移前的 chat:finance:base:country，已有角色授权无需调整。 */
+/** Skyline 国家/地区基础数据管理接口。 */
 @ApifoxController('Skyline 国家地区', 'deploy/country', { bearerAuth: true })
 export class CountryController {
     constructor(private readonly countryService: CountryService) {}
 
-    @RequirePermissions('chat:finance:base:country')
+    @RequirePermissions('chat:deploy:basic:country')
     @ApiServiceDecorator(Get('enums'), {
         operation: { summary: '获取国家地区状态枚举' },
         response: { type: CountryDto.CountryEnumsResponseDto, description: '国家地区静态枚举' }
@@ -19,7 +19,7 @@ export class CountryController {
         return this.countryService.httpBaseSkylineCountryEnums()
     }
 
-    @RequirePermissions('chat:finance:base:country')
+    @RequirePermissions('chat:deploy:basic:country')
     @ApiServiceDecorator(Post('column'), {
         operation: { summary: '分页查询国家地区' },
         request: { source: 'body', type: CountryDto.ListCountryDto },
@@ -29,7 +29,7 @@ export class CountryController {
         return this.countryService.httpBaseSkylineColumnCountry(input)
     }
 
-    @RequirePermissions('chat:finance:base:country:update')
+    @RequirePermissions('chat:deploy:basic:country:update')
     @ApiServiceDecorator(Post('status/update'), {
         operation: { summary: '更新国家地区状态' },
         request: { source: 'body', type: CountryDto.UpdateCountryStatusDto },
