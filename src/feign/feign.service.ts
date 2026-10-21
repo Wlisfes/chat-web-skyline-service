@@ -61,6 +61,14 @@ export class FeignService extends FeignSchema.FeignClientSkylineManager implemen
         return this.countryService.httpBaseSkylineColumnCountryResolver(input)
     }
 
+    /** 按国际区号和 MCC 批量获取展示摘要。 */
+    public override async httpBaseSkylineColumnCountryCodeResolver(
+        _authorization: string,
+        input: FeignSchema.SkylineColumnCountryCodeResolverDto
+    ): Promise<FeignSchema.SkylineCountrySummary[]> {
+        return this.countryService.httpBaseSkylineColumnCountryCodeResolver(input)
+    }
+
     /** 按国家/地区主键获取单个展示摘要；不存在时返回 404。 */
     public override async httpBaseSkylineCountryResolver(
         _authorization: string,

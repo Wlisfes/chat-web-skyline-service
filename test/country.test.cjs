@@ -116,3 +116,39 @@ test('国家/地区 Feign 单条查询不存在时返回 404', async () => {
         error => error?.status === 404
     )
 })
+
+test('国家/地区 Feign 按区号和 MCC 批量查询', async () => {
+    const calls = []
+    const database = {
+        builder: async (_repository, callback) => {
+            const qb = {
+                select() {
+                    return qb
+                },
+                where(sql, params) {
+                    calls.push([sql, params])
+                    return qb
+                },
+                getMany: async () => [{ keyId: 1000, code: '86', mcc: '460', cnName: '中国', enName: 'China', status: 'enable' }]
+            }
+            return callback(qb)
+        }
+    }
+    const service = new CountryService({}, database, {})
+    const list = await service.httpBaseSkylineColumnCountryCodeResolver({
+        items: [
+            { code: '86', mcc: '460' },
+            { code: '86', mcc: '460' }
+        ]
+    })
+    assert.equal(list[0].keyId, 1000)
+    assert.match(calls[0][0], /t.code = :code0 AND t.mcc = :mcc0/)
+    assert.equal(calls[0][1].code0, '86')
+    await assert.rejects(
+        () =>
+            service.httpBaseSkylineColumnCountryCodeResolver({
+                items: Array.from({ length: 101 }, (_, index) => ({ code: String(index + 1), mcc: '1' }))
+            }),
+        /单次最多查询100个国家\/地区/
+    )
+})

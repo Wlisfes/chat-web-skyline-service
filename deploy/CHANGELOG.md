@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-10-21：新增按区号和 MCC 解析国家/地区的 Feign
+
+- 影响机器：`chat-home-server`。
+- 变更内容：新增内部接口 `POST /feign/skyline/country/column/code/resolve`，按国际区号和 MCC 批量返回国家/地区主键和名称。单次最多 100 组，不存在的组合直接忽略。
+- 依赖：`@wlisfes/chat-web-base-schema` `1.6.106`。
+- 机器侧操作：无需修改 `.env` 与 Nacos。
+- 验证命令：`yarn test`。
+- 回滚方法：回退本服务镜像；已有 `tb_skyline_country` 数据不受影响。
+
 ## 2026-10-20：国家/地区基础数据从 Finance 迁入
 
 - 影响机器：`chat-home-server`。
