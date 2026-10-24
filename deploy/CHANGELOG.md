@@ -1,5 +1,15 @@
 # Skyline 部署变更记录
 
+## 2026-10-24：支持 SRM 号段枚举
+
+- 影响机器：`chat-home-server`。
+- 变更内容：升级 `@wlisfes/chat-web-base-schema` 到 1.7.6，新增枚举编码 `CHUNK_SRM_NUMBER_RANGE`（号段码，200 项，主键 1024320-1024519），修复管理端请求该枚举时返回“枚举类型编码格式错误”。
+- 依赖：`@wlisfes/chat-web-base-schema@1.7.6`。
+- 机器侧操作：部署时 apply-schema 自动执行 `20261024120000__tb_skyline_chunk__srm_number_range.sql`。无需修改 `.env` 与 Nacos。
+- 验证命令：`yarn test`；登录后 `POST /api/skyline/deploy/chunk/option/column` 传 `types: ["CHUNK_SRM_NUMBER_RANGE"]` 返回号段选项。
+- 回滚方法：回退本服务镜像；按 SQL 文件头部说明删除枚举数据。
+
+
 ## 2026-10-21：新增按区号和 MCC 解析国家/地区的 Feign
 
 - 影响机器：`chat-home-server`。
