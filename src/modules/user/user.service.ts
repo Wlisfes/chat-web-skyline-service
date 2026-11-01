@@ -200,6 +200,24 @@ export class UserService {
         return users.map(user => Object.assign(user, { organizations: organizations.get(user.uid) ?? [] }))
     }
 
+    /**
+     * 按组织查询账号 UID：通过组织闭包表包含所有下级组织，只统计启用的成员关系。
+     * 供其他服务按归属部门过滤业务数据，仅通过服务凭据保护的 Feign 暴露。
+     */
+    public async httpBaseSkylineColumnOrganizationUserUid(input: feign.SkylineColumnOrganizationUserUidDto): Promise<string[]> {
+        const organizationKeyIds = [...new Set(input.organizationKeyIds)]
+        if (organizationKeyIds.length === 0) return []
+        const rows: Array<{ uid: string }> = await this.userRepository.manager
+            .createQueryBuilder()
+            .select('DISTINCT user_org.user_uid', 'uid')
+            .from(Schema.TbSkylineUserOrganization, 'user_org')
+            .innerJoin(Schema.TbSkylineOrganizationClosure, 'closure', 'closure.descendant_key_id = user_org.organization_key_id')
+            .where('closure.ancestor_key_id IN (:...organizationKeyIds)', { organizationKeyIds })
+            .andWhere('user_org.status = :status', { status: Schema.TbSkylineUserOrganizationStatus.ENABLED })
+            .getRawMany()
+        return rows.map(row => row.uid)
+    }
+
     /**编辑账号*/
     public async httpBaseSkylineUpdateUser(input: UserDto.UpdateUserPayloadDto): Promise<UserDto.SkylineUserResponseDto> {
         const { uid, ...fields } = input
