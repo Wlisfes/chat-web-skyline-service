@@ -40,6 +40,14 @@ export class FeignService extends FeignSchema.FeignClientSkylineManager implemen
         return this.userService.httpBaseSkylineColumnUserResolver(input)
     }
 
+    /** 按组织（含下级组织）查询启用成员关系的账号 UID。 */
+    public override async httpBaseSkylineColumnOrganizationUserUid(
+        _authorization: string,
+        input: FeignSchema.SkylineColumnOrganizationUserUidDto
+    ): Promise<string[]> {
+        return this.userService.httpBaseSkylineColumnOrganizationUserUid(input)
+    }
+
     /** 按账号 UID 还原单个展示摘要；账号不存在时与公开详情接口保持一致。 */
     public override async httpBaseSkylineUserResolver(
         _authorization: string,

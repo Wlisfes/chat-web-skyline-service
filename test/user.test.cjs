@@ -117,3 +117,28 @@ test('账号枚举接口直接返回 schema 定义的选项', async () => {
         membershipStatusOptions: TbSkylineUserOrganizationStatusDefinition.options
     })
 })
+
+test('按组织查询账号 UID 包含下级组织、只取启用成员关系，并对组织去重', async () => {
+    const calls = []
+    const qb = {
+        select: (...args) => (calls.push(['select', ...args]), qb),
+        from: (...args) => (calls.push(['from', ...args]), qb),
+        innerJoin: (...args) => (calls.push(['innerJoin', ...args]), qb),
+        where: (...args) => (calls.push(['where', ...args]), qb),
+        andWhere: (...args) => (calls.push(['andWhere', ...args]), qb),
+        async getRawMany() {
+            return [{ uid: '1' }, { uid: '2' }]
+        }
+    }
+    const userRepository = { manager: { createQueryBuilder: () => qb } }
+    const service = new UserService(userRepository, {}, {}, {}, {})
+    assert.deepEqual(await service.httpBaseSkylineColumnOrganizationUserUid({ organizationKeyIds: [1001, 1001, 1002] }), ['1', '2'])
+    assert.match(calls.find(([name]) => name === 'innerJoin')[3], /closure\.descendant_key_id = user_org\.organization_key_id/)
+    assert.deepEqual(calls.find(([name]) => name === 'where')[2], { organizationKeyIds: [1001, 1002] })
+    assert.deepEqual(calls.find(([name]) => name === 'andWhere')[2], { status: 'enabled' })
+})
+
+test('按组织查询账号 UID 组织为空时不查库', async () => {
+    const service = new UserService({ manager: { createQueryBuilder: () => assert.fail('不应查询') } }, {}, {}, {}, {})
+    assert.deepEqual(await service.httpBaseSkylineColumnOrganizationUserUid({ organizationKeyIds: [] }), [])
+})
