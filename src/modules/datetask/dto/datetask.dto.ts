@@ -41,6 +41,14 @@ export class UpdateDatetaskCronDto extends DatetaskKeyDto {
     @IsNotEmpty({ message: 'Cron表达式不能为空' })
     @MaxLength(32, { message: 'Cron表达式长度不能超过32位' })
     cron: string
+
+    @ApiProperty({
+        description: TaskSchema.TbTaskCronLogRetentionDefinition.comment,
+        enum: TaskSchema.TbTaskCronLogRetention,
+        example: TaskSchema.TbTaskCronLogRetention.DAY_7
+    })
+    @IsEnum(TaskSchema.TbTaskCronLogRetention, { message: '运行日志保留时长格式错误' })
+    logRetention: TaskSchema.TbTaskCronLogRetention
 }
 
 /** 手动触发系统任务参数。 */
@@ -111,5 +119,6 @@ export class DatetaskEnumsResponseDto extends EnumsResponseDto({
     moduleOptions: { description: '任务所属模块选项', example: TaskSchema.TbTaskCronModuleDefinition.options },
     statusOptions: { description: '任务状态选项', example: TaskSchema.TbTaskCronStatusDefinition.options },
     logStatusOptions: { description: '执行状态选项', example: TaskSchema.TbTaskExecutionStatusDefinition.options },
-    triggerTypeOptions: { description: '触发方式选项', example: TaskSchema.TbTaskExecutionTriggerDefinition.options }
+    triggerTypeOptions: { description: '触发方式选项', example: TaskSchema.TbTaskExecutionTriggerDefinition.options },
+    logRetentionOptions: { description: '运行日志保留时长选项', example: TaskSchema.TbTaskCronLogRetentionDefinition.options }
 }) {}

@@ -61,13 +61,17 @@ test('枚举直接读取共享定义，不调用 Task 服务', async () => {
 test('写操作使用服务间凭据调用 Task 服务并传入当前操作人', async () => {
     const { calls, service } = createService()
     await service.httpBaseSkylineDatetaskStatusUpdate(principal, { taskId: '1', status: 'disable' })
-    await service.httpBaseSkylineUpdateDatetaskCron(principal, { taskId: '1', cron: '0 0 9 * * *' })
+    await service.httpBaseSkylineUpdateDatetaskCron(principal, { taskId: '1', cron: '0 0 9 * * *', logRetention: '7d' })
     const feignCalls = calls.filter(([method]) => method !== 'resolveUsers')
     assert.deepEqual(
         feignCalls.map(([method, authorization, input]) => [method, authorization, input]),
         [
             ['httpBaseTaskCronStatusUpdate', 'Bearer service-token', { taskId: '1', status: 'disable', operatorUid: '30001' }],
-            ['httpBaseTaskUpdateCron', 'Bearer service-token', { taskId: '1', cron: '0 0 9 * * *', operatorUid: '30001' }]
+            [
+                'httpBaseTaskUpdateCron',
+                'Bearer service-token',
+                { taskId: '1', cron: '0 0 9 * * *', logRetention: '7d', operatorUid: '30001' }
+            ]
         ]
     )
 })

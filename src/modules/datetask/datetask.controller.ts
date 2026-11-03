@@ -53,7 +53,7 @@ export class DatetaskController {
 
     @RequirePermissions('chat:deploy:datetask:system:update')
     @ApiServiceDecorator(Post('cron/update'), {
-        operation: { summary: '修改系统任务 Cron 表达式' },
+        operation: { summary: '修改系统任务 Cron 表达式和运行日志保留时长' },
         request: { source: 'body', type: DatetaskDto.UpdateDatetaskCronDto },
         response: { type: DatetaskDto.DatetaskResponseDto, description: '更新后的系统任务' }
     })
