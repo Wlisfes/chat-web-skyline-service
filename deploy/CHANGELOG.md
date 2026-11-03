@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-11-03：接入 Garage 对象存储 API
+
+- 影响机器：`chat-home-server`。
+- 变更内容：Skyline 新增 `deploy/garage` 对象存储接口，通过 S3 path-style 调用 Garage，客户端使用 @aws-sdk/client-s3。支持列出、查询、删除、小文件上传，以及面向浏览器的上传和下载预签名。文件字节不经过业务 Gateway。
+- 权限：`chat:deploy:garage`。超级管理员仍可访问。
+- 机器侧操作：Nacos `chat-web-skyline-service.yaml` 已增加 `garage` 节点。密钥只保存在 Nacos，不写入仓库。当前运行中的 Skyline 镜像尚未包含本次代码，需要部署后接口才会生效。
+- 验证命令：`node --test test/garage.test.cjs`。
+- 回滚方法：回退本服务镜像，并从 Nacos 删除 `garage` 节点。不影响 Garage 已有对象。
+
 ## 2026-10-24：支持 SRM 号段枚举
 
 - 影响机器：`chat-home-server`。
