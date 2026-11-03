@@ -25,7 +25,8 @@ export class DatetaskService {
             moduleOptions: TaskSchema.TbTaskCronModuleDefinition.options,
             statusOptions: TaskSchema.TbTaskCronStatusDefinition.options,
             logStatusOptions: TaskSchema.TbTaskExecutionStatusDefinition.options,
-            triggerTypeOptions: TaskSchema.TbTaskExecutionTriggerDefinition.options
+            triggerTypeOptions: TaskSchema.TbTaskExecutionTriggerDefinition.options,
+            logRetentionOptions: TaskSchema.TbTaskCronLogRetentionDefinition.options
         }
     }
 
@@ -62,6 +63,7 @@ export class DatetaskService {
         const task = await this.taskFeignClient.httpBaseTaskUpdateCron(this.authorization(), {
             taskId: input.taskId,
             cron: input.cron,
+            logRetention: input.logRetention,
             operatorUid: principal.uid
         })
         return (await this.appendUserOptions([task], ['createBy', 'modifyBy']))[0]
