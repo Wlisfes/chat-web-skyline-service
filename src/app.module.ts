@@ -14,6 +14,7 @@ import { OrganizationModule } from '@/modules/organization/organization.module'
 import { RoleModule } from '@/modules/role/role.module'
 import { SheetModule } from '@/modules/sheet/sheet.module'
 import { UserModule } from '@/modules/user/user.module'
+import { GarageModule } from '@/modules/garage/garage.module'
 import { FeignModule } from '@/feign/feign.module'
 
 @Module({
@@ -31,6 +32,7 @@ import { FeignModule } from '@/feign/feign.module'
         SheetModule,
         RoleModule,
         UserModule,
+        GarageModule,
         FeignModule
     ],
     controllers: [AppController],
