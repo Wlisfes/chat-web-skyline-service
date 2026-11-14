@@ -1,5 +1,12 @@
 # Skyline 部署变更记录
 
+## 2026-11-14：删除废弃的定时任务表
+
+- 影响机器：`chat-home-server`。
+- 变更内容：删除已迁出的 `tb_skyline_datetask_system`、`tb_skyline_datetask_log`。Schema 迁移在表不存在时不再补建唯一索引，避免下次发布失败。
+- 验证命令：`SHOW TABLES LIKE 'tb_skyline_datetask%'` 无结果；管理端系统任务页仍可列表、启停和查看执行日志。
+- 回滚方法：按 Schema 变更文件中的回滚说明重建旧表；历史执行日志无法从 Task 库回填。
+
 ## 2026-11-03：接入 Garage 对象存储 API
 
 - 影响机器：`chat-home-server`。

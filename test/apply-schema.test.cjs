@@ -40,33 +40,42 @@ test('枚举表不存在时不应提前执行补列 DDL', async () => {
     assert.equal(connection.calls.length, 1)
 })
 
+test('已废弃的任务表不存在时不执行索引 DDL', async () => {
+    const connection = createConnection([[[{ count: 0 }], []]])
+    assert.equal(await ensureTaskIdUniqueIndex(connection), false)
+    assert.equal(connection.calls.length, 1)
+})
+
 test('已存在单列唯一索引时不重复执行 DDL', async () => {
     const connection = createConnection([
+        [[{ count: 1 }], []],
         [[{ indexName: 'uk_tb_skyline_datetask_system_task_id', nonUnique: 0, columnCount: 1, hasTaskId: 1 }], []]
     ])
     await ensureTaskIdUniqueIndex(connection)
-    assert.equal(connection.calls.length, 1)
+    assert.equal(connection.calls.length, 2)
 })
 
 test('存在旧普通索引时替换为唯一索引', async () => {
     const connection = createConnection([
+        [[{ count: 1 }], []],
         [[{ indexName: 'idx_tb_skyline_datetask_system_task_id', nonUnique: 1, columnCount: 1, hasTaskId: 1 }], []],
         [[], []]
     ])
     await ensureTaskIdUniqueIndex(connection)
-    assert.equal(connection.calls.length, 2)
-    assert.match(connection.calls[1].sql, /DROP INDEX `idx_tb_skyline_datetask_system_task_id`/)
-    assert.match(connection.calls[1].sql, /ADD UNIQUE KEY `uk_tb_skyline_datetask_system_task_id`/)
+    assert.equal(connection.calls.length, 3)
+    assert.match(connection.calls[2].sql, /DROP INDEX \`idx_tb_skyline_datetask_system_task_id\`/)
+    assert.match(connection.calls[2].sql, /ADD UNIQUE KEY \`uk_tb_skyline_datetask_system_task_id\`/)
 })
 
 test('没有 task_id 索引时直接创建唯一索引', async () => {
     const connection = createConnection([
+        [[{ count: 1 }], []],
         [[], []],
         [[], []]
     ])
     await ensureTaskIdUniqueIndex(connection)
-    assert.equal(connection.calls.length, 2)
-    assert.match(connection.calls[1].sql, /ADD UNIQUE KEY `uk_tb_skyline_datetask_system_task_id`/)
+    assert.equal(connection.calls.length, 3)
+    assert.match(connection.calls[2].sql, /ADD UNIQUE KEY \`uk_tb_skyline_datetask_system_task_id\`/)
 })
 
 test('获取锁超时时应抛出中文错误', async () => {
