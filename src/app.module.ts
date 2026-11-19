@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config'
 import { AuthorizationGuard, AuthorizationModule, GatewayPrincipalGuard, GatewayPrincipalModule } from '@wlisfes/chat-web-base-schema/auth'
 import { HttpResponseModule } from '@wlisfes/chat-web-base-schema/interceptor'
 import { forRootNacosRuntimeOptions, NacosModule } from '@wlisfes/chat-web-base-schema/nacos'
+import { RabbitmqModule, setupSkylineLoggerTopology } from '@wlisfes/chat-web-base-schema/rabbitmq'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { DatabaseModule } from '@/database/database.module'
@@ -16,12 +17,16 @@ import { SheetModule } from '@/modules/sheet/sheet.module'
 import { UserModule } from '@/modules/user/user.module'
 import { GarageModule } from '@/modules/garage/garage.module'
 import { FeignModule } from '@/feign/feign.module'
+import { SKYLINE_RABBITMQ_VHOST } from '@/modules/logger/logger.constants'
+import { SkylineLoggerModule } from '@/modules/logger/logger.module'
 
+/** Skyline 同时承载系统管理接口和操作日志发布；日志只入队，不在这里写库。 */
 @Module({
     imports: [
         HttpResponseModule,
         ConfigModule.forRoot({ isGlobal: true }),
         NacosModule.forRoot(forRootNacosRuntimeOptions(process.env)),
+        RabbitmqModule.forRoot({ vhost: SKYLINE_RABBITMQ_VHOST, setup: setupSkylineLoggerTopology }),
         GatewayPrincipalModule,
         AuthorizationModule,
         DatabaseModule,
@@ -30,6 +35,7 @@ import { FeignModule } from '@/feign/feign.module'
         CountryModule,
         OrganizationModule,
         SheetModule,
+        SkylineLoggerModule,
         RoleModule,
         UserModule,
         GarageModule,

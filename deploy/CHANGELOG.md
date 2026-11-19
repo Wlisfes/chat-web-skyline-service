@@ -1,5 +1,14 @@
 # Skyline 部署变更记录
 
+## 2026-11-19：操作日志改为入口入队，Hooks 消费入库
+
+- 影响机器：`chat-home-server`。
+- 变更内容：`@RequirePermissions` 第二个参数开启 `logger` 的接口，在响应完成后由共享拦截器把操作日志发到 `chat.skyline.logger.exchange`；Hooks 消费后写入 `tb_skyline_logger`。Skyline 不再直接写库，也不再提供日志上报接口。
+- 依赖：`@wlisfes/chat-web-base-schema@1.7.42`，RabbitMQ 虚拟主机 `/chat-sms`。
+- 机器侧操作：Nacos `chat-web-skyline-service.yaml` 必须增加 `rabbitmq` 节点（vhost `/chat-sms`，凭据与 Hooks 一致），否则服务启动失败；部署脚本会在缺少该节点时从同环境 Hooks 配置复制。部署时 apply-schema 自动执行 `20261119113000__tb_skyline_logger__create.sql`。
+- 验证命令：操作一次已开启日志的接口（如编辑菜单），再查 `SELECT * FROM tb_skyline_logger ORDER BY created_time DESC LIMIT 1`；入队失败可查 `chat.skyline.logger.dead`。
+- 回滚方法：回退本服务与 Hooks 镜像，Nacos 中的 `rabbitmq` 节点可保留。
+
 ## 2026-11-14：删除废弃的定时任务表
 
 - 影响机器：`chat-home-server`。

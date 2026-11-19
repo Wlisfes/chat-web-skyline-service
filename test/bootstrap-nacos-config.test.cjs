@@ -2,7 +2,19 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { readFileSync } = require('node:fs')
 const { resolve } = require('node:path')
-const { createSkylineConfig, sanitizeSkylineConfig } = require('../deploy/bootstrap-nacos-config.cjs')
+const {
+    createSkylineConfig,
+    sanitizeSkylineConfig,
+    ensureRabbitmqConfig,
+    rabbitmqSourceDataId
+} = require('../deploy/bootstrap-nacos-config.cjs')
+
+const rabbitmq = `rabbitmq:
+  host: "chat-web-rabbitmq"
+  port: 5672
+  vhost: "/chat-sms"
+  username: "skyline"
+  password: "keep-this-rabbit-password"`
 
 const database = `database:
   chat-web-skyline:
@@ -26,12 +38,14 @@ test('应校验现有配置并保持 Feign 与敏感字段原样', () => {
   port: 5040
 ${gateway}
 ${database}
+${rabbitmq}
 `
     const result = sanitizeSkylineConfig(source)
     assert.match(result, /port: 5040/)
     assert.match(result, /password: "keep-this-password"/)
     assert.match(result, /service_token: "keep-this-token"/)
     assert.match(result, /url: "http:\/\/chat-web-gateway-service:5000"/)
+    assert.match(result, /vhost: "\/chat-sms"/)
 })
 
 test('缺少 Skyline 数据库节点时应拒绝校准', () => {
@@ -44,7 +58,8 @@ test('缺少 Skyline 数据库节点时应拒绝校准', () => {
 test('缺少服务间凭据时应拒绝校准，不能使用主机环境变量绕过', () => {
     const source = `server:
   port: 5040
-${database}`
+${database}
+${rabbitmq}`
     assert.throws(() => sanitizeSkylineConfig(source), /gateway.feign/)
     assert.throws(
         () => sanitizeSkylineConfig(`${source}\ngateway:\n  feign:\n    url: http://chat-web-gateway-service:5000\n    timeout: 3000`),
@@ -52,11 +67,49 @@ ${database}`
     )
 })
 
+test('缺少操作日志队列配置时应拒绝校准', () => {
+    const source = `server:
+  port: 5040
+${database}
+${gateway}
+`
+    assert.throws(() => sanitizeSkylineConfig(source), /rabbitmq/)
+})
+
+test('rabbitmq 虚拟主机与 Hooks 不一致时应拒绝校准', () => {
+    const source = `server:
+  port: 5040
+${database}
+${gateway}
+${rabbitmq.replace('/chat-sms', '/chat-task')}
+`
+    assert.throws(() => sanitizeSkylineConfig(source), /rabbitmq.vhost/)
+})
+
+test('缺少 rabbitmq 节点时从 Hooks 配置补齐，已有节点不覆盖', () => {
+    const base = `server:
+  port: 5040
+${database}
+${gateway}
+`
+    assert.equal(ensureRabbitmqConfig(`${base}${rabbitmq}\n`, rabbitmq), `${base}${rabbitmq}\n`)
+    assert.equal(ensureRabbitmqConfig(base, `${rabbitmq}\n`), `${base.trimEnd()}\n${rabbitmq}\n`)
+})
+
+test('开发环境复制同名开发后缀的 Hooks 配置', () => {
+    assert.equal(rabbitmqSourceDataId({ NACOS_CONFIG_DATA_ID: 'chat-web-skyline-service.yaml' }), 'chat-web-hooks-service.yaml')
+    assert.equal(
+        rabbitmqSourceDataId({ NACOS_CONFIG_DATA_ID: 'chat-web-skyline-service-development.yaml' }),
+        'chat-web-hooks-service-development.yaml'
+    )
+})
+
 test('缺少网关身份上下文密钥时应拒绝校准', () => {
     const source = `server:
   port: 5040
 ${gateway.replace(/\n  principal:[\s\S]*/, '')}
-${database}`
+${database}
+${rabbitmq}`
     assert.throws(() => sanitizeSkylineConfig(source), /gateway.principal/)
 })
 
@@ -65,6 +118,7 @@ test('完整配置再次执行应保持幂等', () => {
   port: 5040
 ${database}
 ${gateway}
+${rabbitmq}
 `
     assert.equal(sanitizeSkylineConfig(source), source)
 })

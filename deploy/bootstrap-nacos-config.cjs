@@ -3,13 +3,16 @@
 /**
  * Skyline 部署前 Nacos 配置校准。
  *
- * 该脚本只读取并校验已经存在的配置，不会创建数据库、数据库账号、服务凭据或回写 Nacos。
- * 这样可以避免部署过程覆盖人工维护的配置，或生成不可追踪的凭据。
+ * 该脚本只补齐操作日志所需的 rabbitmq 节点，并从 Hooks 配置复制同一虚拟主机的连接参数；
+ * 其余配置只校验不覆盖，避免部署过程改掉人工维护的数据库、网关凭据等内容。
  */
 
 const DEFAULT_SERVER_PORT = 5040
 const DEFAULT_GATEWAY_SERVICE_URL = 'http://chat-web-gateway-service:5000'
 const DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS = 3000
+/** 操作日志队列与 Hooks 共用 /chat-sms 虚拟主机。 */
+const LOGGER_RABBITMQ_VHOST = '/chat-sms'
+const RABBITMQ_SOURCE_DATA_ID = 'chat-web-hooks-service.yaml'
 
 function required(name, environment = process.env, trim = true) {
     const raw = environment[name]
@@ -59,6 +62,15 @@ async function readConfig(dataId, environment = process.env) {
     if (!response.ok) throw new Error(`读取 Skyline Nacos 配置失败：HTTP ${response.status}`)
     const content = await response.text()
     return content.trim() ? content : undefined
+}
+
+async function writeConfig(dataId, content, environment = process.env) {
+    const response = await fetch(await configUrl(dataId, environment), {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ content })
+    })
+    if (!response.ok) throw new Error(`写入 Skyline Nacos 配置失败：HTTP ${response.status}`)
 }
 
 function normalizeContent(content) {
@@ -163,6 +175,37 @@ function validateDatabaseConfig(lines) {
     }
 }
 
+/** 操作日志入队依赖 rabbitmq 节点，虚拟主机必须与 Hooks 消费端一致。 */
+function validateRabbitmqConfig(lines) {
+    const rabbitmq = findRootBlock(lines, 'rabbitmq')
+    if (!rabbitmq) throw new Error('Skyline Nacos 配置缺少 rabbitmq，请先配置操作日志队列连接')
+    for (const field of ['host', 'username', 'password']) {
+        const value = findDirectField(lines, rabbitmq, field)
+        if (!value || !scalarPresent(value.value)) throw new Error(`Skyline Nacos 配置缺少 rabbitmq.${field}`)
+    }
+    const vhost = findDirectField(lines, rabbitmq, 'vhost')
+    const value = String(vhost?.value ?? '')
+        .trim()
+        .replace(/^(['"])(.*)\1$/, '$2')
+    if (value !== LOGGER_RABBITMQ_VHOST) throw new Error(`Skyline Nacos 配置 rabbitmq.vhost 必须为 ${LOGGER_RABBITMQ_VHOST}`)
+}
+
+/** 从 Hooks 配置取出 rabbitmq 节点，保证发布端和消费端用同一套连接参数。 */
+function rabbitmqBlock(source) {
+    const lines = normalizeContent(source).trimEnd().split('\n')
+    const block = findRootBlock(lines, 'rabbitmq')
+    if (!block) return undefined
+    return lines.slice(block.start, block.end).join('\n').trimEnd()
+}
+
+/** 缺少 rabbitmq 节点时补上；已有节点不覆盖。 */
+function ensureRabbitmqConfig(content, source) {
+    if (/^rabbitmq:/m.test(content)) return content
+    const block = rabbitmqBlock(source)
+    if (!block) throw new Error('来源 Nacos 配置缺少 rabbitmq，无法复制操作日志队列连接')
+    return `${content.trimEnd()}\n${block}\n`
+}
+
 function validateServiceToken(lines) {
     const gateway = findRootBlock(lines, 'gateway')
     const feign = gateway ? findChildBlock(lines, gateway, 'feign') : undefined
@@ -233,6 +276,7 @@ function sanitizeSkylineConfig(content, options = { requireServiceToken: true })
     const lines = normalizeContent(content).trimEnd().split('\n')
     validateServerPort(lines)
     validateDatabaseConfig(lines)
+    validateRabbitmqConfig(lines)
     validateFeignConfig(lines, options.requireServiceToken !== false)
     validateGatewayPrincipal(lines)
     if (options.requireServiceToken !== false) validateServiceToken(lines)
@@ -269,19 +313,36 @@ database:
 `
 }
 
+/** 与当前环境同后缀的 Hooks 配置：生产读 chat-web-hooks-service.yaml，开发读 -development 版本。 */
+function rabbitmqSourceDataId(environment = process.env) {
+    const configured = environment.NACOS_RABBITMQ_SOURCE_DATA_ID?.trim()
+    if (configured) return configured
+    const target = environment.NACOS_CONFIG_DATA_ID?.trim() || ''
+    return `chat-web-hooks-service${target.includes('-development') ? '-development' : ''}.yaml`
+}
+
 async function main() {
     const dataId = required('NACOS_CONFIG_DATA_ID')
     const existing = await readConfig(dataId)
     if (!existing) {
         throw new Error(`未找到 Skyline Nacos 配置：${dataId}；请先创建 server、database.chat-web-skyline 和 gateway.feign`)
     }
-    const sanitized = sanitizeSkylineConfig(existing, { requireServiceToken: true })
-    const normalizedExisting = normalizeContent(existing)
+    let content = existing
+    if (!/^rabbitmq:/m.test(content)) {
+        const sourceDataId = rabbitmqSourceDataId(process.env)
+        const source = await readConfig(sourceDataId)
+        if (!source) throw new Error(`未找到 ${sourceDataId}，无法复制 rabbitmq 配置`)
+        content = ensureRabbitmqConfig(existing, source)
+        await writeConfig(dataId, content)
+        process.stdout.write(`Skyline Nacos 配置已补齐 rabbitmq 节点：${dataId}\n`)
+    }
+    const sanitized = sanitizeSkylineConfig(content, { requireServiceToken: true })
+    const normalizedExisting = normalizeContent(content)
     if (sanitized !== normalizedExisting) {
         process.stdout.write(`Skyline Nacos 配置格式已规范化但未回写：${dataId}\n`)
         return
     }
-    process.stdout.write(`Skyline Nacos 配置校验通过且未修改：${dataId}\n`)
+    process.stdout.write(`Skyline Nacos 配置校验通过：${dataId}\n`)
 }
 
 if (require.main === module) {
@@ -296,10 +357,14 @@ module.exports = {
     DEFAULT_SERVER_PORT,
     DEFAULT_GATEWAY_SERVICE_URL,
     DEFAULT_GATEWAY_SERVICE_TIMEOUT_MS,
+    LOGGER_RABBITMQ_VHOST,
     createSkylineConfig,
     sanitizeSkylineConfig,
     validateDatabaseConfig,
+    validateRabbitmqConfig,
     validateGatewayPrincipal,
     validateServiceToken,
-    validateFeignConfig
+    validateFeignConfig,
+    ensureRabbitmqConfig,
+    rabbitmqSourceDataId
 }

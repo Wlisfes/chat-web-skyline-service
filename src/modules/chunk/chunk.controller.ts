@@ -11,7 +11,7 @@ export class ChunkController {
     private static readonly keyNames = ['system', 'srm', 'crm']
     constructor(private readonly chunkService: ChunkService) {}
 
-    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
+    @RequirePermissions(ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
     @ApiServiceDecorator(Get('enums'), {
         operation: { summary: '枚举字典静态枚举' },
         response: { type: ChunkDto.ChunkEnumsResponseDto, description: '枚举字典静态枚举' }
@@ -20,7 +20,7 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineChunkEnums()
     }
 
-    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
+    @RequirePermissions(ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
     @ApiServiceDecorator(Post('column/module'), {
         operation: { summary: '枚举分类分页列表' },
         request: { source: 'body', type: ChunkDto.ListChunkModuleDto },
@@ -30,7 +30,7 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineColumnChunkModule(input)
     }
 
-    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
+    @RequirePermissions(ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
     @ApiServiceDecorator(Post('column'), {
         operation: { summary: '枚举字典分页列表' },
         request: { source: 'body', type: ChunkDto.ListChunkDto },
@@ -57,7 +57,7 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineChunkOptionColumn(input)
     }
 
-    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
+    @RequirePermissions(ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
     @ApiServiceDecorator(Get('tree/structure'), {
         operation: { summary: '枚举字典父级树结构' },
         request: { source: 'query', type: ChunkDto.ChunkTreeQueryDto },
@@ -69,7 +69,7 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineChunkTreeStructure(query)
     }
 
-    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
+    @RequirePermissions(ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}`))
     @ApiServiceDecorator(Get('resolve'), {
         operation: { summary: '枚举字典详情' },
         request: { source: 'query', type: ChunkDto.ChunkKeyDto },
@@ -79,7 +79,7 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineChunkResolver(query)
     }
 
-    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}:create`))
+    @RequirePermissions(ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}:create`))
     @ApiServiceDecorator(Post('create'), {
         operation: { summary: '新增枚举字典项' },
         request: { source: 'body', type: ChunkDto.CreateChunkDto },
@@ -92,7 +92,7 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineCreateChunk(principal, input)
     }
 
-    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}:update`))
+    @RequirePermissions(ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}:update`))
     @ApiServiceDecorator(Post('update'), {
         operation: { summary: '更新枚举字典项' },
         request: { source: 'body', type: ChunkDto.UpdateChunkDto },
@@ -105,7 +105,7 @@ export class ChunkController {
         return this.chunkService.httpBaseSkylineUpdateChunk(principal, input)
     }
 
-    @RequirePermissions(...ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}:delete`))
+    @RequirePermissions(ChunkController.keyNames.map(key => `chat:deploy:chunk:${key}:delete`))
     @ApiServiceDecorator(Post('delete'), {
         operation: { summary: '删除枚举字典项' },
         request: { source: 'body', type: ChunkDto.ChunkKeyDto },
