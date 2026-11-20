@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
-import { InjectRepository, Repository } from '@wlisfes/chat-web-base-schema/database'
-import { fetchResolver, isNotEmpty, PageResult } from '@wlisfes/chat-web-base-schema/utils'
+import { InjectRepository, DataBaseService, Repository } from '@wlisfes/chat-web-base-schema/database'
+import { fetchResolver, fetchUntiePagination, isNotEmpty, PageResult } from '@wlisfes/chat-web-base-schema/utils'
 import { TbSkylineLogger, TbSkylineSheet, TbSkylineSheetType } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
 import * as LoggerDto from '@/modules/logger/dto/logger.dto'
 
@@ -8,36 +8,54 @@ import * as LoggerDto from '@/modules/logger/dto/logger.dto'
 export class SkylineLoggerService {
     constructor(
         @InjectRepository(TbSkylineLogger) private readonly loggerRepository: Repository<TbSkylineLogger>,
-        @InjectRepository(TbSkylineSheet) private readonly sheetRepository: Repository<TbSkylineSheet>
+        @InjectRepository(TbSkylineSheet) private readonly sheetRepository: Repository<TbSkylineSheet>,
+        private readonly database: DataBaseService
     ) {}
 
     /** 按菜单节点展开按钮权限码后分页查询。选中目录或菜单时包含全部下级按钮。 */
     public async httpBaseSkylineColumnLogger(
-        body: LoggerDto.LoggerColumnQueryDto
+        input: LoggerDto.LoggerColumnQueryDto
     ): Promise<PageResult<TbSkylineLogger>> {
-        const permissionCodes = await this.resolvePermissionCodes(body.sheetKeyId)
-        return this.loggerRepository.manager
-            .createQueryBuilder(TbSkylineLogger, 't')
-            .where(permissionCodes ? 't.permissionCode IN (:...permissionCodes)' : '1 = 1', { permissionCodes })
-            .andWhere(isNotEmpty(body.permissionCode) ? 't.permissionCode = :permissionCode' : '1 = 1', {
-                permissionCode: body.permissionCode
+        const { page, size } = fetchUntiePagination(input)
+        const permissionCodes = await this.resolvePermissionCodes(input.sheetKeyId)
+        return this.database.builder(this.loggerRepository, async qb => {
+            if (permissionCodes) {
+                qb.andWhere('t.permissionCode IN (:...permissionCodes)', { permissionCodes })
+            }
+            if (isNotEmpty(input.permissionCode?.trim())) {
+                qb.andWhere('t.permissionCode = :permissionCode', { permissionCode: input.permissionCode.trim() })
+            }
+            if (isNotEmpty(input.operatorName?.trim())) {
+                qb.andWhere('(t.operatorName LIKE :operatorName OR t.operatorNumber LIKE :operatorName)', {
+                    operatorName: `%${input.operatorName.trim()}%`
+                })
+            }
+            if (isNotEmpty(input.logId?.trim())) {
+                qb.andWhere('t.logId = :logId', { logId: input.logId.trim() })
+            }
+            if (isNotEmpty(input.result)) {
+                qb.andWhere('t.result = :result', { result: input.result })
+            }
+            if (isNotEmpty(input.resourceType?.trim())) {
+                qb.andWhere('t.resourceType = :resourceType', { resourceType: input.resourceType.trim() })
+            }
+            if (isNotEmpty(input.resourceId?.trim())) {
+                qb.andWhere('t.resourceId = :resourceId', { resourceId: input.resourceId.trim() })
+            }
+            if (isNotEmpty(input.startTime)) {
+                qb.andWhere('t.createTime >= :startTime', { startTime: input.startTime })
+            }
+            if (isNotEmpty(input.endTime)) {
+                qb.andWhere('t.createTime <= :endTime', { endTime: input.endTime })
+            }
+            qb.orderBy('t.createTime', 'DESC')
+            qb.addOrderBy('t.keyId', 'DESC')
+            qb.skip((page - 1) * size)
+            qb.take(size)
+            return await qb.getManyAndCount().then(async ([list, total]) => {
+                return fetchResolver({ page, size, total, list })
             })
-            .andWhere(isNotEmpty(body.operatorName) ? 't.operatorName LIKE :operatorName' : '1 = 1', {
-                operatorName: isNotEmpty(body.operatorName) ? `%${body.operatorName.trim()}%` : undefined
-            })
-            .andWhere(isNotEmpty(body.result) ? 't.result = :result' : '1 = 1', { result: body.result })
-            .andWhere(isNotEmpty(body.resourceType) ? 't.resourceType = :resourceType' : '1 = 1', {
-                resourceType: body.resourceType
-            })
-            .andWhere(isNotEmpty(body.resourceId) ? 't.resourceId = :resourceId' : '1 = 1', { resourceId: body.resourceId })
-            .andWhere(isNotEmpty(body.startTime) ? 't.createTime >= :startTime' : '1 = 1', { startTime: body.startTime })
-            .andWhere(isNotEmpty(body.endTime) ? 't.createTime <= :endTime' : '1 = 1', { endTime: body.endTime })
-            .orderBy('t.createTime', 'DESC')
-            .addOrderBy('t.keyId', 'DESC')
-            .skip((body.page - 1) * body.size)
-            .take(body.size)
-            .getManyAndCount()
-            .then(([list, total]) => fetchResolver({ page: body.page, size: body.size, list, total }))
+        })
     }
 
     /** 选中按钮时只取自身权限码；选中目录或菜单时取全部下级按钮权限码。 */

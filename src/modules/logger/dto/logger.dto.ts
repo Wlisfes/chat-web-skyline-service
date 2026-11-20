@@ -71,11 +71,17 @@ export class LoggerColumnQueryDto extends PageDto {
     @MaxLength(128, { message: '操作权限码长度不能超过128位' })
     permissionCode: string
 
-    @ApiPropertyOptional({ description: '操作人姓名', example: '张三' })
+    @ApiPropertyOptional({ description: '操作人姓名或工号，模糊匹配', example: '张三' })
     @IsOptional()
-    @IsString({ message: '操作人姓名必须是字符串' })
-    @MaxLength(64, { message: '操作人姓名长度不能超过64位' })
+    @IsString({ message: '操作人必须是字符串' })
+    @MaxLength(64, { message: '操作人长度不能超过64位' })
     operatorName: string
+
+    @ApiPropertyOptional({ description: '请求日志号', example: '34ec4ca9-2abf-49b8-85f6-77d7fd23ea1d' })
+    @IsOptional()
+    @IsString({ message: '日志ID必须是字符串' })
+    @MaxLength(64, { message: '日志ID长度不能超过64位' })
+    logId: string
 
     @ApiPropertyOptional({ description: '操作结果', enum: TbSkylineLoggerResult })
     @IsOptional()
