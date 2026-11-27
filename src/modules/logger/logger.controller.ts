@@ -14,10 +14,7 @@ export class SkylineLoggerController {
         request: { source: 'body', type: LoggerDto.LoggerColumnQueryDto },
         response: { type: LoggerDto.LoggerPageResponseDto, description: '日志分页数据' }
     })
-    public async httpBaseSkylineColumnLogger(
-        @CurrentPrincipal() _principal: AuthPrincipal,
-        @Body() body: LoggerDto.LoggerColumnQueryDto
-    ) {
+    public async httpBaseSkylineColumnLogger(@CurrentPrincipal() _principal: AuthPrincipal, @Body() body: LoggerDto.LoggerColumnQueryDto) {
         return this.loggerService.httpBaseSkylineColumnLogger(body)
     }
 }
