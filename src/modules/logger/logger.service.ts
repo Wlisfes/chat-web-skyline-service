@@ -13,9 +13,7 @@ export class SkylineLoggerService {
     ) {}
 
     /** 按菜单节点展开按钮权限码后分页查询。选中目录或菜单时包含全部下级按钮。 */
-    public async httpBaseSkylineColumnLogger(
-        input: LoggerDto.LoggerColumnQueryDto
-    ): Promise<PageResult<TbSkylineLogger>> {
+    public async httpBaseSkylineColumnLogger(input: LoggerDto.LoggerColumnQueryDto): Promise<PageResult<TbSkylineLogger>> {
         const { page, size } = fetchUntiePagination(input)
         const permissionCodes = await this.resolvePermissionCodes(input.sheetKeyId)
         return this.database.builder(this.loggerRepository, async qb => {
