@@ -8,6 +8,7 @@ import {
     TbSkylineRoleDataScope,
     TbSkylineRoleDataScopeOrganization,
     TbSkylineRoleSheet,
+    TbSkylineLogger,
     TbSkylineSheet,
     TbSkylineUser,
     TbSkylineUserChunk,
@@ -34,5 +35,6 @@ export const SKYLINE_MYSQL_ENTITIES = [
     TbSkylineRoleDataScope,
     TbSkylineRoleDataScopeOrganization,
     TbSkylineUserChunk,
-    TbSkylineCountry
+    TbSkylineCountry,
+    TbSkylineLogger
 ]

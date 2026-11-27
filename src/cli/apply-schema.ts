@@ -32,6 +32,14 @@ function changesDirectory(): string {
 
 /** 确保系统任务编号存在单列唯一索引，兼容已执行最新建表 SQL 的数据库。 */
 export async function ensureTaskIdUniqueIndex(connection: mysql.Connection): Promise<boolean> {
+    const [tableRows] = await connection.query<(RowDataPacket & { count: number })[]>(
+        `SELECT COUNT(*) AS count
+           FROM information_schema.tables
+          WHERE table_schema = DATABASE()
+            AND table_name = 'tb_skyline_datetask_system'`
+    )
+    if (Number(tableRows[0]?.count) === 0) return false
+
     const [rows] = await connection.query<IndexRow[]>(
         `SELECT INDEX_NAME AS indexName,
                 NON_UNIQUE AS nonUnique,

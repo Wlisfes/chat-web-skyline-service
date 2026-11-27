@@ -1,6 +1,6 @@
 # Chat Web Skyline Service
 
-基于 NestJS 11 初始化的空项目，用于后续重新开发 Skyline 服务。
+内部平台服务。提供账号、组织、角色、菜单、国家地区、枚举字典、对象存储和系统任务管理入口，经 Gateway 以 `/api/skyline` 对外。
 
 ## 环境
 
@@ -19,15 +19,14 @@ yarn dev
 
 本地启动会优先使用 Nacos 客户端默认端口 `7777`；如果检测到端口冲突，启动脚本会自动随机选择可用端口，不需要配置到 Nacos。
 
-未设置 `PORT` 时默认监听 `5040`：
+未设置 `PORT` 时默认监听 `5040`。业务接口挂在 `/deploy/{user,organization,role,sheet,country,chunk,datetask,garage,logger}`，内部接口挂在 `/feign/skyline`。`GET /health/live` 只返回进程存活状态。
 
-- `GET /` 返回 `Hello World!`
-- `GET /health/live` 返回进程存活状态
+操作日志由各服务入口直接写入 RabbitMQ。本服务在开启 `logger` 的接口上发布日志到 `/chat-sms` 虚拟主机的 `chat.skyline.logger` 队列，并提供 `POST /deploy/logger/column` 查询；消费和入库由 Hooks 负责，Skyline 不在请求线程写日志。
 
-对外访问统一经过 Gateway：
+对外访问统一经过 Gateway，前缀为 `/api/skyline`。例如：
 
-- `GET /api/skyline/` 返回 `Hello World!`
 - `GET /api/skyline/health/live` 返回进程存活状态
+- 管理端业务接口为 `/api/skyline/deploy/**`
 
 `skyline.lisfes.com` 独立域名已经废弃，不再由共享 Nginx 直接代理 Skyline。
 

@@ -18,6 +18,20 @@ gateway:
 
 Skyline 只读取 `gateway.feign.url/timeout`；缺少任一字段时部署校验会中止。所有 Feign 请求都通过 Gateway 的服务路由转发。
 
+操作日志入队还需要 `rabbitmq` 节点。Skyline 只发布不消费，虚拟主机必须与 Hooks 一致：
+
+```yaml
+rabbitmq:
+    host: chat-web-rabbitmq
+    port: 5672
+    vhost: /chat-sms
+    username: '<与 Hooks 相同>'
+    password: '<与 Hooks 相同>'
+    prefetch: 1
+```
+
+缺少 `rabbitmq` 时服务启动会直接失败（RabbitMQ 是必连依赖）。队列 `chat.skyline.logger`、死信队列 `chat.skyline.logger.dead` 和交换机 `chat.skyline.logger.exchange` 由本服务与 Hooks 在连接时共同声明。
+
 汇率同步任务只请求 `/feign/finance/currency/exchange/sync` 且不发送业务请求体。Frankfurter 地址、超时、汇率解析和数据库写入均属于 Finance 配置与实现，Skyline Nacos 不维护这些字段。
 
 部署脚本 `deploy/bootstrap-nacos-config.cjs` 会在切换容器前校验上述字段，缺失时直接中止部署。
@@ -41,9 +55,9 @@ Skyline 只在 `chat-home-server` 使用 Docker 自动部署，Runner 标签为 
 
 机器配置位于 `/opt/chat-web-skyline-service/.env`。服务统一读取 `PORT`，容器内固定为 `5040`；此外还必须提供 `NACOS_SERVER`、`NACOS_SERVICE_NAME` 和 `NACOS_NAMESPACE`。默认 Data ID 为 `${NACOS_SERVICE_NAME}.yaml`，服务注册名为 `NACOS_SERVICE_NAME` 的值；真实机器配置不得提交到仓库。
 
-Skyline 的业务数据库配置位于 Nacos `database.chat-web-skyline`，对应表包括定时任务（`tb_skyline_datetask_system`、`tb_skyline_datetask_log`）、枚举字典（`tb_skyline_chunk`、`tb_skyline_chunk_module`），以及从 Account 迁入的账号、组织、角色和菜单表（`tb_skyline_user`、`tb_skyline_organization`、`tb_skyline_organization_closure`、`tb_skyline_user_organization`、`tb_skyline_sheet`、`tb_skyline_role`、`tb_skyline_user_role`、`tb_skyline_role_sheet`、`tb_skyline_role_data_scope`、`tb_skyline_role_data_scope_organization`、`tb_skyline_user_chunk`）。`deploy.sh` 会使用待发布镜像执行 `dist/cli/apply-schema-bootstrap.js`：先使用 Nacos 中的管理员连接创建仅授权 Skyline 数据库的临时账号，再以该账号调用 `dist/cli/apply-schema.js`，迁移结束后立即回收临时账号。增量 SQL 按文件名顺序应用，并在 `tb_skyline_schema_migration` 中保存文件校验和；迁移失败时不会切换当前容器。TypeORM 保持 `synchronize: false`，不会在服务启动时自行改表。系统任务初始化失败会在容器日志中记录并触发健康检查失败。
+Skyline 的业务数据库配置位于 Nacos `database.chat-web-skyline`，对应表包括枚举字典（`tb_skyline_chunk`、`tb_skyline_chunk_module`），以及从 Account 迁入的账号、组织、角色和菜单表（`tb_skyline_user`、`tb_skyline_organization`、`tb_skyline_organization_closure`、`tb_skyline_user_organization`、`tb_skyline_sheet`、`tb_skyline_role`、`tb_skyline_user_role`、`tb_skyline_role_sheet`、`tb_skyline_role_data_scope`、`tb_skyline_role_data_scope_organization`、`tb_skyline_user_chunk`），以及操作日志表 `tb_skyline_logger`。`deploy.sh` 会使用待发布镜像执行 `dist/cli/apply-schema-bootstrap.js`：先使用 Nacos 中的管理员连接创建仅授权 Skyline 数据库的临时账号，再以该账号调用 `dist/cli/apply-schema.js`，迁移结束后立即回收临时账号。增量 SQL 按文件名顺序应用，并在 `tb_skyline_schema_migration` 中保存文件校验和；迁移失败时不会切换当前容器。TypeORM 保持 `synchronize: false`，不会在服务启动时自行改表。旧定时任务表已删除，系统任务由 Task 服务维护。
 
-流水线会先把 `deploy/bootstrap-nacos-config.cjs` 安装到 `/opt/chat-web-skyline-service`，再使用 `node:22-alpine`（加入 `chat-web-infrastructure` 网络）执行只读校验。脚本不会回写 Nacos，不会补齐或覆盖任何业务配置；它校验 `server.port: 5040`、`database.chat-web-skyline` 以及 `gateway.feign.service_token/url/timeout`。脚本不会把 Nacos 配置正文或凭据写入 Runner 日志；缺少节点/凭据时应先人工配置后重跑流水线。
+流水线会先把 `deploy/bootstrap-nacos-config.cjs` 安装到 `/opt/chat-web-skyline-service`，再使用 `node:22-alpine`（加入 `chat-web-infrastructure` 网络）执行校准。脚本只在缺少 `rabbitmq` 节点时从同环境 Hooks 配置复制该节点并回写，其余配置一律只读：校验 `server.port: 5040`、`database.chat-web-skyline`、`rabbitmq.vhost: /chat-sms` 以及 `gateway.feign.service_token/url/timeout`。脚本不会把 Nacos 配置正文或凭据写入 Runner 日志；缺少数据库或网关凭据时应先人工配置后重跑流水线。
 
 每日汇率任务通过 Gateway 调用 `/feign/finance/currency/exchange/sync`，Skyline 只触发一次并原样返回 Finance 结果。自动调度和手动触发都使用 Nacos `gateway.feign.service_token` 服务凭据，不转发用户 Bearer 令牌。令牌不得写入仓库或日志。
 

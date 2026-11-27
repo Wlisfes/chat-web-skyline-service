@@ -1,6 +1,6 @@
 import { Body, Get, Post, Query } from '@nestjs/common'
 import { ApiServiceDecorator, ApifoxController, SuccessResponseDataDto } from '@wlisfes/chat-web-base-schema/decorator'
-import { RequirePermissions, CurrentPrincipal, type AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
+import { CurrentPrincipal, RequirePermissions, type AuthPrincipal } from '@wlisfes/chat-web-base-schema/auth'
 import { TbSkylineSheetDto } from '@wlisfes/chat-web-base-schema/chat-web-skyline-mysql'
 import { SheetService } from '@/modules/sheet/sheet.service'
 import * as SheetDto from '@/modules/sheet/dto/sheet.dto'
@@ -47,7 +47,7 @@ export class SheetController {
         return this.sheetService.httpBaseSkylineSheetResolver(query)
     }
 
-    @RequirePermissions('chat:deploy:system:sheet:create')
+    @RequirePermissions('chat:deploy:system:sheet:create', { logger: true })
     @ApiServiceDecorator(Post('/create'), {
         operation: { summary: '创建目录、菜单或按钮节点' },
         request: { source: 'body', type: SheetDto.CreateSheetDto },
@@ -57,7 +57,7 @@ export class SheetController {
         return this.sheetService.httpBaseSkylineCreateSheet(input)
     }
 
-    @RequirePermissions('chat:deploy:system:sheet:update')
+    @RequirePermissions('chat:deploy:system:sheet:update', { logger: true })
     @ApiServiceDecorator(Post('/update'), {
         operation: { summary: '更新或移动菜单节点' },
         request: { source: 'body', type: SheetDto.UpdateSheetPayloadDto },
@@ -67,7 +67,7 @@ export class SheetController {
         return this.sheetService.httpBaseSkylineUpdateSheet(input)
     }
 
-    @RequirePermissions('chat:deploy:system:sheet:delete')
+    @RequirePermissions('chat:deploy:system:sheet:delete', { logger: true })
     @ApiServiceDecorator(Post('/delete'), {
         operation: { summary: '删除没有下级和角色引用的菜单节点' },
         request: { source: 'body', type: SheetDto.SheetKeyDto },
